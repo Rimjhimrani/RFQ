@@ -67,32 +67,13 @@ with st.form(key='rfq_form'):
     # Use st.data_editor for a dynamic, editable table
     edited_items = st.data_editor(
         initial_items_df,
-        num_rows="dynamic",  # Allow users to add/delete rows
+        num_rows="dynamic",
         use_container_width=True,
         column_config={
-            "Item/Service Description": st.column_config.TextColumn(
-                "Item/Service Description",
-                help="Detailed description of the good or service.",
-                required=True,
-                width="large"
-            ),
-            "Quantity": st.column_config.NumberColumn(
-                "Quantity",
-                help="The total quantity required.",
-                required=True,
-                min_value=0,
-                format="%d"
-            ),
-            "Unit of Measure": st.column_config.TextColumn(
-                "Unit of Measure",
-                help="e.g., Each, KG, Pallet, Hour, Shipment",
-                required=True
-            ),
-             "Specifications": st.column_config.TextColumn(
-                "Technical Specifications / Notes",
-                help="Provide any relevant technical details or notes.",
-                width="medium"
-            ),
+            "Item/Service Description": st.column_config.TextColumn("Item/Service Description", help="Detailed description of the good or service.", required=True, width="large"),
+            "Quantity": st.column_config.NumberColumn("Quantity", help="The total quantity required.", required=True, min_value=0, format="%d"),
+            "Unit of Measure": st.column_config.TextColumn("Unit of Measure", help="e.g., Each, KG, Pallet, Hour, Shipment", required=True),
+            "Specifications": st.column_config.TextColumn("Technical Specifications / Notes", help="Provide any relevant technical details or notes.", width="medium"),
         }
     )
 
@@ -120,8 +101,7 @@ with st.form(key='rfq_form'):
         type="primary"
     )
 
-
-# --- Post-Submission Display ---
+# --- Post-Submission Display and Download Logic ---
 if submit_button:
     # Validate required fields
     required_fields = [company_name, contact_person, company_address, contact_email, submission_deadline]
@@ -131,7 +111,7 @@ if submit_button:
         st.success("✅ RFQ Summary Generated Successfully!")
         st.balloons()
 
-        # Display the summarized RFQ details
+        # --- 1. Display the summarized RFQ details on the screen ---
         st.header("RFQ Summary")
         st.markdown(f"**RFQ Number:** `{rfq_number}`")
         st.markdown(f"**Date of Issue:** `{issue_date.strftime('%B %d, %Y')}`")
@@ -157,6 +137,58 @@ if submit_button:
         st.markdown(f"**Payment Terms:** {payment_terms}")
         st.subheader("Terms and Conditions:")
         st.write(terms_and_conditions)
+        st.markdown("---")
 
-        # Note on next steps
-        st.info("This is a summary of the RFQ. You can now copy this information or take a screenshot to send to your vendors. Further development could include PDF generation and direct emailing capabilities.")
+        # --- 2. Prepare data for Markdown download ---
+        
+        # Using the DataFrame's to_markdown() method creates a nicely formatted table
+        items_table_md = edited_items.to_markdown(index=False)
+
+        # Construct the full RFQ content as a Markdown string
+        rfq_md_content = f"""
+# Request for Quotation (RFQ)
+
+- **RFQ Number:** `{rfq_number}`
+- **Date of Issue:** `{issue_date.strftime('%B %d, %Y')}`
+- **Submission Deadline:** `{submission_deadline.strftime('%B %d, %Y')}`
+
+---
+
+## 1. Issued By
+- **Company:** {company_name}
+- **Address:** \n{company_address}
+- **Contact Person:** {contact_person}
+- **Contact Email:** {contact_email}
+
+---
+
+## 2. Project Overview
+{project_description}
+
+---
+
+## 3. Requested Items/Services
+{items_table_md}
+
+---
+
+## 4. Delivery & Commercial Terms
+- **Delivery/Service Location:** \n{delivery_address}
+- **Payment Terms:** {payment_terms}
+
+---
+
+## 5. Terms and Conditions
+{terms_and_conditions}
+"""
+        
+        # --- 3. Display Download Button ---
+        st.header("Download RFQ")
+        st.download_button(
+            label="📥 Download RFQ Document (.md)",
+            data=rfq_md_content,
+            file_name=f"{rfq_number}.md",
+            mime="text/markdown",
+            use_container_width=True,
+            type="primary"
+        )
