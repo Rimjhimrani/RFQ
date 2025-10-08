@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 from fpdf import FPDF
 
-# --- PDF Generation Function ---
+# --- PDF Generation Function (Corrected) ---
 def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, company_address, 
                    contact_person, contact_email, project_description, items_df, 
                    delivery_address, payment_terms, terms_and_conditions):
@@ -13,21 +13,14 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     
     class PDF(FPDF):
         def header(self):
-            # Arial bold 15
             self.set_font('Arial', 'B', 15)
-            # Move to the right
             self.cell(80)
-            # Title
             self.cell(30, 10, 'Request for Quotation (RFQ)', 0, 0, 'C')
-            # Line break
             self.ln(20)
 
         def footer(self):
-            # Position at 1.5 cm from bottom
             self.set_y(-15)
-            # Arial italic 8
             self.set_font('Arial', 'I', 8)
-            # Page number
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
     # --- PDF Creation Logic ---
@@ -57,14 +50,16 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.cell(40, 7, 'Contact:', 0, 0)
     pdf.cell(0, 7, f"{contact_person} ({contact_email})", 0, 1)
     pdf.cell(40, 7, 'Address:', 0, 0)
-    pdf.multi_cell(0, 7, company_address, 0, 1)
+    # CORRECTED LINE: Used align='L' instead of integer 1
+    pdf.multi_cell(0, 7, company_address, border=0, align='L')
     pdf.ln(5)
 
     # Project Overview
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, '2. Project Overview', 0, 1)
     pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 7, project_description, 0, 1)
+    # CORRECTED LINE: Used align='L' instead of integer 1
+    pdf.multi_cell(0, 7, project_description, border=0, align='L')
     pdf.ln(5)
 
     # Items Table
@@ -72,7 +67,6 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.cell(0, 10, '3. Requested Items/Services', 0, 1)
     pdf.set_font('Arial', 'B', 10)
     
-    # Define column widths
     effective_width = pdf.w - 2 * pdf.l_margin
     col_widths = {
         "Item/Service Description": effective_width * 0.45,
@@ -89,10 +83,8 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     # Table Rows
     pdf.set_font('Arial', '', 10)
     for index, row in items_df.iterrows():
-        # Store current y position
         y_before = pdf.get_y()
         
-        # Draw cells, using multi_cell for wrapping text
         pdf.multi_cell(col_widths["Item/Service Description"], 6, str(row["Item/Service Description"]), 1, 'L')
         y1 = pdf.get_y()
         pdf.set_xy(pdf.l_margin + col_widths["Item/Service Description"], y_before)
@@ -108,7 +100,6 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
         pdf.multi_cell(col_widths["Specifications"], 6, str(row["Specifications"]), 1, 'L')
         y4 = pdf.get_y()
 
-        # Set Y position to the max height of the cells in the row to ensure alignment
         pdf.set_y(max(y1, y2, y3, y4))
     pdf.ln(10)
     
@@ -117,7 +108,8 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.cell(0, 10, '4. Delivery & Commercial Terms', 0, 1)
     pdf.set_font('Arial', '', 11)
     pdf.cell(50, 7, 'Delivery/Service Location:', 0, 0)
-    pdf.multi_cell(0, 7, delivery_address, 0, 1)
+    # CORRECTED LINE: Used align='L' instead of integer 1
+    pdf.multi_cell(0, 7, delivery_address, border=0, align='L')
     pdf.cell(50, 7, 'Payment Terms:', 0, 0)
     pdf.cell(0, 7, payment_terms, 0, 1)
     pdf.ln(5)
@@ -126,7 +118,8 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, '5. Terms and Conditions', 0, 1)
     pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 7, terms_and_conditions, 0, 1)
+    # CORRECTED LINE: Used align='L' instead of integer 1
+    pdf.multi_cell(0, 7, terms_and_conditions, border=0, align='L')
 
     # Return PDF as bytes
     return pdf.output(dest='S').encode('latin-1')
@@ -204,12 +197,14 @@ with st.form(key='rfq_form'):
 
 if submit_button:
     required_fields = [company_name, contact_person, company_address, contact_email, submission_deadline]
-    if not all(required_fields) or edited_items.empty or edited_items['Item/Service Description'].iloc[0] == '':
+    # Simple validation to check if the first item's description is filled
+    is_items_filled = not edited_items.empty and edited_items['Item/Service Description'].iloc[0].strip() != ''
+
+    if not all(required_fields) or not is_items_filled:
         st.error("⚠️ Please fill in all required fields marked with an asterisk (*), including at least one item/service.")
     else:
         st.success("✅ RFQ Generated Successfully!")
         
-        # Generate PDF in memory
         pdf_data = create_rfq_pdf(
             rfq_number, issue_date, submission_deadline, company_name, company_address,
             contact_person, contact_email, project_description, edited_items,
@@ -226,7 +221,6 @@ if submit_button:
             type="primary"
         )
         
-        # Optional: Show a preview/summary on the page as well
         st.markdown("---")
         st.header("RFQ Summary Preview")
         st.markdown(f"**RFQ Number:** `{rfq_number}`")
