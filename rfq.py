@@ -21,7 +21,7 @@ def create_advanced_rfq_pdf(data):
         def create_cover_page(self, data):
             # --- Add Logo 1 (Left Side) ---
             logo1_data = data.get('logo1_data')
-            logo1_w = data.get('logo1_w', 30)
+            logo1_w = data.get('logo1_w', 35)
             logo1_h = data.get('logo1_h', 15)
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -83,7 +83,7 @@ def create_advanced_rfq_pdf(data):
                 return
             
             logo1_data = data.get('logo1_data')
-            logo1_w, logo1_h = data.get('logo1_w', 30), data.get('logo1_h', 15)
+            logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 15)
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
@@ -92,7 +92,7 @@ def create_advanced_rfq_pdf(data):
                     os.remove(tmp.name)
 
             logo2_data = data.get('logo2_data')
-            logo2_w, logo2_h = data.get('logo2_w', 30), data.get('logo2_h', 15)
+            logo2_w, logo2_h = data.get('logo2_w', 42), data.get('logo2_h', 20)
             if logo2_data:
                 x_pos = self.w - self.r_margin - logo2_w
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
