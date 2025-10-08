@@ -54,7 +54,7 @@ def create_advanced_rfq_pdf(data):
             # --- Centered Title Block ---
             self.set_y(60)
             self.set_font('Arial', 'B', 30)
-            self.cell(0, 15, 'REQUEST FOR QUOTATION', 0, 1, 'C')
+            self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
             self.ln(5)
             self.set_font('Arial', '', 18)
             self.cell(0, 8, 'For', 0, 1, 'C')
