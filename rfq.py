@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from datetime import date, timedelta
 from fpdf import FPDF
+import tempfile
+import os
 
 # --- App Configuration ---
 st.set_page_config(
@@ -10,18 +12,47 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final Version) ---
+# --- PDF Generation Function (Final Version with Logos) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a detailed, professional RFQ document in PDF format from a dictionary of data.
+    Generates a detailed, professional RFQ document in PDF format from a dictionary of data,
+    including company logos in the header.
     """
     class PDF(FPDF):
         def header(self):
+            # --- Logo Handling ---
+            logo1_data = data.get('logo1_data')
+            logo2_data = data.get('logo2_data')
+            logo_w, logo_h = 30, 15  # Fixed dimensions for logos
+
+            # Draw Logo 1 (Left) if it exists
+            if logo1_data:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(logo1_data)
+                    logo1_path = tmp.name
+                self.image(logo1_path, x=self.l_margin, y=10, w=logo_w, h=logo_h)
+                os.remove(logo1_path)
+
+            # Draw Logo 2 (Right) if it exists
+            if logo2_data:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(logo2_data)
+                    logo2_path = tmp.name
+                # Calculate X position for the right logo
+                x_pos = self.w - self.r_margin - logo_w
+                self.image(logo2_path, x=x_pos, y=10, w=logo_w, h=logo_h)
+                os.remove(logo2_path)
+
+            # --- Title Text ---
+            self.set_y(12) # Vertically align title with the logos
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
+            
             self.set_font('Arial', 'I', 10)
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
-            self.ln(10)
+            
+            # Add space below the header to avoid overlap with content
+            self.ln(15)
 
         def footer(self):
             self.set_y(-15)
@@ -29,13 +60,16 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
+            # Check if there is enough space for the title and some content, otherwise add a new page
+            if self.get_y() + 20 > self.page_break_trigger:
+                self.add_page()
             self.set_font('Arial', 'B', 12)
             self.set_fill_color(230, 230, 230)
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
         def key_value_pair(self, key, value):
-            estimated_height = 12
+            estimated_height = 12 
             if self.get_y() + estimated_height > self.page_break_trigger:
                 self.add_page()
 
@@ -70,7 +104,7 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
     pdf.key_value_pair('Color:', data['color'])
     pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-
+    
     if data['main_type'] == 'Item Type (Container)':
         pdf.key_value_pair('Lid Required:', data['lid'])
         pdf.key_value_pair('Space for Label:', f"{data['label_space']} (Size: {data['label_size']})")
@@ -87,14 +121,10 @@ def create_advanced_rfq_pdf(data):
         ("Delivery Deadline", data['date_delivery']),
         ("Installation Deadline", data['date_install']),
     ]
-    if data['date_meet']:
-        timeline_data.append(("Face to Face Meet", data['date_meet']))
-    if data['date_quote']:
-        timeline_data.append(("First Level Quotation", data['date_quote']))
-    if data['date_review']:
-        timeline_data.append(("Joint Review of Quotation", data['date_review']))
+    if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
+    if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
+    if data['date_review']: timeline_data.append(("Joint Review of Quotation", data['date_review']))
     
-    # Check for page break before drawing table
     table_height = (len(timeline_data) + 1) * 8
     if pdf.get_y() + table_height > pdf.page_break_trigger:
         pdf.add_page()
@@ -102,64 +132,42 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(80, 8, 'Milestone', 1, 0, 'C')
     pdf.cell(110, 8, 'Date', 1, 1, 'C')
-    
     pdf.set_font('Arial', '', 10)
     for item, date_val in timeline_data:
         pdf.cell(80, 8, item, 1, 0, 'L')
         pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-
     # Section 4: Single Point of Contact (Side-by-Side)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
     
-    # Helper function to draw one contact column
     def draw_contact_column(title, name, designation, phone, email):
         pdf.set_font('Arial', 'BU', 10)
         pdf.cell(90, 6, title, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(25, 6, 'Name:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(65, 6, name, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(25, 6, 'Designation:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(65, 6, designation, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(25, 6, 'Phone No:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(65, 6, phone, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(25, 6, 'Email ID:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(65, 6, email, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Name:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, name, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Designation:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, designation, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Phone No:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, phone, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Email ID:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, email, 0, 1, 'L')
 
-    # Check for page break before drawing columns
     estimated_height = 40 
     if pdf.get_y() + estimated_height > pdf.page_break_trigger:
         pdf.add_page()
         
     start_y = pdf.get_y()
-    
-    # Primary Contact (Left Column)
-    draw_contact_column(
-        'Primary Contact', data['spoc1_name'], data['spoc1_designation'],
-        data['spoc1_phone'], data['spoc1_email']
-    )
+    draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
 
-    # Secondary Contact (Right Column) - if exists
     if data.get('spoc2_name'):
         pdf.set_xy(pdf.l_margin + 98, start_y)
-        draw_contact_column(
-            'Secondary Contact', data['spoc2_name'], data['spoc2_designation'],
-            data['spoc2_phone'], data['spoc2_email']
-        )
+        draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email'])
         end_y2 = pdf.get_y()
-        pdf.set_y(max(end_y1, end_y2)) # Move cursor to below the taller column
+        pdf.set_y(max(end_y1, end_y2))
     else:
         pdf.set_y(end_y1)
-
     pdf.ln(5)
 
     # Section 5: Dynamic Commercial Requirements Table
@@ -181,9 +189,8 @@ def create_advanced_rfq_pdf(data):
     for index, row in data['commercial_df'].iterrows():
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
         remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
-        
         pdf.cell(80, 8, component, 1, 0, 'L')
-        pdf.cell(40, 8, '', 1, 0) # Blank cell for vendor to fill Amount
+        pdf.cell(40, 8, '', 1, 0) # Blank cell
         pdf.cell(70, 8, remarks, 1, 1, 'L')
 
     return bytes(pdf.output())
@@ -192,9 +199,18 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
+# --- Logo Uploader Section ---
+with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
+    st.info("Logos will be displayed on the header of every page.")
+    c1, c2 = st.columns(2)
+    with c1:
+        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'])
+    with c2:
+        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'])
+
 with st.form(key="advanced_rfq_form"):
     
-    st.subheader("1. RFQ Details")
+    st.subheader("Step 2: Fill RFQ Details")
     main_type = st.selectbox("Select RFQ Category", ["Item Type (Container)", "Storage Infrastructure"])
     if main_type == "Item Type (Container)":
         sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
@@ -206,7 +222,7 @@ with st.form(key="advanced_rfq_form"):
         final_sub_type = st.text_input("Please specify 'Other' type")
     purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
-    with st.expander("2. Technical Specifications", expanded=True):
+    with st.expander("Technical Specifications", expanded=True):
         st.markdown("##### Dimensions (in mm)")
         c1, c2 = st.columns(2)
         with c1:
@@ -236,7 +252,7 @@ with st.form(key="advanced_rfq_form"):
             with c1: stack_static = st.text_input("Static (e.g., 1+3)")
             with c2: stack_dynamic = st.text_input("Dynamic (e.g., 1+1)")
 
-    with st.expander("3. Timelines"):
+    with st.expander("Timelines"):
         st.info("Fields marked with * are mandatory.")
         today = date.today()
         c1, c2, c3 = st.columns(3)
@@ -252,7 +268,7 @@ with st.form(key="advanced_rfq_form"):
             date_install = st.date_input("Installation Deadline *", value=today + timedelta(days=75))
             date_review = st.date_input("Joint Review of Quotation (Optional)", value=None, help="Leave blank if not applicable.")
 
-    with st.expander("4. Single Point of Contact (SPOC)"):
+    with st.expander("Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact (Mandatory)")
         c1, c2 = st.columns(2)
         with c1:
@@ -271,8 +287,8 @@ with st.form(key="advanced_rfq_form"):
             spoc2_phone = st.text_input("Phone No", key="spoc2_phone")
             spoc2_email = st.text_input("Email ID", key="spoc2_email")
 
-    with st.expander("5. Commercial Requirements"):
-        st.info("Define the cost components you require the vendor to quote. The vendor will fill in the 'Amount' column on the PDF.")
+    with st.expander("Commercial Requirements"):
+        st.info("Define the cost components for the vendor to quote. The vendor will fill the 'Amount' column.")
         commercial_df_initial = pd.DataFrame([
             {"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},
             {"Cost Component": "Freight", "Remarks": "Specify if included or extra."},
@@ -291,7 +307,12 @@ if submitted:
     if not all([purpose, spoc1_name, spoc1_phone, spoc1_email]):
         st.error("⚠️ Please fill in all mandatory fields: Purpose and all Primary Contact details.")
     else:
+        # Read logo data if uploaded
+        logo1_data = logo1_file.getvalue() if logo1_file else None
+        logo2_data = logo2_file.getvalue() if logo2_file else None
+
         rfq_data = {
+            'logo1_data': logo1_data, 'logo2_data': logo2_data,
             'main_type': main_type, 'sub_type': final_sub_type, 'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
