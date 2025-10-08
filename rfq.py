@@ -12,53 +12,46 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final Version with Cover Page) ---
+# --- PDF Generation Function (Final Version with I/O Fix) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document with a dedicated cover page.
     """
     class PDF(FPDF):
-        # --- COVER PAGE METHOD ---
         def create_cover_page(self, data):
-            # Add "CONFIDENTIAL" on the top left
             self.set_y(25)
             self.set_x(self.l_margin)
             self.set_font('Arial', 'B', 12)
-            self.set_text_color(255, 0, 0) # Red color
+            self.set_text_color(255, 0, 0)
             self.cell(0, 10, 'CONFIDENTIAL')
-            self.set_text_color(0, 0, 0) # Reset to black
+            self.set_text_color(0, 0, 0)
 
-            # Add Logo 2 (or the one on the right) to the top right
             logo2_data = data.get('logo2_data')
             logo2_w = data.get('logo2_w', 30)
             logo2_h = data.get('logo2_h', 15)
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
+                    tmp.flush()  # --- FIX: Ensure data is written to disk
                     logo2_path = tmp.name
                 x_pos = self.w - self.r_margin - logo2_w
                 self.image(logo2_path, x=x_pos, y=20, w=logo2_w, h=logo2_h)
                 os.remove(logo2_path)
 
-            # --- Centered Title Block ---
-            self.set_y(80) # Move down to the center area
-            
+            self.set_y(80)
             self.set_font('Arial', 'B', 24)
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
             self.ln(10)
-
             self.set_font('Arial', '', 12)
             self.cell(0, 8, 'For', 0, 1, 'C')
             self.set_font('Arial', 'B', 14)
             self.cell(0, 8, data['sub_type'], 0, 1, 'C')
             self.ln(5)
-
             self.set_font('Arial', '', 12)
             self.cell(0, 8, 'for', 0, 1, 'C')
             self.set_font('Arial', 'B', 14)
             self.cell(0, 8, data['purpose'], 0, 1, 'C')
             self.ln(5)
-            
             self.set_font('Arial', '', 12)
             self.cell(0, 8, 'At', 0, 1, 'C')
             self.set_font('Arial', 'B', 16)
@@ -66,9 +59,7 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', '', 14)
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
-        # --- Standard Header for subsequent pages ---
         def header(self):
-            # This header will not appear on the first page
             if self.page_no() == 1:
                 return
             
@@ -77,6 +68,7 @@ def create_advanced_rfq_pdf(data):
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
+                    tmp.flush()  # --- FIX: Ensure data is written to disk
                     self.image(tmp.name, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
 
@@ -86,6 +78,7 @@ def create_advanced_rfq_pdf(data):
                 x_pos = self.w - self.r_margin - logo2_w
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
+                    tmp.flush()  # --- FIX: Ensure data is written to disk
                     self.image(tmp.name, x=x_pos, y=10, w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
 
@@ -109,7 +102,6 @@ def create_advanced_rfq_pdf(data):
             self.ln(4)
 
         def key_value_pair(self, key, value):
-            # ... (This function remains unchanged)
             if self.get_y() + 12 > self.page_break_trigger: self.add_page()
             key_width = 60
             value_width = self.w - self.l_margin - self.r_margin - key_width
@@ -126,22 +118,15 @@ def create_advanced_rfq_pdf(data):
             
     pdf = PDF('P', 'mm', 'A4')
     pdf.alias_nb_pages()
-
-    # --- Page Generation Sequence ---
-    # 1. Add the Cover Page
     pdf.add_page()
     pdf.create_cover_page(data)
-
-    # 2. Add a new page for the detailed content (this will trigger the standard header)
     pdf.add_page()
 
-    # Section 1: Purpose
     pdf.section_title('1. Purpose of Requirement')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # Section 2: Technical Specifications
     pdf.section_title('2. Technical Specifications')
     pdf.key_value_pair('Item / Infrastructure:', f"{data['main_type']} - {data['sub_type']}")
     pdf.key_value_pair('Internal Dimensions (LxWxH):', f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f} mm")
@@ -156,7 +141,6 @@ def create_advanced_rfq_pdf(data):
         pdf.key_value_pair('Stacking - Dynamic:', data['stack_dynamic'])
     pdf.ln(5)
 
-    # Section 3: Timelines (Table Format)
     pdf.section_title('3. Timelines')
     timeline_data = [
         ("Date of RFQ Release", data['date_release']),
@@ -180,9 +164,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-    # Section 4: Single Point of Contact (Side-by-Side - FINAL FIX)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
-    # ... (This section remains unchanged)
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x()
         pdf.set_font('Arial', 'BU', 10)
@@ -192,7 +174,7 @@ def create_advanced_rfq_pdf(data):
             key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
             value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
             row_start_y = pdf.get_y()
-            pdf.set_x(col_start_x)
+            pdf.set_x(col_start_.x)
             pdf.set_font('Arial', 'B', 10)
             pdf.cell(25, 6, key_str, 0, 0, 'L')
             pdf.set_xy(col_start_x + 25, row_start_y)
@@ -217,9 +199,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(end_y1)
     pdf.ln(8)
 
-    # Section 5: Dynamic Commercial Requirements Table
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
-    # ... (This section remains unchanged)
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
@@ -243,7 +223,6 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-# --- Step 1: Logo Uploader Section ---
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     st.info("Logos will be displayed on the header of every page. Dimensions are in mm.")
     c1, c2 = st.columns(2)
@@ -258,16 +237,12 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_w = sub_c1.number_input("Logo 2 Width", 5, 50, 30, 1)
         logo2_h = sub_c2.number_input("Logo 2 Height", 5, 50, 15, 1)
 
-# --- Step 2: Cover Page Details ---
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     company_name = st.text_input("Your Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd (PMSPL)")
     company_address = st.text_input("Your Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
-# --- Step 3: Main RFQ Form ---
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 3: Fill RFQ Details")
-    
-    # ... (The rest of the form remains unchanged)
     main_type = st.selectbox("Select RFQ Category", ["Item Type (Container)", "Storage Infrastructure"])
     if main_type == "Item Type (Container)": sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
     else: sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
@@ -354,7 +329,6 @@ with st.form(key="advanced_rfq_form"):
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    # Validation check now includes cover page details
     if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address]):
         st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, Company Name, and Company Address.")
     else:
