@@ -74,7 +74,7 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'B', 24)
             self.cell(0, 10, data['company_name'], 0, 1, 'C')
             self.ln(3)
-            self.set_font('Arial', '', 24)
+            self.set_font('Arial', '', 22)
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
