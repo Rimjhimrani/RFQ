@@ -33,12 +33,19 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
+        # CORRECTED ROBUST key_value_pair function
         def key_value_pair(self, key, value):
+            key_width = 60
+            # Calculate the exact width available for the value cell
+            value_width = self.w - self.l_margin - self.r_margin - key_width
+
+            # Write the key cell
             self.set_font('Arial', 'B', 10)
-            self.cell(60, 6, key, 0, 0)
+            self.cell(key_width, 6, key, 0, 0, 'L')
+
+            # Write the value cell using multi_cell for text wrapping
             self.set_font('Arial', '', 10)
-            # CORRECTED LINE: Changed align from integer 1 to string 'L'
-            self.multi_cell(0, 6, str(value), border=0, align='L')
+            self.multi_cell(value_width, 6, str(value), border=0, align='L')
 
 
     pdf = PDF('P', 'mm', 'A4')
@@ -48,17 +55,16 @@ def create_advanced_rfq_pdf(data):
     # Section 1: Purpose
     pdf.section_title('1. Purpose of Requirement')
     pdf.set_font('Arial', '', 10)
-    # CORRECTED LINE: Changed align from integer 1 to string 'L'
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
     # Section 2: Technical Specifications
     pdf.section_title('2. Technical Specifications')
     pdf.key_value_pair('Item / Infrastructure:', f"{data['main_type']} - {data['sub_type']}")
-    pdf.key_value_pair('Internal Dimensions (LxWxH):', f"{data['dim_int_l']} x {data['dim_int_w']} x {data['dim_int_h']} mm")
-    pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']} x {data['dim_ext_w']} x {data['dim_ext_h']} mm")
+    pdf.key_value_pair('Internal Dimensions (LxWxH):', f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f} mm")
+    pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
     pdf.key_value_pair('Color:', data['color'])
-    pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']} KG")
+    pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
     
     if data['main_type'] == 'Item Type (Container)':
         pdf.key_value_pair('Lid Required:', data['lid'])
@@ -104,7 +110,6 @@ def create_advanced_rfq_pdf(data):
     # Section 5: Commercial Requirements
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
     pdf.set_font('Arial', '', 10)
-    # CORRECTED LINE: Changed align from integer 1 to string 'L'
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
 
@@ -246,7 +251,7 @@ if submitted:
     else:
         rfq_data = {
             'main_type': main_type,
-            'sub_type': sub_type,
+            'sub_type': sub_type if sub_type_selection != 'Other' else sub_type_selection + f" ({st.session_state.sub_type_other})",
             'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
@@ -269,7 +274,7 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         
-        file_name = f"RFQ_{rfq_data['sub_type'].replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
+        file_name = f"RFQ_{rfq_data['sub_type'].replace(' ', '_').replace('(', '').replace(')', '')}_{date.today().strftime('%Y%m%d')}.pdf"
 
         st.download_button(
             label="📥 Download RFQ Document (.pdf)",
