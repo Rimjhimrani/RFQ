@@ -33,7 +33,7 @@ def create_advanced_rfq_pdf(data):
             # Add "CONFIDENTIAL" on the top left, slightly below the logo
             self.set_y(35)
             self.set_x(self.l_margin)
-            self.set_font('Arial', 'B', 12)
+            self.set_font('Arial', 'B', 16)
             self.set_text_color(255, 0, 0)
             self.cell(0, 10, 'CONFIDENTIAL')
             self.set_text_color(0, 0, 0)
@@ -54,7 +54,7 @@ def create_advanced_rfq_pdf(data):
             # --- Centered Title Block ---
             self.set_y(60)
             self.set_font('Arial', 'B', 30)
-            self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
+            self.cell(0, 15, 'REQUEST FOR QUOTATION', 0, 1, 'C')
             self.ln(5)
             self.set_font('Arial', '', 18)
             self.cell(0, 8, 'For', 0, 1, 'C')
