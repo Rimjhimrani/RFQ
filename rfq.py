@@ -40,8 +40,8 @@ def create_advanced_rfq_pdf(data):
 
             # --- Add Logo 2 (Right Side) ---
             logo2_data = data.get('logo2_data')
-            logo2_w = data.get('logo2_w', 30)
-            logo2_h = data.get('logo2_h', 15)
+            logo2_w = data.get('logo2_w', 42)
+            logo2_h = data.get('logo2_h', 20)
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
