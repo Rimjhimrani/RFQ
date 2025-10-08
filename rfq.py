@@ -50,7 +50,6 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.cell(40, 7, 'Contact:', 0, 0)
     pdf.cell(0, 7, f"{contact_person} ({contact_email})", 0, 1)
     pdf.cell(40, 7, 'Address:', 0, 0)
-    # CORRECTED LINE: Used align='L' instead of integer 1
     pdf.multi_cell(0, 7, company_address, border=0, align='L')
     pdf.ln(5)
 
@@ -58,7 +57,6 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, '2. Project Overview', 0, 1)
     pdf.set_font('Arial', '', 11)
-    # CORRECTED LINE: Used align='L' instead of integer 1
     pdf.multi_cell(0, 7, project_description, border=0, align='L')
     pdf.ln(5)
 
@@ -108,7 +106,6 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.cell(0, 10, '4. Delivery & Commercial Terms', 0, 1)
     pdf.set_font('Arial', '', 11)
     pdf.cell(50, 7, 'Delivery/Service Location:', 0, 0)
-    # CORRECTED LINE: Used align='L' instead of integer 1
     pdf.multi_cell(0, 7, delivery_address, border=0, align='L')
     pdf.cell(50, 7, 'Payment Terms:', 0, 0)
     pdf.cell(0, 7, payment_terms, 0, 1)
@@ -118,11 +115,10 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 10, '5. Terms and Conditions', 0, 1)
     pdf.set_font('Arial', '', 11)
-    # CORRECTED LINE: Used align='L' instead of integer 1
     pdf.multi_cell(0, 7, terms_and_conditions, border=0, align='L')
 
-    # Return PDF as bytes
-    return pdf.output(dest='S').encode('latin-1')
+    # CORRECTED LINE: Removed the unnecessary .encode() method
+    return pdf.output()
 
 
 # --- Streamlit App ---
