@@ -52,7 +52,7 @@ def create_advanced_rfq_pdf(data):
                 os.remove(logo2_path)
 
             # --- Centered Title Block ---
-            self.set_y(40)
+            self.set_y(60)
             self.set_font('Arial', 'B', 30)
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
             self.ln(5)
