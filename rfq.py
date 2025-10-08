@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Corrected) ---
+# --- PDF Generation Function (Corrected Layout) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document in PDF format from a dictionary of data.
@@ -33,19 +33,35 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
-        # CORRECTED ROBUST key_value_pair function
+        # --- NEW ROBUST key_value_pair function to fix alignment ---
         def key_value_pair(self, key, value):
             key_width = 60
-            # Calculate the exact width available for the value cell
             value_width = self.w - self.l_margin - self.r_margin - key_width
+            
+            # Store the starting y position
+            start_y = self.get_y()
 
-            # Write the key cell
+            # Draw the key cell
             self.set_font('Arial', 'B', 10)
-            self.cell(key_width, 6, key, 0, 0, 'L')
+            self.multi_cell(key_width, 6, key, border=0, align='L')
+            
+            # Get y position after drawing key
+            key_end_y = self.get_y()
 
-            # Write the value cell using multi_cell for text wrapping
+            # Reset position to draw the value next to the key
+            self.set_xy(self.l_margin + key_width, start_y)
+
+            # Draw the value cell
             self.set_font('Arial', '', 10)
             self.multi_cell(value_width, 6, str(value), border=0, align='L')
+            
+            # Get y position after drawing value
+            value_end_y = self.get_y()
+
+            # Set the final Y position to be below the taller of the two cells
+            final_y = max(key_end_y, value_end_y)
+            self.set_y(final_y)
+            self.ln(1) # Add a small buffer for the next line
 
 
     pdf = PDF('P', 'mm', 'A4')
@@ -96,9 +112,9 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('Designation:', data['spoc1_designation'])
     pdf.key_value_pair('Phone No:', data['spoc1_phone'])
     pdf.key_value_pair('Email ID:', data['spoc1_email'])
-    pdf.ln(3)
-
+    
     if data.get('spoc2_name'):
+        pdf.ln(3) # Add space before secondary contact
         pdf.set_font('Arial', 'BU', 10)
         pdf.cell(0, 6, 'Secondary Contact', 0, 1)
         pdf.key_value_pair('Name:', data['spoc2_name'])
@@ -245,13 +261,18 @@ with st.form(key="advanced_rfq_form"):
     )
 
 if submitted:
+    # A bit of improved logic for handling "Other" sub_type
+    final_sub_type = sub_type
+    if sub_type_selection == "Other":
+        final_sub_type = st.session_state.sub_type_other
+    
     mandatory_fields = [purpose, spoc1_name, spoc1_phone, spoc1_email]
     if not all(mandatory_fields):
         st.error("⚠️ Please fill in all mandatory fields: Purpose and all Primary Contact details.")
     else:
         rfq_data = {
             'main_type': main_type,
-            'sub_type': sub_type if sub_type_selection != 'Other' else sub_type_selection + f" ({st.session_state.sub_type_other})",
+            'sub_type': final_sub_type,
             'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
@@ -274,7 +295,7 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         
-        file_name = f"RFQ_{rfq_data['sub_type'].replace(' ', '_').replace('(', '').replace(')', '')}_{date.today().strftime('%Y%m%d')}.pdf"
+        file_name = f"RFQ_{final_sub_type.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
 
         st.download_button(
             label="📥 Download RFQ Document (.pdf)",
