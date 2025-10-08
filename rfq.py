@@ -35,7 +35,7 @@ def create_advanced_rfq_pdf(data):
             self.ln(4)
 
         def key_value_pair(self, key, value):
-            estimated_height = 12 
+            estimated_height = 12
             if self.get_y() + estimated_height > self.page_break_trigger:
                 self.add_page()
 
@@ -70,7 +70,7 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
     pdf.key_value_pair('Color:', data['color'])
     pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-    
+
     if data['main_type'] == 'Item Type (Container)':
         pdf.key_value_pair('Lid Required:', data['lid'])
         pdf.key_value_pair('Space for Label:', f"{data['label_space']} (Size: {data['label_size']})")
@@ -78,38 +78,88 @@ def create_advanced_rfq_pdf(data):
         pdf.key_value_pair('Stacking - Dynamic:', data['stack_dynamic'])
     pdf.ln(5)
 
-    # Section 3: Timelines (Cleaned Output)
+    # Section 3: Timelines (Table Format)
     pdf.section_title('3. Timelines')
-    pdf.key_value_pair('Date of RFQ Release:', data['date_release'].strftime('%B %d, %Y'))
-    pdf.key_value_pair('Query Resolution Deadline:', data['date_query'].strftime('%B %d, %Y'))
-    pdf.key_value_pair('Negotiation & Vendor Selection:', data['date_selection'].strftime('%B %d, %Y'))
-    pdf.key_value_pair('Delivery Deadline:', data['date_delivery'].strftime('%B %d, %Y'))
-    pdf.key_value_pair('Installation Deadline:', data['date_install'].strftime('%B %d, %Y'))
+    timeline_data = [
+        ("Date of RFQ Release", data['date_release']),
+        ("Query Resolution Deadline", data['date_query']),
+        ("Negotiation & Vendor Selection", data['date_selection']),
+        ("Delivery Deadline", data['date_delivery']),
+        ("Installation Deadline", data['date_install']),
+    ]
     if data['date_meet']:
-        pdf.key_value_pair('Face to Face Meet:', data['date_meet'].strftime('%B %d, %Y'))
+        timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data['date_quote']:
-        pdf.key_value_pair('First Level Quotation:', data['date_quote'].strftime('%B %d, %Y'))
+        timeline_data.append(("First Level Quotation", data['date_quote']))
     if data['date_review']:
-        pdf.key_value_pair('Joint Review of Quotation:', data['date_review'].strftime('%B %d, %Y'))
+        timeline_data.append(("Joint Review of Quotation", data['date_review']))
+    
+    # Check for page break before drawing table
+    table_height = (len(timeline_data) + 1) * 8
+    if pdf.get_y() + table_height > pdf.page_break_trigger:
+        pdf.add_page()
+        
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(80, 8, 'Milestone', 1, 0, 'C')
+    pdf.cell(110, 8, 'Date', 1, 1, 'C')
+    
+    pdf.set_font('Arial', '', 10)
+    for item, date_val in timeline_data:
+        pdf.cell(80, 8, item, 1, 0, 'L')
+        pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
-    
-    # Section 4: Single Point of Contact
+
+
+    # Section 4: Single Point of Contact (Side-by-Side)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
-    pdf.set_font('Arial', 'BU', 10)
-    pdf.cell(0, 6, 'Primary Contact', 0, 1)
-    pdf.key_value_pair('Name:', data['spoc1_name'])
-    pdf.key_value_pair('Designation:', data['spoc1_designation'])
-    pdf.key_value_pair('Phone No:', data['spoc1_phone'])
-    pdf.key_value_pair('Email ID:', data['spoc1_email'])
     
-    if data.get('spoc2_name'):
-        pdf.ln(3)
+    # Helper function to draw one contact column
+    def draw_contact_column(title, name, designation, phone, email):
         pdf.set_font('Arial', 'BU', 10)
-        pdf.cell(0, 6, 'Secondary Contact', 0, 1)
-        pdf.key_value_pair('Name:', data['spoc2_name'])
-        pdf.key_value_pair('Designation:', data['spoc2_designation'])
-        pdf.key_value_pair('Phone No:', data['spoc2_phone'])
-        pdf.key_value_pair('Email ID:', data['spoc2_email'])
+        pdf.cell(90, 6, title, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(25, 6, 'Name:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(65, 6, name, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(25, 6, 'Designation:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(65, 6, designation, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(25, 6, 'Phone No:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(65, 6, phone, 0, 1, 'L')
+        pdf.set_font('Arial', 'B', 10)
+        pdf.cell(25, 6, 'Email ID:', 0, 0, 'L')
+        pdf.set_font('Arial', '', 10)
+        pdf.cell(65, 6, email, 0, 1, 'L')
+
+    # Check for page break before drawing columns
+    estimated_height = 40 
+    if pdf.get_y() + estimated_height > pdf.page_break_trigger:
+        pdf.add_page()
+        
+    start_y = pdf.get_y()
+    
+    # Primary Contact (Left Column)
+    draw_contact_column(
+        'Primary Contact', data['spoc1_name'], data['spoc1_designation'],
+        data['spoc1_phone'], data['spoc1_email']
+    )
+    end_y1 = pdf.get_y()
+
+    # Secondary Contact (Right Column) - if exists
+    if data.get('spoc2_name'):
+        pdf.set_xy(pdf.l_margin + 98, start_y)
+        draw_contact_column(
+            'Secondary Contact', data['spoc2_name'], data['spoc2_designation'],
+            data['spoc2_phone'], data['spoc2_email']
+        )
+        end_y2 = pdf.get_y()
+        pdf.set_y(max(end_y1, end_y2)) # Move cursor to below the taller column
+    else:
+        pdf.set_y(end_y1)
+
     pdf.ln(5)
 
     # Section 5: Dynamic Commercial Requirements Table
@@ -118,7 +168,6 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
     
-    # Check for page break before drawing table
     table_height = (len(data['commercial_df']) + 1) * 8
     if pdf.get_y() + table_height > pdf.page_break_trigger:
         pdf.add_page()
@@ -130,13 +179,12 @@ def create_advanced_rfq_pdf(data):
     
     pdf.set_font('Arial', '', 10)
     for index, row in data['commercial_df'].iterrows():
-        # Ensure text is properly encoded to avoid errors with special characters
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
         remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         
-        pdf.cell(80, 8, component, 1, 0)
+        pdf.cell(80, 8, component, 1, 0, 'L')
         pdf.cell(40, 8, '', 1, 0) # Blank cell for vendor to fill Amount
-        pdf.cell(70, 8, remarks, 1, 1)
+        pdf.cell(70, 8, remarks, 1, 1, 'L')
 
     return bytes(pdf.output())
 
@@ -159,7 +207,6 @@ with st.form(key="advanced_rfq_form"):
     purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
     with st.expander("2. Technical Specifications", expanded=True):
-        # ... (Technical specs section remains unchanged)
         st.markdown("##### Dimensions (in mm)")
         c1, c2 = st.columns(2)
         with c1:
@@ -190,7 +237,6 @@ with st.form(key="advanced_rfq_form"):
             with c2: stack_dynamic = st.text_input("Dynamic (e.g., 1+1)")
 
     with st.expander("3. Timelines"):
-        # ... (Timelines section remains unchanged)
         st.info("Fields marked with * are mandatory.")
         today = date.today()
         c1, c2, c3 = st.columns(3)
@@ -207,7 +253,6 @@ with st.form(key="advanced_rfq_form"):
             date_review = st.date_input("Joint Review of Quotation (Optional)", value=None, help="Leave blank if not applicable.")
 
     with st.expander("4. Single Point of Contact (SPOC)"):
-        # ... (SPOC section remains unchanged)
         st.markdown("##### Primary Contact (Mandatory)")
         c1, c2 = st.columns(2)
         with c1:
@@ -226,7 +271,6 @@ with st.form(key="advanced_rfq_form"):
             spoc2_phone = st.text_input("Phone No", key="spoc2_phone")
             spoc2_email = st.text_input("Email ID", key="spoc2_email")
 
-    # --- NEW Interactive Commercial Requirements Section ---
     with st.expander("5. Commercial Requirements"):
         st.info("Define the cost components you require the vendor to quote. The vendor will fill in the 'Amount' column on the PDF.")
         commercial_df_initial = pd.DataFrame([
