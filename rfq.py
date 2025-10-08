@@ -15,7 +15,7 @@ st.set_page_config(
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a detailed, professional RFQ document with a dedicated cover page and custom footer.
+    Generates a detailed, professional RFQ document with a dedicated cover page and a custom footer on all pages.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -78,6 +78,7 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
+            # No header on the first (cover) page
             if self.page_no() == 1:
                 return
             
@@ -107,11 +108,8 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
             self.ln(15)
 
-        # --- RESTORED CUSTOMIZABLE FOOTER ---
+        # --- CORRECTED CUSTOMIZABLE FOOTER FOR ALL PAGES ---
         def footer(self):
-            if self.page_no() == 1:
-                return
-
             self.set_y(-25) 
 
             footer_name = data.get('footer_company_name')
@@ -275,7 +273,7 @@ with st.expander("Step 2: Add Cover Page Details", expanded=True):
     company_address = st.text_input("Requester Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
 with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
-    st.info("This information will appear in the footer of every page except the cover page.")
+    st.info("This information will appear in the footer of every page.")
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City, 12345")
 
@@ -368,4 +366,4 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{final_sub_type.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-        st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
+        st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")```
