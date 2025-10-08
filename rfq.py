@@ -27,7 +27,7 @@ def create_advanced_rfq_pdf(data):
             # Get custom dimensions from data, with sensible defaults
             logo1_w = data.get('logo1_w', 30)
             logo1_h = data.get('logo1_h', 15)
-            logo2_w = data.get('logo2_w', 35)
+            logo2_w = data.get('logo2_w', 40)
             logo2_h = data.get('logo2_h', 18)
 
             if logo1_data:
