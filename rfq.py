@@ -12,11 +12,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final Version with Logos) ---
+# --- PDF Generation Function (Final Version with All Fixes) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document in PDF format from a dictionary of data,
-    including company logos in the header.
+    including company logos in the header and corrected POC layout.
     """
     class PDF(FPDF):
         def header(self):
@@ -25,7 +25,6 @@ def create_advanced_rfq_pdf(data):
             logo2_data = data.get('logo2_data')
             logo_w, logo_h = 30, 15  # Fixed dimensions for logos
 
-            # Draw Logo 1 (Left) if it exists
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
@@ -33,25 +32,20 @@ def create_advanced_rfq_pdf(data):
                 self.image(logo1_path, x=self.l_margin, y=10, w=logo_w, h=logo_h)
                 os.remove(logo1_path)
 
-            # Draw Logo 2 (Right) if it exists
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
                     logo2_path = tmp.name
-                # Calculate X position for the right logo
                 x_pos = self.w - self.r_margin - logo_w
                 self.image(logo2_path, x=x_pos, y=10, w=logo_w, h=logo_h)
                 os.remove(logo2_path)
 
             # --- Title Text ---
-            self.set_y(12) # Vertically align title with the logos
+            self.set_y(12)
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            
             self.set_font('Arial', 'I', 10)
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
-            
-            # Add space below the header to avoid overlap with content
             self.ln(15)
 
         def footer(self):
@@ -60,7 +54,6 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
-            # Check if there is enough space for the title and some content, otherwise add a new page
             if self.get_y() + 20 > self.page_break_trigger:
                 self.add_page()
             self.set_font('Arial', 'B', 12)
@@ -69,10 +62,8 @@ def create_advanced_rfq_pdf(data):
             self.ln(4)
 
         def key_value_pair(self, key, value):
-            estimated_height = 12 
-            if self.get_y() + estimated_height > self.page_break_trigger:
+            if self.get_y() + 12 > self.page_break_trigger:
                 self.add_page()
-
             key_width = 60
             value_width = self.w - self.l_margin - self.r_margin - key_width
             start_y = self.get_y()
@@ -83,8 +74,7 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', '', 10)
             self.multi_cell(value_width, 6, str(value), border=0, align='L')
             value_end_y = self.get_y()
-            final_y = max(key_end_y, value_end_y)
-            self.set_y(final_y)
+            self.set_y(max(key_end_y, value_end_y))
             self.ln(1)
 
     pdf = PDF('P', 'mm', 'A4')
@@ -138,37 +128,55 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-    # Section 4: Single Point of Contact (Side-by-Side)
+    # Section 4: Single Point of Contact (Side-by-Side - CORRECTED)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
     
+    # CORRECTED Helper function to prevent text overlap
     def draw_contact_column(title, name, designation, phone, email):
         pdf.set_font('Arial', 'BU', 10)
-        pdf.cell(90, 6, title, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Name:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, name, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Designation:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, designation, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Phone No:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, phone, 0, 1, 'L')
-        pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, 'Email ID:', 0, 0, 'L')
-        pdf.set_font('Arial', '', 10); pdf.cell(65, 6, email, 0, 1, 'L')
+        pdf.multi_cell(90, 6, title, 0, 'L')
+        pdf.ln(1)
 
-    estimated_height = 40 
+        key_width = 25
+        value_width = 65 # Total width 90
+
+        # Helper to draw one key-value row with text wrapping
+        def draw_kv_row(key, value):
+            start_y = pdf.get_y()
+            current_x = pdf.get_x()
+            pdf.set_font('Arial', 'B', 10)
+            pdf.multi_cell(key_width, 5, key, 0, 'L')
+            key_end_y = pdf.get_y()
+            
+            pdf.set_xy(current_x + key_width, start_y)
+            pdf.set_font('Arial', '', 10)
+            pdf.multi_cell(value_width, 5, value, 0, 'L')
+            value_end_y = pdf.get_y()
+
+            pdf.set_y(max(key_end_y, value_end_y))
+
+        draw_kv_row("Name:", name)
+        draw_kv_row("Designation:", designation)
+        draw_kv_row("Phone No:", phone)
+        draw_kv_row("Email ID:", email)
+
+    estimated_height = 45 
     if pdf.get_y() + estimated_height > pdf.page_break_trigger:
         pdf.add_page()
         
     start_y = pdf.get_y()
+    current_x = pdf.get_x()
     draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
 
     if data.get('spoc2_name'):
-        pdf.set_xy(pdf.l_margin + 98, start_y)
+        pdf.set_xy(current_x + 98, start_y)
         draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email'])
         end_y2 = pdf.get_y()
         pdf.set_y(max(end_y1, end_y2))
     else:
         pdf.set_y(end_y1)
-    pdf.ln(5)
+    pdf.ln(8)
 
     # Section 5: Dynamic Commercial Requirements Table
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
@@ -190,7 +198,7 @@ def create_advanced_rfq_pdf(data):
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
         remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L')
-        pdf.cell(40, 8, '', 1, 0) # Blank cell
+        pdf.cell(40, 8, '', 1, 0)
         pdf.cell(70, 8, remarks, 1, 1, 'L')
 
     return bytes(pdf.output())
@@ -199,7 +207,6 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-# --- Logo Uploader Section ---
 with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
     st.info("Logos will be displayed on the header of every page.")
     c1, c2 = st.columns(2)
@@ -307,7 +314,6 @@ if submitted:
     if not all([purpose, spoc1_name, spoc1_phone, spoc1_email]):
         st.error("⚠️ Please fill in all mandatory fields: Purpose and all Primary Contact details.")
     else:
-        # Read logo data if uploaded
         logo1_data = logo1_file.getvalue() if logo1_file else None
         logo2_data = logo2_file.getvalue() if logo2_file else None
 
