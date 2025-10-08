@@ -9,7 +9,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Completely Redesigned) ---
+# --- PDF Generation Function (Corrected) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document in PDF format from a dictionary of data.
@@ -37,14 +37,8 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'B', 10)
             self.cell(60, 6, key, 0, 0)
             self.set_font('Arial', '', 10)
-            self.multi_cell(0, 6, str(value), 0, 1)
-        
-        def key_value_pair_multiline(self, key, value):
-            self.set_font('Arial', 'B', 10)
-            self.cell(60, 6, key, 0, 0)
-            self.set_font('Arial', '', 10)
-            # Use multi_cell for the value to allow for wrapping
-            self.multi_cell(0, 6, str(value), 0, 'L')
+            # CORRECTED LINE: Changed align from integer 1 to string 'L'
+            self.multi_cell(0, 6, str(value), border=0, align='L')
 
 
     pdf = PDF('P', 'mm', 'A4')
@@ -54,7 +48,8 @@ def create_advanced_rfq_pdf(data):
     # Section 1: Purpose
     pdf.section_title('1. Purpose of Requirement')
     pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 6, data['purpose'])
+    # CORRECTED LINE: Changed align from integer 1 to string 'L'
+    pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
     # Section 2: Technical Specifications
@@ -97,7 +92,7 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('Email ID:', data['spoc1_email'])
     pdf.ln(3)
 
-    if data.get('spoc2_name'): # Check if secondary SPOC details are provided
+    if data.get('spoc2_name'):
         pdf.set_font('Arial', 'BU', 10)
         pdf.cell(0, 6, 'Secondary Contact', 0, 1)
         pdf.key_value_pair('Name:', data['spoc2_name'])
@@ -109,7 +104,8 @@ def create_advanced_rfq_pdf(data):
     # Section 5: Commercial Requirements
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
     pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.")
+    # CORRECTED LINE: Changed align from integer 1 to string 'L'
+    pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
 
     pdf.set_font('Arial', 'B', 10)
@@ -141,10 +137,8 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-# Use a form to batch inputs for a better user experience
 with st.form(key="advanced_rfq_form"):
     
-    # --- ITEM / INFRASTRUCTURE SELECTION ---
     st.subheader("1. RFQ Details")
     main_type = st.selectbox(
         "Select RFQ Category",
@@ -154,43 +148,46 @@ with st.form(key="advanced_rfq_form"):
 
     if main_type == "Item Type (Container)":
         sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
-    else: # Storage Infrastructure
+    else:
         sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
     
-    sub_type = st.selectbox(f"Select {main_type}", sub_type_options, key="sub_type")
+    sub_type_selection = st.selectbox(f"Select {main_type}", sub_type_options, key="sub_type_selection")
     
-    if sub_type == "Other":
+    sub_type = sub_type_selection
+    if sub_type_selection == "Other":
         sub_type = st.text_input("Please specify 'Other' type", key="sub_type_other")
 
-    purpose = st.text_area("Purpose of Requirement (Max 200 characters)", max_chars=200, height=100)
+    purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
-    # --- TECHNICAL SPECIFICATIONS ---
     with st.expander("2. Technical Specifications", expanded=True):
         st.markdown("##### Dimensions (in mm)")
         c1, c2 = st.columns(2)
         with c1:
-            dim_int_l = st.number_input("Internal - Length", min_value=0, key="dim_int_l")
-            dim_int_w = st.number_input("Internal - Width", min_value=0, key="dim_int_w")
-            dim_int_h = st.number_input("Internal - Height", min_value=0, key="dim_int_h")
+            dim_int_l = st.number_input("Internal - Length", min_value=0.0, format="%.2f")
+            dim_int_w = st.number_input("Internal - Width", min_value=0.0, format="%.2f")
+            dim_int_h = st.number_input("Internal - Height", min_value=0.0, format="%.2f")
         with c2:
-            dim_ext_l = st.number_input("External - Length", min_value=0, key="dim_ext_l")
-            dim_ext_w = st.number_input("External - Width", min_value=0, key="dim_ext_w")
-            dim_ext_h = st.number_input("External - Height", min_value=0, key="dim_ext_h")
+            dim_ext_l = st.number_input("External - Length", min_value=0.0, format="%.2f")
+            dim_ext_w = st.number_input("External - Width", min_value=0.0, format="%.2f")
+            dim_ext_h = st.number_input("External - Height", min_value=0.0, format="%.2f")
 
         st.markdown("##### Other Specifications")
         c1, c2 = st.columns(2)
         with c1:
             color = st.text_input("Color")
-            capacity = st.number_input("Weight Carrying Capacity (in KG)", min_value=0)
+            capacity = st.number_input("Weight Carrying Capacity (in KG)", min_value=0.0, format="%.2f")
         with c2:
+            lid = "N/A"
+            label_space = "N/A"
+            label_size = "N/A"
             if main_type == "Item Type (Container)":
-                lid = st.radio("Lid Required?", ["Yes", "No"], horizontal=True)
-                label_space = st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
+                lid = st.radio("Lid Required?", ["Yes", "No"], horizontal=True, key="lid")
+                label_space = st.radio("Space for Label?", ["Yes", "No"], horizontal=True, key="label_space")
                 if label_space == "Yes":
-                    label_size = st.text_input("Label Size (e.g., 100x50 mm)")
-                else:
-                    label_size = "N/A"
+                    label_size = st.text_input("Label Size (e.g., 100x50 mm)", key="label_size")
         
+        stack_static = "N/A"
+        stack_dynamic = "N/A"
         if main_type == "Item Type (Container)":
             st.markdown("##### Stacking Requirements")
             c1, c2 = st.columns(2)
@@ -199,7 +196,6 @@ with st.form(key="advanced_rfq_form"):
             with c2:
                 stack_dynamic = st.text_input("Dynamic (e.g., 1+1)")
 
-    # --- TIMELINES ---
     with st.expander("3. Timelines"):
         st.info("Fields marked with * are mandatory.")
         today = date.today()
@@ -216,7 +212,6 @@ with st.form(key="advanced_rfq_form"):
             date_install = st.date_input("Installation Deadline *", value=today + timedelta(days=75))
             date_review = st.date_input("Joint Review of Quotation (Optional)", value=None)
 
-    # --- SINGLE POINT OF CONTACT ---
     with st.expander("4. Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact (Mandatory)")
         c1, c2 = st.columns(2)
@@ -237,7 +232,6 @@ with st.form(key="advanced_rfq_form"):
             spoc2_phone = st.text_input("Phone No", key="spoc2_phone")
             spoc2_email = st.text_input("Email ID", key="spoc2_email")
 
-    # --- SUBMIT BUTTON ---
     st.markdown("---")
     submitted = st.form_submit_button(
         "Generate RFQ Document",
@@ -245,28 +239,24 @@ with st.form(key="advanced_rfq_form"):
         type="primary"
     )
 
-
-# --- POST-SUBMISSION LOGIC ---
 if submitted:
-    # Validation
     mandatory_fields = [purpose, spoc1_name, spoc1_phone, spoc1_email]
     if not all(mandatory_fields):
         st.error("⚠️ Please fill in all mandatory fields: Purpose and all Primary Contact details.")
     else:
-        # Collate all data into a dictionary
         rfq_data = {
-            'main_type': st.session_state.main_type,
-            'sub_type': st.session_state.sub_type_other if st.session_state.sub_type == 'Other' else st.session_state.sub_type,
+            'main_type': main_type,
+            'sub_type': sub_type,
             'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
             'color': color,
             'capacity': capacity,
-            'lid': lid if main_type == "Item Type (Container)" else "N/A",
-            'label_space': label_space if main_type == "Item Type (Container)" else "N/A",
-            'label_size': label_size if main_type == "Item Type (Container)" and label_space == "Yes" else "N/A",
-            'stack_static': stack_static if main_type == "Item Type (Container)" else "N/A",
-            'stack_dynamic': stack_dynamic if main_type == "Item Type (Container)" else "N/A",
+            'lid': lid,
+            'label_space': label_space,
+            'label_size': label_size,
+            'stack_static': stack_static,
+            'stack_dynamic': stack_dynamic,
             'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection,
             'date_delivery': date_delivery, 'date_install': date_install,
             'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
@@ -279,7 +269,6 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         
-        # Generate a dynamic file name
         file_name = f"RFQ_{rfq_data['sub_type'].replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
 
         st.download_button(
