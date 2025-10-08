@@ -15,7 +15,7 @@ st.set_page_config(
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a detailed, professional RFQ document with a dedicated cover page.
+    Generates a detailed, professional RFQ document with a dedicated cover page and custom footer.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -51,7 +51,7 @@ def create_advanced_rfq_pdf(data):
                 self.image(logo2_path, x=x_pos, y=20, w=logo2_w, h=logo2_h)
                 os.remove(logo2_path)
 
-            # --- Centered Title Block ---
+            # --- Centered Title Block (Your Custom Design) ---
             self.set_y(60)
             self.set_font('Arial', 'B', 30)
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
@@ -107,7 +107,27 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
             self.ln(15)
 
+        # --- RESTORED CUSTOMIZABLE FOOTER ---
         def footer(self):
+            if self.page_no() == 1:
+                return
+
+            self.set_y(-25) 
+
+            footer_name = data.get('footer_company_name')
+            footer_addr = data.get('footer_company_address')
+
+            if footer_name or footer_addr:
+                self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+                self.ln(3)
+                self.set_font('Arial', '', 8)
+                self.set_text_color(128)
+                if footer_name:
+                    self.cell(0, 5, footer_name, 0, 1, 'C')
+                if footer_addr:
+                    self.cell(0, 5, footer_addr, 0, 1, 'C')
+                self.set_text_color(0)
+
             self.set_y(-15)
             self.set_font('Arial', 'I', 8)
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
@@ -160,13 +180,7 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(5)
 
     pdf.section_title('3. Timelines')
-    timeline_data = [
-        ("Date of RFQ Release", data['date_release']),
-        ("Query Resolution Deadline", data['date_query']),
-        ("Negotiation & Vendor Selection", data['date_selection']),
-        ("Delivery Deadline", data['date_delivery']),
-        ("Installation Deadline", data['date_install']),
-    ]
+    timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
     if data['date_review']: timeline_data.append(("Joint Review of Quotation", data['date_review']))
@@ -189,8 +203,7 @@ def create_advanced_rfq_pdf(data):
         pdf.multi_cell(90, 6, title, 0, 'L')
         pdf.ln(1)
         def draw_kv_row(key, value):
-            key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
-            value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
+            key_str, value_str = str(key).encode('latin-1', 'replace').decode('latin-1'), str(value).encode('latin-1', 'replace').decode('latin-1')
             row_start_y = pdf.get_y()
             pdf.set_x(col_start_x)
             pdf.set_font('Arial', 'B', 10)
@@ -256,13 +269,18 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_h = sub_c2.number_input("Logo 2 Height", 5, 50, 15, 1)
 
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
-    Type_of_items = st.text_input("Type of Items*", help="e.g., BIN")
+    Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins & Line Side Racks")
     Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
     company_name = st.text_input("Requester Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd (PMSPL)")
     company_address = st.text_input("Requester Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
+with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
+    st.info("This information will appear in the footer of every page except the cover page.")
+    footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
+    footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City, 12345")
+
 with st.form(key="advanced_rfq_form"):
-    st.subheader("Step 3: Fill RFQ Details")
+    st.subheader("Step 4: Fill Core RFQ Details")
     main_type = st.selectbox("Select RFQ Category", ["Item Type (Container)", "Storage Infrastructure"])
     if main_type == "Item Type (Container)": sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
     else: sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
@@ -274,105 +292,74 @@ with st.form(key="advanced_rfq_form"):
         st.markdown("##### Dimensions (in mm)")
         c1, c2 = st.columns(2)
         with c1:
-            dim_int_l = st.number_input("Internal - Length", 0.0, format="%.2f")
-            dim_int_w = st.number_input("Internal - Width", 0.0, format="%.2f")
-            dim_int_h = st.number_input("Internal - Height", 0.0, format="%.2f")
+            dim_int_l, dim_int_w, dim_int_h = st.number_input("Internal - Length", 0.0, format="%.2f"), st.number_input("Internal - Width", 0.0, format="%.2f"), st.number_input("Internal - Height", 0.0, format="%.2f")
         with c2:
-            dim_ext_l = st.number_input("External - Length", 0.0, format="%.2f")
-            dim_ext_w = st.number_input("External - Width", 0.0, format="%.2f")
-            dim_ext_h = st.number_input("External - Height", 0.0, format="%.2f")
+            dim_ext_l, dim_ext_w, dim_ext_h = st.number_input("External - Length", 0.0, format="%.2f"), st.number_input("External - Width", 0.0, format="%.2f"), st.number_input("External - Height", 0.0, format="%.2f")
         st.markdown("##### Other Specifications")
         c1, c2 = st.columns(2)
         with c1:
-            color = st.text_input("Color")
-            capacity = st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
+            color, capacity = st.text_input("Color"), st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
         with c2:
             lid, label_space, label_size = "N/A", "N/A", "N/A"
             if main_type == "Item Type (Container)":
-                lid = st.radio("Lid Required?", ["Yes", "No"], horizontal=True)
-                label_space = st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
+                lid, label_space = st.radio("Lid Required?", ["Yes", "No"], horizontal=True), st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
                 if label_space == "Yes": label_size = st.text_input("Label Size (e.g., 100x50 mm)")
         stack_static, stack_dynamic = "N/A", "N/A"
         if main_type == "Item Type (Container)":
             st.markdown("##### Stacking Requirements")
             c1, c2 = st.columns(2)
-            with c1: stack_static = st.text_input("Static (e.g., 1+3)")
-            with c2: stack_dynamic = st.text_input("Dynamic (e.g., 1+1)")
+            stack_static, stack_dynamic = c1.text_input("Static (e.g., 1+3)"), c2.text_input("Dynamic (e.g., 1+1)")
             
     with st.expander("Timelines"):
         st.info("Fields marked with * are mandatory.")
         today = date.today()
         c1, c2, c3 = st.columns(3)
         with c1:
-            date_release = st.date_input("Date of RFQ Release *", value=today)
-            date_query = st.date_input("Query Resolution Deadline *", value=today + timedelta(days=7))
-            date_meet = st.date_input("Face to Face Meet (Optional)", value=None, help="Leave blank if not applicable.")
+            date_release, date_query, date_meet = st.date_input("Date of RFQ Release *", today), st.date_input("Query Resolution Deadline *", today + timedelta(days=7)), st.date_input("Face to Face Meet (Optional)", None)
         with c2:
-            date_selection = st.date_input("Negotiation and Vendor Selection *", value=today + timedelta(days=30))
-            date_delivery = st.date_input("Delivery Deadline *", value=today + timedelta(days=60))
-            date_quote = st.date_input("First Level Quotation (Optional)", value=None, help="Leave blank if not applicable.")
+            date_selection, date_delivery, date_quote = st.date_input("Negotiation and Vendor Selection *", today + timedelta(days=30)), st.date_input("Delivery Deadline *", today + timedelta(days=60)), st.date_input("First Level Quotation (Optional)", None)
         with c3:
-            date_install = st.date_input("Installation Deadline *", value=today + timedelta(days=75))
-            date_review = st.date_input("Joint Review of Quotation (Optional)", value=None, help="Leave blank if not applicable.")
+            date_install, date_review = st.date_input("Installation Deadline *", today + timedelta(days=75)), st.date_input("Joint Review of Quotation (Optional)", None)
 
     with st.expander("Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact (Mandatory)")
         c1, c2 = st.columns(2)
         with c1:
-            spoc1_name = st.text_input("Name*")
-            spoc1_designation = st.text_input("Designation")
+            spoc1_name, spoc1_designation = st.text_input("Name*"), st.text_input("Designation")
         with c2:
-            spoc1_phone = st.text_input("Phone No*")
-            spoc1_email = st.text_input("Email ID*")
+            spoc1_phone, spoc1_email = st.text_input("Phone No*"), st.text_input("Email ID*")
         st.markdown("---")
         st.markdown("##### Secondary Contact (Optional)")
         c1, c2 = st.columns(2)
         with c1:
-            spoc2_name = st.text_input("Name", key="spoc2_name")
-            spoc2_designation = st.text_input("Designation", key="spoc2_des")
+            spoc2_name, spoc2_designation = st.text_input("Name", key="spoc2_name"), st.text_input("Designation", key="spoc2_des")
         with c2:
-            spoc2_phone = st.text_input("Phone No", key="spoc2_phone")
-            spoc2_email = st.text_input("Email ID", key="spoc2_email")
+            spoc2_phone, spoc2_email = st.text_input("Phone No", key="spoc2_phone"), st.text_input("Email ID", key="spoc2_email")
 
     with st.expander("Commercial Requirements"):
         st.info("Define the cost components for the vendor to quote. The vendor will fill the 'Amount' column.")
-        commercial_df_initial = pd.DataFrame([
-            {"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},
-            {"Cost Component": "Freight", "Remarks": "Specify if included or extra."},
-            {"Cost Component": "Any other Handling Cost", "Remarks": "e.g., loading, unloading."},
-            {"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""},
-        ])
-        edited_commercial_df = st.data_editor(commercial_df_initial, num_rows="dynamic", use_container_width=True,
-            column_config={"Cost Component": st.column_config.TextColumn(required=True)})
+        edited_commercial_df = st.data_editor(pd.DataFrame([{"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},{"Cost Component": "Freight", "Remarks": "Specify if included or extra."},{"Cost Component": "Any other Handling Cost", "Remarks": "e.g., loading, unloading."},{"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}]), num_rows="dynamic", use_container_width=True, column_config={"Cost Component": st.column_config.TextColumn(required=True)})
 
     st.markdown("---")
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address]):
-        st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, Company Name, and Company Address.")
+    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage]):
+        st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, and all Cover Page details.")
     else:
         logo1_data = logo1_file.getvalue() if logo1_file else None
         logo2_data = logo2_file.getvalue() if logo2_file else None
 
         rfq_data = {
-            'Type_of_items': Type_of_items, 'Storage': Storage,
-            'company_name': company_name, 'company_address': company_address,
-            'logo1_data': logo1_data, 'logo2_data': logo2_data,
-            'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
+            'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name, 'company_address': company_address,
+            'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
+            'logo1_data': logo1_data, 'logo2_data': logo2_data, 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
             'main_type': main_type, 'sub_type': final_sub_type, 'purpose': purpose,
-            'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
-            'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
-            'color': color, 'capacity': capacity, 'lid': lid,
-            'label_space': label_space, 'label_size': label_size,
-            'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
-            'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection,
-            'date_delivery': date_delivery, 'date_install': date_install,
-            'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
-            'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation,
-            'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
-            'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation,
-            'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
+            'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h, 'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
+            'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size, 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
+            'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery, 'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
+            'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
+            'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
             'commercial_df': edited_commercial_df,
         }
         
@@ -381,5 +368,4 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{final_sub_type.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-        st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data,
-            file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
+        st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
