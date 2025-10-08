@@ -1,3 +1,14 @@
+This simple change guarantees that the data passed to the download button is in the exact format it requires.
+
+Your `requirements.txt` file is still correct and does not need any changes.
+
+---
+
+### `rfq_app.py` (Corrected Code)
+
+Here is the complete, final code with this one-line fix. This should resolve the issue permanently.
+
+```python
 import streamlit as st
 import pandas as pd
 from datetime import date
@@ -117,8 +128,8 @@ def create_rfq_pdf(rfq_number, issue_date, submission_deadline, company_name, co
     pdf.set_font('Arial', '', 11)
     pdf.multi_cell(0, 7, terms_and_conditions, border=0, align='L')
 
-    # CORRECTED LINE: Removed the unnecessary .encode() method
-    return pdf.output()
+    # CORRECTED LINE: Explicitly convert the output to bytes
+    return bytes(pdf.output())
 
 
 # --- Streamlit App ---
@@ -193,7 +204,6 @@ with st.form(key='rfq_form'):
 
 if submit_button:
     required_fields = [company_name, contact_person, company_address, contact_email, submission_deadline]
-    # Simple validation to check if the first item's description is filled
     is_items_filled = not edited_items.empty and edited_items['Item/Service Description'].iloc[0].strip() != ''
 
     if not all(required_fields) or not is_items_filled:
