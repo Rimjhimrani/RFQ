@@ -33,32 +33,31 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
-        # --- NEW ROBUST key_value_pair function to fix alignment ---
+        # --- FINAL ROBUST key_value_pair function to prevent bad page breaks ---
         def key_value_pair(self, key, value):
+            # Estimate height needed (e.g., for 2 lines of text is ~12mm)
+            estimated_height = 12 
+            # Check if we need to break the page BEFORE drawing
+            if self.get_y() + estimated_height > self.page_break_trigger:
+                self.add_page()
+
             key_width = 60
             value_width = self.w - self.l_margin - self.r_margin - key_width
             
-            # Store the starting y position
             start_y = self.get_y()
 
-            # Draw the key cell
             self.set_font('Arial', 'B', 10)
             self.multi_cell(key_width, 6, key, border=0, align='L')
             
-            # Get y position after drawing key
             key_end_y = self.get_y()
 
-            # Reset position to draw the value next to the key
             self.set_xy(self.l_margin + key_width, start_y)
 
-            # Draw the value cell
             self.set_font('Arial', '', 10)
             self.multi_cell(value_width, 6, str(value), border=0, align='L')
             
-            # Get y position after drawing value
             value_end_y = self.get_y()
 
-            # Set the final Y position to be below the taller of the two cells
             final_y = max(key_end_y, value_end_y)
             self.set_y(final_y)
             self.ln(1) # Add a small buffer for the next line
@@ -129,6 +128,10 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
 
+    # Check if table needs a new page
+    if pdf.get_y() + 40 > pdf.page_break_trigger: # 40 is est. height of table
+        pdf.add_page()
+        
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(60, 8, 'Cost Component', 1, 0, 'C')
     pdf.cell(60, 8, 'Amount', 1, 0, 'C')
@@ -261,7 +264,6 @@ with st.form(key="advanced_rfq_form"):
     )
 
 if submitted:
-    # A bit of improved logic for handling "Other" sub_type
     final_sub_type = sub_type
     if sub_type_selection == "Other":
         final_sub_type = st.session_state.sub_type_other
