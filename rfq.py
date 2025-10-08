@@ -53,24 +53,24 @@ def create_advanced_rfq_pdf(data):
 
             # --- Centered Title Block ---
             self.set_y(80)
-            self.set_font('Arial', 'B', 24)
+            self.set_font('Arial', 'B', 30)
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
             self.ln(10)
-            self.set_font('Arial', '', 12)
+            self.set_font('Arial', '', 18)
             self.cell(0, 8, 'For', 0, 1, 'C')
             self.set_font('Arial', 'B', 14)
-            self.cell(0, 8, data['sub_type'], 0, 1, 'C')
+            self.cell(0, 8, data['Type_of_items'], 0, 1, 'C')
             self.ln(5)
-            self.set_font('Arial', '', 12)
+            self.set_font('Arial', '', 18)
             self.cell(0, 8, 'for', 0, 1, 'C')
-            self.set_font('Arial', 'B', 14)
-            self.cell(0, 8, data['purpose'], 0, 1, 'C')
+            self.set_font('Arial', 'B', 22)
+            self.cell(0, 8, data['Storage'], 0, 1, 'C')
             self.ln(5)
-            self.set_font('Arial', '', 12)
+            self.set_font('Arial', '', 18)
             self.cell(0, 8, 'At', 0, 1, 'C')
-            self.set_font('Arial', 'B', 16)
+            self.set_font('Arial', 'B', 24)
             self.cell(0, 10, data['company_name'], 0, 1, 'C')
-            self.set_font('Arial', '', 14)
+            self.set_font('Arial', '', 24)
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
@@ -252,6 +252,8 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_h = sub_c2.number_input("Logo 2 Height", 5, 50, 15, 1)
 
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
+    Type_of_items = st.text_input("Type of Items*", help="e.g., BIN")
+    Storage = st.text_input("Storage*", help="e.g., Material Storage")
     company_name = st.text_input("Your Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd (PMSPL)")
     company_address = st.text_input("Your Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
@@ -350,6 +352,7 @@ if submitted:
         logo2_data = logo2_file.getvalue() if logo2_file else None
 
         rfq_data = {
+            'Type_of_items': Type_of_items, 'Storage': Storage,
             'company_name': company_name, 'company_address': company_address,
             'logo1_data': logo1_data, 'logo2_data': logo2_data,
             'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
