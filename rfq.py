@@ -118,13 +118,19 @@ def create_advanced_rfq_pdf(data):
             if footer_name or footer_addr:
                 self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
                 self.ln(3)
-                self.set_font('Arial', 'B', 14)
                 self.set_text_color(128)
+
                 if footer_name:
+                    # Set a different font for the name
+                    self.set_font('Arial', 'B', 14) # Bold, size 9
                     self.cell(0, 5, footer_name, 0, 1, 'C')
+                
                 if footer_addr:
+                    # Set the font for the address
+                    self.set_font('Arial', '', 8) # Regular, size 8
                     self.cell(0, 5, footer_addr, 0, 1, 'C')
-                self.set_text_color(0)
+                
+                self.set_text_color(0) # Reset to black
 
             self.set_y(-15)
             self.set_font('Arial', 'I', 8)
