@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final Version with I/O Fix) ---
+# --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document with a dedicated cover page.
@@ -32,7 +32,7 @@ def create_advanced_rfq_pdf(data):
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
-                    tmp.flush()  # --- FIX: Ensure data is written to disk
+                    tmp.flush()
                     logo2_path = tmp.name
                 x_pos = self.w - self.r_margin - logo2_w
                 self.image(logo2_path, x=x_pos, y=20, w=logo2_w, h=logo2_h)
@@ -68,7 +68,7 @@ def create_advanced_rfq_pdf(data):
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
-                    tmp.flush()  # --- FIX: Ensure data is written to disk
+                    tmp.flush()
                     self.image(tmp.name, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
 
@@ -78,7 +78,7 @@ def create_advanced_rfq_pdf(data):
                 x_pos = self.w - self.r_margin - logo2_w
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
-                    tmp.flush()  # --- FIX: Ensure data is written to disk
+                    tmp.flush()
                     self.image(tmp.name, x=x_pos, y=10, w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
 
@@ -174,7 +174,7 @@ def create_advanced_rfq_pdf(data):
             key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
             value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
             row_start_y = pdf.get_y()
-            pdf.set_x(col_start_.x)
+            pdf.set_x(col_start_x) # <--- THIS IS THE FIX
             pdf.set_font('Arial', 'B', 10)
             pdf.cell(25, 6, key_str, 0, 0, 'L')
             pdf.set_xy(col_start_x + 25, row_start_y)
@@ -267,7 +267,7 @@ with st.form(key="advanced_rfq_form"):
             color = st.text_input("Color")
             capacity = st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
         with c2:
-            lid, label_space, label_size = "N/A", "N/A", "N/A"
+            lid, label_space, label_size = "N/A", "N_A", "N/A"
             if main_type == "Item Type (Container)":
                 lid = st.radio("Lid Required?", ["Yes", "No"], horizontal=True)
                 label_space = st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
