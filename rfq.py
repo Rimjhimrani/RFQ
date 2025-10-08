@@ -257,7 +257,7 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
 
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     Type_of_items = st.text_input("Type of Items*", help="e.g., BIN")
-    Storage = st.text_input("Storage*", help="e.g., Material Storage")
+    Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
     company_name = st.text_input("Requester Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd (PMSPL)")
     company_address = st.text_input("Requester Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
