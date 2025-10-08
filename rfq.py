@@ -118,7 +118,7 @@ def create_advanced_rfq_pdf(data):
             if footer_name or footer_addr:
                 self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
                 self.ln(3)
-                self.set_font('Arial', '', 8)
+                self.set_font('Arial', '', 14)
                 self.set_text_color(128)
                 if footer_name:
                     self.cell(0, 5, footer_name, 0, 1, 'C')
@@ -127,7 +127,7 @@ def create_advanced_rfq_pdf(data):
                 self.set_text_color(0)
 
             self.set_y(-15)
-            self.set_font('Arial', 'I', 8)
+            self.set_font('Arial', 'I', 10)
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
