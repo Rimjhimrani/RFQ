@@ -1,14 +1,3 @@
-This simple change guarantees that the data passed to the download button is in the exact format it requires.
-
-Your `requirements.txt` file is still correct and does not need any changes.
-
----
-
-### `rfq_app.py` (Corrected Code)
-
-Here is the complete, final code with this one-line fix. This should resolve the issue permanently.
-
-```python
 import streamlit as st
 import pandas as pd
 from datetime import date
