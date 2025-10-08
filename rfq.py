@@ -12,41 +12,83 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final Version with All Fixes) ---
+# --- PDF Generation Function (Final Version with Cover Page) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a detailed, professional RFQ document in PDF format from a dictionary of data,
-    including company logos with custom dimensions and the corrected POC layout.
+    Generates a detailed, professional RFQ document with a dedicated cover page.
     """
     class PDF(FPDF):
-        def header(self):
-            # --- Logo Handling with custom dimensions ---
-            logo1_data = data.get('logo1_data')
+        # --- COVER PAGE METHOD ---
+        def create_cover_page(self, data):
+            # Add "CONFIDENTIAL" on the top left
+            self.set_y(25)
+            self.set_x(self.l_margin)
+            self.set_font('Arial', 'B', 12)
+            self.set_text_color(255, 0, 0) # Red color
+            self.cell(0, 10, 'CONFIDENTIAL')
+            self.set_text_color(0, 0, 0) # Reset to black
+
+            # Add Logo 2 (or the one on the right) to the top right
             logo2_data = data.get('logo2_data')
-
-            # Get custom dimensions from data, with sensible defaults
-            logo1_w = data.get('logo1_w', 30)
-            logo1_h = data.get('logo1_h', 15)
-            logo2_w = data.get('logo2_w', 40)
-            logo2_h = data.get('logo2_h', 18)
-
-            if logo1_data:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                    tmp.write(logo1_data)
-                    logo1_path = tmp.name
-                self.image(logo1_path, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
-                os.remove(logo1_path)
-
+            logo2_w = data.get('logo2_w', 30)
+            logo2_h = data.get('logo2_h', 15)
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
                     logo2_path = tmp.name
-                # Calculate X position for the right logo using its specific width
                 x_pos = self.w - self.r_margin - logo2_w
-                self.image(logo2_path, x=x_pos, y=10, w=logo2_w, h=logo2_h)
+                self.image(logo2_path, x=x_pos, y=20, w=logo2_w, h=logo2_h)
                 os.remove(logo2_path)
 
-            # --- Title Text ---
+            # --- Centered Title Block ---
+            self.set_y(80) # Move down to the center area
+            
+            self.set_font('Arial', 'B', 24)
+            self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
+            self.ln(10)
+
+            self.set_font('Arial', '', 12)
+            self.cell(0, 8, 'For', 0, 1, 'C')
+            self.set_font('Arial', 'B', 14)
+            self.cell(0, 8, data['sub_type'], 0, 1, 'C')
+            self.ln(5)
+
+            self.set_font('Arial', '', 12)
+            self.cell(0, 8, 'for', 0, 1, 'C')
+            self.set_font('Arial', 'B', 14)
+            self.cell(0, 8, data['purpose'], 0, 1, 'C')
+            self.ln(5)
+            
+            self.set_font('Arial', '', 12)
+            self.cell(0, 8, 'At', 0, 1, 'C')
+            self.set_font('Arial', 'B', 16)
+            self.cell(0, 10, data['company_name'], 0, 1, 'C')
+            self.set_font('Arial', '', 14)
+            self.cell(0, 10, data['company_address'], 0, 1, 'C')
+
+        # --- Standard Header for subsequent pages ---
+        def header(self):
+            # This header will not appear on the first page
+            if self.page_no() == 1:
+                return
+            
+            logo1_data = data.get('logo1_data')
+            logo1_w, logo1_h = data.get('logo1_w', 30), data.get('logo1_h', 15)
+            if logo1_data:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(logo1_data)
+                    self.image(tmp.name, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
+                    os.remove(tmp.name)
+
+            logo2_data = data.get('logo2_data')
+            logo2_w, logo2_h = data.get('logo2_w', 30), data.get('logo2_h', 15)
+            if logo2_data:
+                x_pos = self.w - self.r_margin - logo2_w
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(logo2_data)
+                    self.image(tmp.name, x=x_pos, y=10, w=logo2_w, h=logo2_h)
+                    os.remove(tmp.name)
+
             self.set_y(12)
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
@@ -60,16 +102,15 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
-            if self.get_y() + 20 > self.page_break_trigger:
-                self.add_page()
+            if self.get_y() + 20 > self.page_break_trigger: self.add_page()
             self.set_font('Arial', 'B', 12)
             self.set_fill_color(230, 230, 230)
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
         def key_value_pair(self, key, value):
-            if self.get_y() + 12 > self.page_break_trigger:
-                self.add_page()
+            # ... (This function remains unchanged)
+            if self.get_y() + 12 > self.page_break_trigger: self.add_page()
             key_width = 60
             value_width = self.w - self.l_margin - self.r_margin - key_width
             start_y = self.get_y()
@@ -82,9 +123,16 @@ def create_advanced_rfq_pdf(data):
             value_end_y = self.get_y()
             self.set_y(max(key_end_y, value_end_y))
             self.ln(1)
-
+            
     pdf = PDF('P', 'mm', 'A4')
     pdf.alias_nb_pages()
+
+    # --- Page Generation Sequence ---
+    # 1. Add the Cover Page
+    pdf.add_page()
+    pdf.create_cover_page(data)
+
+    # 2. Add a new page for the detailed content (this will trigger the standard header)
     pdf.add_page()
 
     # Section 1: Purpose
@@ -122,9 +170,7 @@ def create_advanced_rfq_pdf(data):
     if data['date_review']: timeline_data.append(("Joint Review of Quotation", data['date_review']))
     
     table_height = (len(timeline_data) + 1) * 8
-    if pdf.get_y() + table_height > pdf.page_break_trigger:
-        pdf.add_page()
-        
+    if pdf.get_y() + table_height > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(80, 8, 'Milestone', 1, 0, 'C')
     pdf.cell(110, 8, 'Date', 1, 1, 'C')
@@ -136,13 +182,12 @@ def create_advanced_rfq_pdf(data):
 
     # Section 4: Single Point of Contact (Side-by-Side - FINAL FIX)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
-    
+    # ... (This section remains unchanged)
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x()
         pdf.set_font('Arial', 'BU', 10)
         pdf.multi_cell(90, 6, title, 0, 'L')
         pdf.ln(1)
-
         def draw_kv_row(key, value):
             key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
             value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
@@ -153,21 +198,16 @@ def create_advanced_rfq_pdf(data):
             pdf.set_xy(col_start_x + 25, row_start_y)
             pdf.set_font('Arial', '', 10)
             pdf.multi_cell(65, 6, value_str, 0, 'L')
-        
         draw_kv_row("Name:", name)
         draw_kv_row("Designation:", designation)
         draw_kv_row("Phone No:", phone)
         draw_kv_row("Email ID:", email)
-
     estimated_height = 45 
-    if pdf.get_y() + estimated_height > pdf.page_break_trigger:
-        pdf.add_page()
-        
+    if pdf.get_y() + estimated_height > pdf.page_break_trigger: pdf.add_page()
     start_y = pdf.get_y()
     pdf.set_xy(pdf.l_margin, start_y)
     draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
-
     if data.get('spoc2_name'):
         pdf.set_xy(pdf.l_margin + 98, start_y)
         draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email'])
@@ -179,19 +219,16 @@ def create_advanced_rfq_pdf(data):
 
     # Section 5: Dynamic Commercial Requirements Table
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
+    # ... (This section remains unchanged)
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
-    
     table_height = (len(data['commercial_df']) + 1) * 8
-    if pdf.get_y() + table_height > pdf.page_break_trigger:
-        pdf.add_page()
-        
+    if pdf.get_y() + table_height > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 10)
     pdf.cell(80, 8, 'Cost Component', 1, 0, 'C')
     pdf.cell(40, 8, 'Amount', 1, 0, 'C')
     pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
-    
     pdf.set_font('Arial', '', 10)
     for index, row in data['commercial_df'].iterrows():
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
@@ -199,75 +236,74 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(80, 8, component, 1, 0, 'L')
         pdf.cell(40, 8, '', 1, 0)
         pdf.cell(70, 8, remarks, 1, 1, 'L')
-
+        
     return bytes(pdf.output())
 
 # --- STREAMLIT APP ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
+# --- Step 1: Logo Uploader Section ---
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     st.info("Logos will be displayed on the header of every page. Dimensions are in mm.")
     c1, c2 = st.columns(2)
     with c1:
         logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'])
         sub_c1, sub_c2 = st.columns(2)
-        with sub_c1:
-            logo1_w = st.number_input("Logo 1 Width", min_value=5, max_value=50, value=30, step=1)
-        with sub_c2:
-            logo1_h = st.number_input("Logo 1 Height", min_value=5, max_value=50, value=15, step=1)
+        logo1_w = sub_c1.number_input("Logo 1 Width", 5, 50, 30, 1)
+        logo1_h = sub_c2.number_input("Logo 1 Height", 5, 50, 15, 1)
     with c2:
         logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'])
         sub_c1, sub_c2 = st.columns(2)
-        with sub_c1:
-            logo2_w = st.number_input("Logo 2 Width", min_value=5, max_value=50, value=30, step=1)
-        with sub_c2:
-            logo2_h = st.number_input("Logo 2 Height", min_value=5, max_value=50, value=15, step=1)
+        logo2_w = sub_c1.number_input("Logo 2 Width", 5, 50, 30, 1)
+        logo2_h = sub_c2.number_input("Logo 2 Height", 5, 50, 15, 1)
 
+# --- Step 2: Cover Page Details ---
+with st.expander("Step 2: Add Cover Page Details", expanded=True):
+    company_name = st.text_input("Your Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd (PMSPL)")
+    company_address = st.text_input("Your Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
+
+# --- Step 3: Main RFQ Form ---
 with st.form(key="advanced_rfq_form"):
+    st.subheader("Step 3: Fill RFQ Details")
     
-    st.subheader("Step 2: Fill RFQ Details")
+    # ... (The rest of the form remains unchanged)
     main_type = st.selectbox("Select RFQ Category", ["Item Type (Container)", "Storage Infrastructure"])
-    if main_type == "Item Type (Container)":
-        sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
-    else:
-        sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
+    if main_type == "Item Type (Container)": sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
+    else: sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
     sub_type_selection = st.selectbox(f"Select {main_type}", sub_type_options)
-    final_sub_type = sub_type_selection
-    if sub_type_selection == "Other":
-        final_sub_type = st.text_input("Please specify 'Other' type")
+    final_sub_type = st.text_input("Please specify 'Other' type") if sub_type_selection == "Other" else sub_type_selection
     purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
     with st.expander("Technical Specifications", expanded=True):
         st.markdown("##### Dimensions (in mm)")
         c1, c2 = st.columns(2)
         with c1:
-            dim_int_l = st.number_input("Internal - Length", min_value=0.0, format="%.2f")
-            dim_int_w = st.number_input("Internal - Width", min_value=0.0, format="%.2f")
-            dim_int_h = st.number_input("Internal - Height", min_value=0.0, format="%.2f")
+            dim_int_l = st.number_input("Internal - Length", 0.0, format="%.2f")
+            dim_int_w = st.number_input("Internal - Width", 0.0, format="%.2f")
+            dim_int_h = st.number_input("Internal - Height", 0.0, format="%.2f")
         with c2:
-            dim_ext_l = st.number_input("External - Length", min_value=0.0, format="%.2f")
-            dim_ext_w = st.number_input("External - Width", min_value=0.0, format="%.2f")
-            dim_ext_h = st.number_input("External - Height", min_value=0.0, format="%.2f")
+            dim_ext_l = st.number_input("External - Length", 0.0, format="%.2f")
+            dim_ext_w = st.number_input("External - Width", 0.0, format="%.2f")
+            dim_ext_h = st.number_input("External - Height", 0.0, format="%.2f")
         st.markdown("##### Other Specifications")
         c1, c2 = st.columns(2)
         with c1:
             color = st.text_input("Color")
-            capacity = st.number_input("Weight Carrying Capacity (in KG)", min_value=0.0, format="%.2f")
+            capacity = st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
         with c2:
             lid, label_space, label_size = "N/A", "N/A", "N/A"
             if main_type == "Item Type (Container)":
                 lid = st.radio("Lid Required?", ["Yes", "No"], horizontal=True)
                 label_space = st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
-                if label_space == "Yes":
-                    label_size = st.text_input("Label Size (e.g., 100x50 mm)")
+                if label_space == "Yes": label_size = st.text_input("Label Size (e.g., 100x50 mm)")
         stack_static, stack_dynamic = "N/A", "N/A"
         if main_type == "Item Type (Container)":
             st.markdown("##### Stacking Requirements")
             c1, c2 = st.columns(2)
             with c1: stack_static = st.text_input("Static (e.g., 1+3)")
             with c2: stack_dynamic = st.text_input("Dynamic (e.g., 1+1)")
-
+            
     with st.expander("Timelines"):
         st.info("Fields marked with * are mandatory.")
         today = date.today()
@@ -311,25 +347,24 @@ with st.form(key="advanced_rfq_form"):
             {"Cost Component": "Any other Handling Cost", "Remarks": "e.g., loading, unloading."},
             {"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""},
         ])
-        edited_commercial_df = st.data_editor(
-            commercial_df_initial, num_rows="dynamic", use_container_width=True,
-            column_config={"Cost Component": st.column_config.TextColumn(required=True)}
-        )
+        edited_commercial_df = st.data_editor(commercial_df_initial, num_rows="dynamic", use_container_width=True,
+            column_config={"Cost Component": st.column_config.TextColumn(required=True)})
 
     st.markdown("---")
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email]):
-        st.error("⚠️ Please fill in all mandatory fields: Purpose and all Primary Contact details.")
+    # Validation check now includes cover page details
+    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address]):
+        st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, Company Name, and Company Address.")
     else:
         logo1_data = logo1_file.getvalue() if logo1_file else None
         logo2_data = logo2_file.getvalue() if logo2_file else None
 
         rfq_data = {
+            'company_name': company_name, 'company_address': company_address,
             'logo1_data': logo1_data, 'logo2_data': logo2_data,
-            'logo1_w': logo1_w, 'logo1_h': logo1_h,
-            'logo2_w': logo2_w, 'logo2_h': logo2_h,
+            'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
             'main_type': main_type, 'sub_type': final_sub_type, 'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
@@ -351,8 +386,5 @@ if submitted:
         
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{final_sub_type.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-        st.download_button(
-            label="📥 Download RFQ Document (.pdf)", data=pdf_data,
-            file_name=file_name, mime="application/pdf",
-            use_container_width=True, type="primary"
-        )
+        st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data,
+            file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
