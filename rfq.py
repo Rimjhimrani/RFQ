@@ -22,7 +22,7 @@ def create_advanced_rfq_pdf(data):
             # --- Add Logo 1 (Left Side) ---
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35)
-            logo1_h = data.get('logo1_h', 15)
+            logo1_h = data.get('logo1_h', 20)
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
@@ -83,7 +83,7 @@ def create_advanced_rfq_pdf(data):
                 return
             
             logo1_data = data.get('logo1_data')
-            logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 15)
+            logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 20)
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
