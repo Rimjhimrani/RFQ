@@ -16,29 +16,37 @@ st.set_page_config(
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document in PDF format from a dictionary of data,
-    including company logos in the header and the corrected POC layout.
+    including company logos with custom dimensions and the corrected POC layout.
     """
     class PDF(FPDF):
         def header(self):
+            # --- Logo Handling with custom dimensions ---
             logo1_data = data.get('logo1_data')
             logo2_data = data.get('logo2_data')
-            logo_w, logo_h = 30, 15
+
+            # Get custom dimensions from data, with sensible defaults
+            logo1_w = data.get('logo1_w', 30)
+            logo1_h = data.get('logo1_h', 15)
+            logo2_w = data.get('logo2_w', 35)
+            logo2_h = data.get('logo2_h', 18)
 
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo1_data)
                     logo1_path = tmp.name
-                self.image(logo1_path, x=self.l_margin, y=10, w=logo_w, h=logo_h)
+                self.image(logo1_path, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
                 os.remove(logo1_path)
 
             if logo2_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
                     logo2_path = tmp.name
-                x_pos = self.w - self.r_margin - logo_w
-                self.image(logo2_path, x=x_pos, y=10, w=logo_w, h=logo_h)
+                # Calculate X position for the right logo using its specific width
+                x_pos = self.w - self.r_margin - logo2_w
+                self.image(logo2_path, x=x_pos, y=10, w=logo2_w, h=logo2_h)
                 os.remove(logo2_path)
 
+            # --- Title Text ---
             self.set_y(12)
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
@@ -92,7 +100,7 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
     pdf.key_value_pair('Color:', data['color'])
     pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-
+    
     if data['main_type'] == 'Item Type (Container)':
         pdf.key_value_pair('Lid Required:', data['lid'])
         pdf.key_value_pair('Space for Label:', f"{data['label_space']} (Size: {data['label_size']})")
@@ -129,7 +137,6 @@ def create_advanced_rfq_pdf(data):
     # Section 4: Single Point of Contact (Side-by-Side - FINAL FIX)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
     
-    # NEW ROBUST function to draw a contact column without overlap
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x()
         pdf.set_font('Arial', 'BU', 10)
@@ -139,12 +146,10 @@ def create_advanced_rfq_pdf(data):
         def draw_kv_row(key, value):
             key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
             value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
-            
             row_start_y = pdf.get_y()
             pdf.set_x(col_start_x)
             pdf.set_font('Arial', 'B', 10)
             pdf.cell(25, 6, key_str, 0, 0, 'L')
-
             pdf.set_xy(col_start_x + 25, row_start_y)
             pdf.set_font('Arial', '', 10)
             pdf.multi_cell(65, 6, value_str, 0, 'L')
@@ -159,13 +164,10 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
         
     start_y = pdf.get_y()
-    
-    # Draw Primary Column
     pdf.set_xy(pdf.l_margin, start_y)
     draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
 
-    # Draw Secondary Column (if exists)
     if data.get('spoc2_name'):
         pdf.set_xy(pdf.l_margin + 98, start_y)
         draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email'])
@@ -173,7 +175,6 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(max(end_y1, end_y2))
     else:
         pdf.set_y(end_y1)
-        
     pdf.ln(8)
 
     # Section 5: Dynamic Commercial Requirements Table
@@ -201,17 +202,27 @@ def create_advanced_rfq_pdf(data):
 
     return bytes(pdf.output())
 
-# --- STREAMLIT APP (No changes below this line) ---
+# --- STREAMLIT APP ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
-    st.info("Logos will be displayed on the header of every page.")
+with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
+    st.info("Logos will be displayed on the header of every page. Dimensions are in mm.")
     c1, c2 = st.columns(2)
     with c1:
         logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'])
+        sub_c1, sub_c2 = st.columns(2)
+        with sub_c1:
+            logo1_w = st.number_input("Logo 1 Width", min_value=5, max_value=50, value=30, step=1)
+        with sub_c2:
+            logo1_h = st.number_input("Logo 1 Height", min_value=5, max_value=50, value=15, step=1)
     with c2:
         logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'])
+        sub_c1, sub_c2 = st.columns(2)
+        with sub_c1:
+            logo2_w = st.number_input("Logo 2 Width", min_value=5, max_value=50, value=30, step=1)
+        with sub_c2:
+            logo2_h = st.number_input("Logo 2 Height", min_value=5, max_value=50, value=15, step=1)
 
 with st.form(key="advanced_rfq_form"):
     
@@ -317,6 +328,8 @@ if submitted:
 
         rfq_data = {
             'logo1_data': logo1_data, 'logo2_data': logo2_data,
+            'logo1_w': logo1_w, 'logo1_h': logo1_h,
+            'logo2_w': logo2_w, 'logo2_h': logo2_h,
             'main_type': main_type, 'sub_type': final_sub_type, 'purpose': purpose,
             'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h,
             'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
