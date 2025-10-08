@@ -16,14 +16,13 @@ st.set_page_config(
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document in PDF format from a dictionary of data,
-    including company logos in the header and corrected POC layout.
+    including company logos in the header and the corrected POC layout.
     """
     class PDF(FPDF):
         def header(self):
-            # --- Logo Handling ---
             logo1_data = data.get('logo1_data')
             logo2_data = data.get('logo2_data')
-            logo_w, logo_h = 30, 15  # Fixed dimensions for logos
+            logo_w, logo_h = 30, 15
 
             if logo1_data:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -40,7 +39,6 @@ def create_advanced_rfq_pdf(data):
                 self.image(logo2_path, x=x_pos, y=10, w=logo_w, h=logo_h)
                 os.remove(logo2_path)
 
-            # --- Title Text ---
             self.set_y(12)
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
@@ -94,7 +92,7 @@ def create_advanced_rfq_pdf(data):
     pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
     pdf.key_value_pair('Color:', data['color'])
     pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-    
+
     if data['main_type'] == 'Item Type (Container)':
         pdf.key_value_pair('Lid Required:', data['lid'])
         pdf.key_value_pair('Space for Label:', f"{data['label_space']} (Size: {data['label_size']})")
@@ -128,33 +126,29 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-    # Section 4: Single Point of Contact (Side-by-Side - CORRECTED)
+    # Section 4: Single Point of Contact (Side-by-Side - FINAL FIX)
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
     
-    # CORRECTED Helper function to prevent text overlap
+    # NEW ROBUST function to draw a contact column without overlap
     def draw_contact_column(title, name, designation, phone, email):
+        col_start_x = pdf.get_x()
         pdf.set_font('Arial', 'BU', 10)
         pdf.multi_cell(90, 6, title, 0, 'L')
         pdf.ln(1)
 
-        key_width = 25
-        value_width = 65 # Total width 90
-
-        # Helper to draw one key-value row with text wrapping
         def draw_kv_row(key, value):
-            start_y = pdf.get_y()
-            current_x = pdf.get_x()
-            pdf.set_font('Arial', 'B', 10)
-            pdf.multi_cell(key_width, 5, key, 0, 'L')
-            key_end_y = pdf.get_y()
+            key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
+            value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
             
-            pdf.set_xy(current_x + key_width, start_y)
+            row_start_y = pdf.get_y()
+            pdf.set_x(col_start_x)
+            pdf.set_font('Arial', 'B', 10)
+            pdf.cell(25, 6, key_str, 0, 0, 'L')
+
+            pdf.set_xy(col_start_x + 25, row_start_y)
             pdf.set_font('Arial', '', 10)
-            pdf.multi_cell(value_width, 5, value, 0, 'L')
-            value_end_y = pdf.get_y()
-
-            pdf.set_y(max(key_end_y, value_end_y))
-
+            pdf.multi_cell(65, 6, value_str, 0, 'L')
+        
         draw_kv_row("Name:", name)
         draw_kv_row("Designation:", designation)
         draw_kv_row("Phone No:", phone)
@@ -165,17 +159,21 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
         
     start_y = pdf.get_y()
-    current_x = pdf.get_x()
+    
+    # Draw Primary Column
+    pdf.set_xy(pdf.l_margin, start_y)
     draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
 
+    # Draw Secondary Column (if exists)
     if data.get('spoc2_name'):
-        pdf.set_xy(current_x + 98, start_y)
+        pdf.set_xy(pdf.l_margin + 98, start_y)
         draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email'])
         end_y2 = pdf.get_y()
         pdf.set_y(max(end_y1, end_y2))
     else:
         pdf.set_y(end_y1)
+        
     pdf.ln(8)
 
     # Section 5: Dynamic Commercial Requirements Table
@@ -203,7 +201,7 @@ def create_advanced_rfq_pdf(data):
 
     return bytes(pdf.output())
 
-# --- STREAMLIT APP ---
+# --- STREAMLIT APP (No changes below this line) ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
