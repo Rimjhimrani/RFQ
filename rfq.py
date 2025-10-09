@@ -97,7 +97,7 @@ def create_advanced_rfq_pdf(data):
 
     # --- Bin Details Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
-    pdf.set_font('Arial', 'B', 12)
+    pdf.set_font('Arial', 'B', 14)
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty \n Bin"]
     bin_col_widths = [30, 40, 40, 40, 40]
     header_height = 8
