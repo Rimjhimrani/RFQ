@@ -116,7 +116,6 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
         pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
         pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
-    pdf.ln(8)
     
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
@@ -137,7 +136,6 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
         pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
         pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
-    pdf.ln(8)
     
     # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
