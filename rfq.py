@@ -170,13 +170,13 @@ def create_advanced_rfq_pdf(data):
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
             start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
-            pdf.set_font('Arial', '', 10); pdf.cell(5, 6, chr(127))
-            pdf.set_font('Arial', 'B', 10); pdf.cell(55, 6, f"{key}:")
+            pdf.set_font('Arial', '', 12); pdf.cell(5, 6, chr(127))
+            pdf.set_font('Arial', 'B', 12); pdf.cell(55, 6, f"{key}:")
             key_end_y = pdf.get_y() + 6
             value_start_x = pdf.l_margin + 60
             value_width = pdf.w - pdf.r_margin - value_start_x
             pdf.set_xy(value_start_x, start_y)
-            pdf.set_font('Arial', '', 10)
+            pdf.set_font('Arial', '', 12)
             pdf.multi_cell(value_width, 6, str(value), 0, 'L')
             value_end_y = pdf.get_y()
             pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
