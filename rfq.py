@@ -132,9 +132,9 @@ def create_advanced_rfq_pdf(data):
     # Draw headers using multi_cell for proper line breaks
     y_before = pdf.get_y()
     for i, header in enumerate(bin_headers):
-        x_pos = pdf.l_margin + sum(bin_col_widths[:i])
+        x_pos = pdf.l_margin + sum(rack_col_widths[:i])
         pdf.set_xy(x_pos, y_before)
-        pdf.multi_cell(bin_col_widths[i], header_height, header, border=1, align='C')
+        pdf.multi_cell(rack_col_widths[i], header_height, header, border=1, align='C')
     pdf.set_y(y_before + 16)
 
     pdf.set_font('Arial', '', 10)
