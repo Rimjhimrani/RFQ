@@ -169,19 +169,72 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
+    # --- UPDATED TECHNICAL SPECIFICATIONS SECTION ---
     pdf.section_title('2. Technical Specifications')
-    pdf.key_value_pair('Item / Infrastructure:', f"{data['main_type']} - {data['sub_type']}")
-    pdf.key_value_pair('Internal Dimensions (LxWxH):', f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f} mm")
-    pdf.key_value_pair('External Dimensions (LxWxH):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f} mm")
-    pdf.key_value_pair('Color:', data['color'])
-    pdf.key_value_pair('Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-    
+
     if data['main_type'] == 'Item Type (Container)':
-        pdf.key_value_pair('Lid Required:', data['lid'])
-        pdf.key_value_pair('Space for Label:', f"{data['label_space']} (Size: {data['label_size']})")
-        pdf.key_value_pair('Stacking - Static:', data['stack_static'])
-        pdf.key_value_pair('Stacking - Dynamic:', data['stack_dynamic'])
+        # --- BIN DETAILS TABLE ---
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(0, 10, 'BIN DETAILS', 0, 1, 'L')
+        
+        # Table Header
+        pdf.set_font('Arial', 'B', 10)
+        col_widths = {'type': 35, 'outer': 40, 'inner': 40, 'img': 40, 'qty': 35}
+        pdf.cell(col_widths['type'], 8, 'Type of Bin', 1, 0, 'C')
+        pdf.cell(col_widths['outer'], 8, 'Bin Outer Dimension (MM)', 1, 0, 'C')
+        pdf.cell(col_widths['inner'], 8, 'Bin Inner Dimension (MM)', 1, 0, 'C')
+        pdf.cell(col_widths['img'], 8, 'Conceptual Image', 1, 0, 'C')
+        pdf.cell(col_widths['qty'], 8, 'Qty Bin', 1, 1, 'C')
+
+        # Table Data Row 1 (from form)
+        pdf.set_font('Arial', '', 10)
+        line_height = 8
+        outer_dim = f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}" if data['dim_ext_l'] > 0 else ""
+        inner_dim = f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f}" if data['dim_int_l'] > 0 else ""
+        
+        pdf.cell(col_widths['type'], line_height, data['sub_type'], 1, 0, 'L')
+        pdf.cell(col_widths['outer'], line_height, outer_dim, 1, 0, 'L')
+        pdf.cell(col_widths['inner'], line_height, inner_dim, 1, 0, 'L')
+        pdf.cell(col_widths['img'], line_height, '', 1, 0, 'L')
+        pdf.cell(col_widths['qty'], line_height, '', 1, 1, 'L')
+
+        # Empty rows as per the image
+        for _ in range(3):
+            pdf.cell(col_widths['type'], line_height, '', 1, 0, 'L')
+            pdf.cell(col_widths['outer'], line_height, '', 1, 0, 'L')
+            pdf.cell(col_widths['inner'], line_height, '', 1, 0, 'L')
+            pdf.cell(col_widths['img'], line_height, '', 1, 0, 'L')
+            pdf.cell(col_widths['qty'], line_height, '', 1, 1, 'L')
+        
+        pdf.ln(8)
+
+        # --- Additional Specifications as Bullet Points ---
+        label_text = data['label_space']
+        if data['label_space'] == 'Yes' and data['label_size']:
+             label_text += f" (Size: {data['label_size']})"
+             
+        # Re-using key_value_pair function for consistent layout
+        pdf.key_value_pair(u'\u2022 Color:', data['color'])
+        pdf.key_value_pair(u'\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
+        pdf.key_value_pair(u'\u2022 Lid Required:', data['lid'])
+        pdf.key_value_pair(u'\u2022 Space for Label:', label_text)
+        pdf.key_value_pair(u'\u2022 Stacking - Static:', data['stack_static'])
+        pdf.key_value_pair(u'\u2022 Stacking - Dynamic:', data['stack_dynamic'])
+    
+    else: # This is for Storage Infrastructure
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(0, 10, 'RACK DETAILS', 0, 1, 'L')
+        
+        # Placeholder for the RACK DETAILS table - using key-value pairs for now
+        pdf.key_value_pair('Types of Rack:', data['sub_type'])
+        pdf.key_value_pair('Rack Dimension (MM):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}")
+        pdf.ln(4)
+        pdf.key_value_pair(u'\u2022 Color:', data['color'])
+        pdf.key_value_pair(u'\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
+
     pdf.ln(5)
+    # --- END OF UPDATED SECTION ---
+
 
     pdf.section_title('3. Timelines')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
