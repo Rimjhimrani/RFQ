@@ -96,13 +96,13 @@ def create_advanced_rfq_pdf(data):
 
     # --- START: NEW CLEAN TABLE-BASED TECHNICAL SPECIFICATION SECTION ---
     pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, '2. TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
+    pdf.cell(0, 8, 'TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
     # --- Bin Details Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(2)
     pdf.set_font('Arial', 'B', 9)
-    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin", "BIN A"]
-    bin_col_widths = [30, 35, 35, 30, 25, 35]
+    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
+    bin_col_widths = [38, 38, 38, 38, 38]
     header_height = 10 
     for i in range(len(bin_headers)):
         pdf.multi_cell(bin_col_widths[i], header_height, bin_headers[i], border=1, align='C', ln=3 if i == len(bin_headers) - 1 else 0)
@@ -111,9 +111,11 @@ def create_advanced_rfq_pdf(data):
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        for j in range(len(bin_col_widths)):
-            value = str(row_data.get('Type of Bin', '')) if j == 0 else ''
-            pdf.cell(bin_col_widths[j], 10, value, border=1, align='C', ln=1 if j == len(bin_col_widths) - 1 else 0)
+        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
     
     # --- Rack Details Table ---
@@ -121,7 +123,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); pdf.ln(2)
     pdf.set_font('Arial', 'B', 9)
     rack_headers = ["Types of\nRack", "Rack Dimension\n(MM)", "Level/Rack", "Type of Bin", "Bin Dimension\n(MM)", "Level/Bin"]
-    rack_col_widths = [30, 35, 30, 35, 30, 30]
+    rack_col_widths = [32, 32, 32, 32, 32, 30]
     for i in range(len(rack_headers)):
         pdf.multi_cell(rack_col_widths[i], header_height, rack_headers[i], border=1, align='C', ln=3 if i == len(rack_headers) - 1 else 0)
 
@@ -260,7 +262,7 @@ with st.form(key="advanced_rfq_form"):
         st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
-            color = st.text_input("Color", "BLUE")
+            color = st.text_input("Color")
             capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 5.00, format="%.2f")
             lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
         with c2:
