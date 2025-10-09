@@ -98,7 +98,7 @@ def create_advanced_rfq_pdf(data):
     # --- Bin Details Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 12)
-    bin_headers = ["Type of Bin", "Bin Outer Dimension (MM)", "Bin Inner Dimension (MM)", "Conceptual Image", "Qty Bin"]
+    bin_headers = ["Type of \nBin", "Bin Outer \nDimension (MM)", "Bin Inner \nDimension (MM)", "Conceptual \nImage", "Qty Bin"]
     bin_col_widths = [36, 39, 38, 38, 38]
     header_height = 10 
     # Draw headers in a single row
@@ -120,8 +120,8 @@ def create_advanced_rfq_pdf(data):
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
-    pdf.set_font('Arial', 'B', 9)
-    rack_headers = ["Types of Rack", "Rack Dimension (MM)", "Level/Rack", "Type of Bin", "Bin Dimension (MM)", "Level/Bin"]
+    pdf.set_font('Arial', 'B', 12)
+    rack_headers = ["Types of \nRack", "Rack Dimension (MM)", "Level/Rack", "Type of Bin", "Bin Dimension (MM)", "Level/Bin"]
     rack_col_widths = [32, 32, 32, 32, 32, 30]
     # Draw headers in a single row
     for i, header in enumerate(rack_headers):
