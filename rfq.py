@@ -111,10 +111,10 @@ def create_advanced_rfq_pdf(data):
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C', ln=1)
+        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C', ln=1)
+        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C', ln=1)
+        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C', ln=1)
         pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
     
