@@ -99,16 +99,26 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 12)
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
-    # MODIFIED: Increased width for the first column and adjusted others
     bin_col_widths = [40, 38, 38, 37, 37] 
-    header_height = 8
-    # Draw headers using multi_cell for proper line breaks
-    y_before = pdf.get_y()
+
+    # MODIFIED: Draw headers with uniform height and centered text
+    total_header_height = 16  # Max height for 2 lines
+    line_height = 8           # Height per line of text
+    y_start = pdf.get_y()
+    x_cursor = pdf.l_margin
+
     for i, header in enumerate(bin_headers):
-        x_pos = pdf.l_margin + sum(bin_col_widths[:i])
-        pdf.set_xy(x_pos, y_before)
-        pdf.multi_cell(bin_col_widths[i], header_height, header, border=1, align='C')
-    pdf.set_y(y_before + 16)
+        col_width = bin_col_widths[i]
+        num_lines = header.count('\n') + 1
+        text_height = num_lines * line_height
+        y_text = y_start + (total_header_height - text_height) / 2
+        
+        pdf.set_xy(x_cursor, y_text)
+        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
+        pdf.rect(x_cursor, y_start, col_width, total_header_height)
+        x_cursor += col_width
+
+    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
     
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
@@ -126,24 +136,28 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
     pdf.set_font('Arial', 'B', 12)
     rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
-    # MODIFIED: Increased width for text columns and adjusted others
     rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-    header_height = 8
-    # Draw headers using multi_cell for proper line breaks
-    y_before = pdf.get_y()
+
+    # MODIFIED: Draw headers with uniform height and centered text
+    y_start = pdf.get_y()
+    x_cursor = pdf.l_margin
     for i, header in enumerate(rack_headers):
-        x_pos = pdf.l_margin + sum(rack_col_widths[:i])
-        pdf.set_xy(x_pos, y_before)
-        pdf.multi_cell(rack_col_widths[i], header_height, header, border=1, align='C')
-    pdf.set_y(y_before + 16)
+        col_width = rack_col_widths[i]
+        num_lines = header.count('\n') + 1
+        text_height = num_lines * line_height
+        y_text = y_start + (total_header_height - text_height) / 2
+
+        pdf.set_xy(x_cursor, y_text)
+        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
+        pdf.rect(x_cursor, y_start, col_width, total_header_height)
+        x_cursor += col_width
+
+    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
 
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
     for i in range(num_rack_rows):
-        if i < len(data['rack_details_df']):
-            row_data = data['rack_details_df'].iloc[i]
-        else:
-            row_data = {}
+        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
         pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
         pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
         pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
