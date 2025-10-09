@@ -19,7 +19,6 @@ def create_advanced_rfq_pdf(data):
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
-            # ... (This function remains unchanged)
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35); logo1_h = data.get('logo1_h', 20)
             if logo1_data:
@@ -48,7 +47,6 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', '', 22); self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
-            # ... (This function remains unchanged)
             if self.page_no() == 1: return
             logo1_data = data.get('logo1_data')
             logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 20)
@@ -69,7 +67,6 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'I', 10); self.cell(0, 6, f"For: {data['Type_of_items']}", 0, 1, 'C'); self.ln(15)
 
         def footer(self):
-            # ... (This function remains unchanged)
             self.set_y(-25)
             footer_name, footer_addr = data.get('footer_company_name'), data.get('footer_company_address')
             if footer_name or footer_addr:
@@ -101,12 +98,12 @@ def create_advanced_rfq_pdf(data):
     # --- Bin Details Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 9)
-    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
+    bin_headers = ["Type of Bin", "Bin Outer Dimension (MM)", "Bin Inner Dimension (MM)", "Conceptual Image", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 38, 38]
     header_height = 10 
     # Draw headers in a single row
     for i, header in enumerate(bin_headers):
-        pdf.cell(bin_col_widths[i], header_height, header.replace('\n', ' '), border=1, align='C', ln=0)
+        pdf.cell(bin_col_widths[i], header_height, header, border=1, align='C', ln=0)
     pdf.ln()
     
     pdf.set_font('Arial', '', 10)
@@ -121,20 +118,23 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(8)
     
     # --- Rack Details Table ---
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
+    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
     pdf.set_font('Arial', 'B', 9)
-    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
-    bin_col_widths = [38, 38, 38, 38, 38]
-    header_height = 10 
+    rack_headers = ["Types of Rack", "Rack Dimension (MM)", "Level/Rack", "Type of Bin", "Bin Dimension (MM)", "Level/Bin"]
+    rack_col_widths = [32, 32, 32, 32, 32, 30]
     # Draw headers in a single row
-    for i, header in enumerate(bin_headers):
-        pdf.cell(bin_col_widths[i], header_height, header.replace('\n', ' '), border=1, align='C', ln=0)
+    for i, header in enumerate(rack_headers):
+        pdf.cell(rack_col_widths[i], header_height, header, border=1, align='C', ln=0)
     pdf.ln()
 
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
     for i in range(num_rack_rows):
-        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
+        if i < len(data['rack_details_df']):
+            row_data = data['rack_details_df'].iloc[i]
+        else:
+            row_data = {}
         pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
         pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
         pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
@@ -168,7 +168,6 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(5)
     # --- END: REDESIGNED SECTION ---
 
-    # ... (Rest of the document generation remains unchanged) ...
     pdf.section_title('3. Timelines')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
