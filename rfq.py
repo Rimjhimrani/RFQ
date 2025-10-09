@@ -12,14 +12,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final, Corrected Version) ---
+# --- PDF Generation Function (with Bug Fix) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document matching the specific table and bullet-point layout.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
-            # ... (This function remains unchanged, keeping your cover page design)
+            # ... (This function remains unchanged)
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35)
             logo1_h = data.get('logo1_h', 20)
@@ -138,8 +138,7 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- START: COMPLETELY REDESIGNED TECHNICAL SPECIFICATION SECTION ---
-    # Main Section Title
+    # --- TECHNICAL SPECIFICATION SECTION ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 8, '2. TECHNICAL SPECIFICATION', 0, 1, 'L')
     pdf.ln(4)
@@ -191,28 +190,46 @@ def create_advanced_rfq_pdf(data):
     
     pdf.ln(8)
 
-    # --- Bullet Points for General Specifications ---
+    # --- START: CORRECTED BULLET POINT SECTION ---
     def add_bullet_point(key, value):
-        if value and value != 'N/A':
+        # This check prevents empty values from being printed
+        if value and str(value).strip() and value != 'N/A':
+            start_y = pdf.get_y()
+            
+            # Set position and draw bullet and key
+            pdf.set_x(pdf.l_margin)
             pdf.set_font('Arial', '', 10)
             pdf.cell(5, 6, chr(127)) # Bullet point character
             pdf.set_font('Arial', 'B', 10)
             pdf.cell(55, 6, f"{key}:")
+            key_end_y = pdf.get_y() # Will be start_y + 6
+
+            # Explicitly set position for the value part
+            value_start_x = pdf.l_margin + 60
+            pdf.set_xy(value_startx, start_y)
+
+            # Calculate the remaining width and draw the value using multi_cell
+            remaining_width = pdf.w - pdf.r_margin - value_start_x
             pdf.set_font('Arial', '', 10)
-            pdf.multi_cell(0, 6, str(value), 0, 'L')
+            pdf.multi_cell(remaining_width, 6, str(value), 0, 'L')
+            value_end_y = pdf.get_y() # multi_cell updates the y-position
+
+            # Ensure the next line starts below the tallest part (the key or the value)
+            pdf.set_y(max(key_end_y, value_end_y))
+            pdf.ln(1) # Add a small gap
 
     add_bullet_point('Color', data['color'])
-    add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG")
+    add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG" if data.get('capacity') else None)
     add_bullet_point('Lid Required', data['lid'])
     label_info = f"{data['label_space']} (Size: {data['label_size']})" if data['label_space'] == 'Yes' else data['label_space']
     add_bullet_point('Space for Label', label_info)
     add_bullet_point('Stacking - Static', data['stack_static'])
     add_bullet_point('Stacking - Dynamic', data['stack_dynamic'])
     pdf.ln(5)
-    # --- END: REDESIGNED SECTION ---
+    # --- END: CORRECTED BULLET POINT SECTION ---
 
+    # --- All subsequent sections remain unchanged ---
     pdf.section_title('3. Timelines')
-    # ... (This section and following sections remain unchanged)
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
@@ -283,11 +300,10 @@ def create_advanced_rfq_pdf(data):
         
     return bytes(pdf.output())
 
-# --- STREAMLIT APP ---
+# --- STREAMLIT APP (Unchanged) ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-# --- Step 1, 2, 3 (Unchanged) ---
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     st.info("Logos will be displayed on the header of every page. Dimensions are in mm.")
     c1, c2 = st.columns(2)
@@ -313,12 +329,10 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City, 12345")
 
-# --- Form Starts Here ---
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
     purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
-    # --- START: REDESIGNED UI FOR TECHNICAL SPECIFICATIONS ---
     with st.expander("Technical Specifications", expanded=True):
         st.info("Define the types of Bins and Racks you need quotes for. The vendor will fill in the dimensions and other details on the generated PDF.")
         
@@ -360,7 +374,6 @@ with st.form(key="advanced_rfq_form"):
         c1, c2 = st.columns(2)
         stack_static = c1.text_input("Static (e.g., 1+3)")
         stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
-    # --- END: REDESIGNED UI ---
             
     with st.expander("Timelines"):
         st.info("Fields marked with * are mandatory.")
@@ -407,11 +420,9 @@ if submitted:
             'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
             'logo1_data': logo1_data, 'logo2_data': logo2_data, 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
             'purpose': purpose,
-            # New data from the redesigned UI
             'bin_details_df': bin_df,
             'rack_details_df': rack_df,
             'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size, 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
-            # Unchanged data
             'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery, 'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
             'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
             'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
