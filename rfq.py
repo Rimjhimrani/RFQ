@@ -26,7 +26,7 @@ def create_advanced_rfq_pdf(data):
                     tmp.write(logo1_data); tmp.flush()
                     self.image(tmp.name, x=self.l_margin, y=20, w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
-            self.set_y(35); self.set_x(self.l_margin); self.set_font('Arial', 'B', 14); self.set_text_color(255, 0, 0)
+            self.set_y(40); self.set_x(self.l_margin); self.set_font('Arial', 'B', 14); self.set_text_color(255, 0, 0)
             self.cell(0, 10, 'CONFIDENTIAL'); self.set_text_color(0, 0, 0)
             logo2_data = data.get('logo2_data')
             logo2_w = data.get('logo2_w', 42); logo2_h = data.get('logo2_h', 20)
