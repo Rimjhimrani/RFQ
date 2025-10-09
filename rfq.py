@@ -15,8 +15,7 @@ st.set_page_config(
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a professional RFQ document with diagrammatic headers separate from,
-    but aligned with, the data tables below.
+    Generates a professional RFQ document with clean, standard tabular layouts.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -100,44 +99,46 @@ def create_advanced_rfq_pdf(data):
     pdf.cell(0, 8, 'TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
     # --- Bin Details Table ---
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(1)
-    
-    start_x = pdf.l_margin
-    start_y = pdf.get_y()
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(2)
     pdf.set_font('Arial', 'B', 9)
-
-    # Define column boundaries and widths
+    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 38, 38]
-    bin_cols_x = [start_x]
-    for width in bin_col_widths:
-        bin_cols_x.append(bin_cols_x[-1] + width)
-
-    # Draw diagrammatic headers
-    pdf.set_xy(bin_cols_x[0], start_y); pdf.cell(bin_col_widths[0], 8, 'Type of Bin', 1, 0, 'C')
-    pdf.set_xy(bin_cols_x[1] - 10, start_y + 5); pdf.multi_cell(bin_col_widths[1], 4, 'Bin Outer\nDimension (MM)', 1, 'C')
-    pdf.set_xy(bin_cols_x[2] - 20, start_y + 10); pdf.multi_cell(bin_col_widths[2], 4, 'Bin Inner\nDimension (MM)', 1, 'C')
-    pdf.set_xy(bin_cols_x[3] - 30, start_y + 15); pdf.multi_cell(bin_col_widths[3], 4, 'Conceptual\nImage', 1, 'C')
-    pdf.set_xy(bin_cols_x[4] - 40, start_y + 20); pdf.cell(bin_col_widths[4], 8, 'Qty Bin', 1, 0, 'C')
-
-    # Draw table rows aligned with the same column boundaries
-    table_start_y = start_y + 30
-    pdf.set_y(table_start_y)
+    header_height = 10 
+    for i in range(len(bin_headers)):
+        pdf.multi_cell(bin_col_widths[i], header_height, bin_headers[i], border=1, align='C', ln=3 if i == len(bin_headers) - 1 else 0)
+    
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        pdf.set_x(bin_cols_x[0])
-        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), 1, 0, 'C')
-        pdf.cell(bin_col_widths[1], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_widths[2], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_widths[3], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_widths[4], 10, '', 1, 1, 'C')
+        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
     
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
-    # (Rack details section can be added here following the same logic if needed)
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); pdf.ln(2)
+    pdf.set_font('Arial', 'B', 9)
+    rack_headers = ["Types of\nRack", "Rack Dimension\n(MM)", "Level/Rack", "Type of Bin", "Bin Dimension\n(MM)", "Level/Bin"]
+    rack_col_widths = [32, 32, 32, 32, 32, 30]
+    for i in range(len(rack_headers)):
+        pdf.multi_cell(rack_col_widths[i], header_height, rack_headers[i], border=1, align='C', ln=3 if i == len(rack_headers) - 1 else 0)
 
+    pdf.set_font('Arial', '', 10)
+    num_rack_rows = max(4, len(data['rack_details_df']))
+    for i in range(num_rack_rows):
+        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
+        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
+    pdf.ln(8)
+    
     # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
@@ -242,10 +243,20 @@ with st.form(key="advanced_rfq_form"):
             column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
         )
 
-        # Since the new screenshot only shows Bin Details, we will simplify the UI
-        # You can add the Rack Details back if needed
-        # st.markdown("##### Rack Details")
-        # rack_df = st.data_editor(...)
+        st.markdown("##### Rack Details")
+        rack_df = st.data_editor(
+            pd.DataFrame([
+                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
+                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
+                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
+            ]),
+            num_rows="dynamic", use_container_width=True,
+            column_config={
+                "Types of Rack": st.column_config.TextColumn(required=True),
+                "Type of Bin": st.column_config.TextColumn(required=True),
+                "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
+            }
+        )
 
         st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
@@ -287,9 +298,6 @@ with st.form(key="advanced_rfq_form"):
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    # Since Rack Details UI is removed, we create an empty dataframe to prevent errors
-    rack_df = pd.DataFrame() 
-
     if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage]):
         st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, and all Cover Page details.")
     else:
@@ -301,7 +309,7 @@ if submitted:
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
                 'purpose': purpose, 
                 'bin_details_df': bin_df, 
-                # 'rack_details_df': rack_df, # Temporarily disabled
+                'rack_details_df': rack_df,
                 'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size, 
                 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
                 'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery, 
