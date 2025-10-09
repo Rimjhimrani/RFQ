@@ -99,7 +99,7 @@ def create_advanced_rfq_pdf(data):
     pdf.cell(0, 8, 'TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
     # --- Bin Details Table ---
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(2)
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 9)
     bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 38, 38]
@@ -120,7 +120,7 @@ def create_advanced_rfq_pdf(data):
     
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); pdf.ln(2)
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
     pdf.set_font('Arial', 'B', 9)
     rack_headers = ["Types of\nRack", "Rack Dimension\n(MM)", "Level/Rack", "Type of Bin", "Bin Dimension\n(MM)", "Level/Bin"]
     rack_col_widths = [32, 32, 32, 32, 32, 30]
