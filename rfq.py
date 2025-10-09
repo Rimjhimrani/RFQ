@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final, Overhauled Version) ---
+# --- PDF Generation Function (with Final Bug Fix) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed RFQ document with diagram-style technical specification tables.
@@ -95,19 +95,15 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- START: NEW DIAGRAM-BASED TECHNICAL SPECIFICATION SECTION ---
+    # --- TECHNICAL SPECIFICATION SECTION ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 8, '2. TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
     # --- Bin Details Diagram and Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(1)
     
-    # Draw diagrammatic headers
     pdf.set_font('Arial', 'B', 9)
-    start_x = pdf.get_x()
-    start_y = pdf.get_y()
-    
-    # Define column x-coordinates for alignment
+    start_x = pdf.get_x(); start_y = pdf.get_y()
     bin_col_x = [start_x, start_x + 30, start_x + 65, start_x + 100, start_x + 130, start_x + 160]
     
     pdf.set_xy(bin_col_x[0], start_y); pdf.cell(30, 8, 'Type of Bin', 1, 1, 'C')
@@ -120,9 +116,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_xy(bin_col_x[4], start_y + 16); pdf.cell(30, 8, 'Qty Bin', 1, 1, 'C')
     pdf.set_xy(bin_col_x[5], start_y + 20); pdf.cell(30, 8, 'BIN A', 1, 1, 'C')
 
-    # Draw table rows aligned with headers
-    table_start_y = start_y + 30
-    pdf.set_y(table_start_y)
+    pdf.set_y(start_y + 30)
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
@@ -136,14 +130,11 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(8)
     
     # --- Rack Details Diagram and Table ---
-    if pdf.get_y() + 100 > pdf.page_break_trigger: pdf.add_page() # Check for page break
+    if pdf.get_y() + 100 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); pdf.ln(1)
     
     pdf.set_font('Arial', 'B', 9)
-    start_x = pdf.get_x()
-    start_y = pdf.get_y()
-    
-    # Define column x-coordinates
+    start_x = pdf.get_x(); start_y = pdf.get_y()
     rack_col_x = [start_x, start_x + 30, start_x + 65, start_x + 95, start_x + 125, start_x + 155]
 
     pdf.set_xy(rack_col_x[0], start_y); pdf.cell(30, 8, 'Types of', 1, 1, 'C')
@@ -156,8 +147,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_xy(rack_col_x[4], start_y + 24); pdf.cell(30, 8, '(MM)', 1, 1, 'C')
     pdf.set_xy(rack_col_x[5], start_y + 20); pdf.cell(30, 8, 'Level/Bin', 1, 1, 'C')
     
-    table_start_y = start_y + 35
-    pdf.set_y(table_start_y)
+    pdf.set_y(start_y + 35)
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
     for i in range(num_rack_rows):
@@ -170,12 +160,34 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(190 - rack_col_x[5], 10, str(row_data.get('HRR', '')), 1, 1, 'C')
     pdf.ln(8)
     
-    # --- Bullet Points ---
+    # --- START: ROBUST, CORRECTED BULLET POINT FUNCTION ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value != 'N/A':
-            pdf.set_font('Arial', '', 10); pdf.cell(5, 6, chr(127))
-            pdf.set_font('Arial', 'B', 10); pdf.cell(55, 6, f"{key}:")
-            pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, str(value), 0, 'L')
+            start_y = pdf.get_y()
+            
+            # Draw bullet and key label
+            pdf.set_x(pdf.l_margin)
+            pdf.set_font('Arial', '', 10)
+            pdf.cell(5, 6, chr(127)) # Bullet
+            pdf.set_font('Arial', 'B', 10)
+            pdf.cell(55, 6, f"{key}:")
+            key_end_y = pdf.get_y() + 6 # Predict where this line ends
+
+            # Calculate position and width for the value
+            value_start_x = pdf.l_margin + 60
+            value_width = pdf.w - pdf.r_margin - value_start_x
+            
+            # Explicitly set the position for the value
+            pdf.set_xy(value_start_x, start_y)
+            
+            # Draw the value using multi_cell
+            pdf.set_font('Arial', '', 10)
+            pdf.multi_cell(value_width, 6, str(value), 0, 'L')
+            value_end_y = pdf.get_y() # Get the true end position after multi_cell
+
+            # Set the next line's start position below the tallest element
+            pdf.set_y(max(key_end_y, value_end_y))
+            pdf.ln(1) # Small gap
 
     add_bullet_point('Color', data['color'])
     add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG" if data.get('capacity') else None)
@@ -185,7 +197,7 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Static', data['stack_static'])
     add_bullet_point('Stacking - Dynamic', data['stack_dynamic'])
     pdf.ln(5)
-    # --- END: REDESIGNED SECTION ---
+    # --- END: ROBUST, CORRECTED BULLET POINT FUNCTION ---
 
     # ... (Rest of the document generation remains unchanged) ...
     pdf.section_title('3. Timelines')
@@ -227,11 +239,10 @@ def create_advanced_rfq_pdf(data):
         
     return bytes(pdf.output())
 
-# --- STREAMLIT APP ---
+# --- STREAMLIT APP (Unchanged) ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
-# ... (Steps 1, 2, 3 Unchanged) ...
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
@@ -257,7 +268,6 @@ with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
     purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
 
-    # --- START: UPDATED UI FOR TECHNICAL SPECIFICATIONS ---
     with st.expander("Technical Specifications", expanded=True):
         st.info("Define the items for the vendor to quote on. The PDF will be generated with empty columns for the vendor to fill.")
         
@@ -299,7 +309,6 @@ with st.form(key="advanced_rfq_form"):
         c1, c2 = st.columns(2)
         stack_static = c1.text_input("Static (e.g., 1+3)")
         stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
-    # --- END: UPDATED UI ---
             
     with st.expander("Timelines"):
         today = date.today()
