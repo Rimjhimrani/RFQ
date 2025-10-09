@@ -99,7 +99,8 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 12)
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty \n Bin"]
-    bin_col_widths = [30, 40, 40, 40, 40]
+    # MODIFIED: Increased width for the first column and adjusted others
+    bin_col_widths = [40, 38, 38, 37, 37] 
     header_height = 8
     # Draw headers using multi_cell for proper line breaks
     y_before = pdf.get_y()
@@ -125,7 +126,8 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
     pdf.set_font('Arial', 'B', 9)
     rack_headers = ["Types of Rack", "Rack Dimension (MM)", "Level/Rack", "Type of Bin", "Bin Dimension (MM)", "Level/Bin"]
-    rack_col_widths = [32, 32, 32, 32, 32, 30]
+    # MODIFIED: Increased width for text columns and adjusted others
+    rack_col_widths = [37, 29.5, 29.5, 37, 29.5, 27.5]
     # Draw headers in a single row
     for i, header in enumerate(rack_headers):
         pdf.cell(rack_col_widths[i], header_height, header, border=1, align='C', ln=0)
