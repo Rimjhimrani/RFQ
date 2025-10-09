@@ -104,8 +104,10 @@ def create_advanced_rfq_pdf(data):
     bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 38, 38]
     header_height = 10 
-    for i in range(len(bin_headers)):
-        pdf.multi_cell(bin_col_widths[i], header_height, bin_headers[i], border=1, align='C', ln=3 if i == len(bin_headers) - 1 else 0)
+    # Draw headers in a single row
+    for i, header in enumerate(bin_headers):
+        pdf.cell(bin_col_widths[i], header_height, header.replace('\n', ' '), border=1, align='C', ln=0)
+    pdf.ln()
     
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
@@ -119,13 +121,15 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(8)
     
     # --- Rack Details Table ---
-    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 9)
-    rack_headers = ["Types of\nRack", "Rack Dimension\n(MM)", "Level/Rack", "Type of Bin", "Bin Dimension\n(MM)", "Level/Bin"]
-    rack_col_widths = [32, 32, 32, 32, 32, 30]
-    for i in range(len(rack_headers)):
-        pdf.multi_cell(rack_col_widths[i], header_height, rack_headers[i], border=1, align='C', ln=3 if i == len(rack_headers) - 1 else 0)
+    bin_headers = ["Type of Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
+    bin_col_widths = [38, 38, 38, 38, 38]
+    header_height = 10 
+    # Draw headers in a single row
+    for i, header in enumerate(bin_headers):
+        pdf.cell(bin_col_widths[i], header_height, header.replace('\n', ' '), border=1, align='C', ln=0)
+    pdf.ln()
 
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
