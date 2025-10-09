@@ -15,11 +15,11 @@ st.set_page_config(
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a detailed, professional RFQ document with a dedicated cover page and a custom footer on all pages.
+    Generates a detailed, professional RFQ document matching the specific table and bullet-point layout.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
-            # --- Add Logo 1 (Left Side) ---
+            # ... (This function remains unchanged, keeping your cover page design)
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35)
             logo1_h = data.get('logo1_h', 20)
@@ -29,16 +29,12 @@ def create_advanced_rfq_pdf(data):
                     tmp.flush()
                     self.image(tmp.name, x=self.l_margin, y=20, w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
-
-            # Add "CONFIDENTIAL" on the top left, slightly below the logo
             self.set_y(35)
             self.set_x(self.l_margin)
             self.set_font('Arial', 'B', 14)
             self.set_text_color(255, 0, 0)
             self.cell(0, 10, 'CONFIDENTIAL')
             self.set_text_color(0, 0, 0)
-
-            # --- Add Logo 2 (Right Side) ---
             logo2_data = data.get('logo2_data')
             logo2_w = data.get('logo2_w', 42)
             logo2_h = data.get('logo2_h', 20)
@@ -50,8 +46,6 @@ def create_advanced_rfq_pdf(data):
                 x_pos = self.w - self.r_margin - logo2_w
                 self.image(logo2_path, x=x_pos, y=20, w=logo2_w, h=logo2_h)
                 os.remove(logo2_path)
-
-            # --- Centered Title Block (Your Custom Design) ---
             self.set_y(60)
             self.set_font('Arial', 'B', 30)
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
@@ -78,10 +72,9 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
-            # No header on the first (cover) page
+            # ... (This function remains unchanged)
             if self.page_no() == 1:
                 return
-            
             logo1_data = data.get('logo1_data')
             logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 20)
             if logo1_data:
@@ -90,7 +83,6 @@ def create_advanced_rfq_pdf(data):
                     tmp.flush()
                     self.image(tmp.name, x=self.l_margin, y=10, w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
-
             logo2_data = data.get('logo2_data')
             logo2_w, logo2_h = data.get('logo2_w', 42), data.get('logo2_h', 20)
             if logo2_data:
@@ -100,64 +92,41 @@ def create_advanced_rfq_pdf(data):
                     tmp.flush()
                     self.image(tmp.name, x=x_pos, y=10, w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
-
             self.set_y(12)
             self.set_font('Arial', 'B', 16)
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
             self.set_font('Arial', 'I', 10)
-            self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
+            self.cell(0, 6, f"For: {data['Type_of_items']}", 0, 1, 'C')
             self.ln(15)
 
-        # --- CORRECTED CUSTOMIZABLE FOOTER FOR ALL PAGES ---
         def footer(self):
-            self.set_y(-25) 
-
+            # ... (This function remains unchanged)
+            self.set_y(-25)
             footer_name = data.get('footer_company_name')
             footer_addr = data.get('footer_company_address')
-
             if footer_name or footer_addr:
                 self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
                 self.ln(3)
                 self.set_text_color(128)
-
                 if footer_name:
-                    # Set a different font for the name
-                    self.set_font('Arial', 'B', 14) # Bold, size 9
+                    self.set_font('Arial', 'B', 14)
                     self.cell(0, 5, footer_name, 0, 1, 'C')
-                
                 if footer_addr:
-                    # Set the font for the address
-                    self.set_font('Arial', '', 8) # Regular, size 8
+                    self.set_font('Arial', '', 8)
                     self.cell(0, 5, footer_addr, 0, 1, 'C')
-                
-                self.set_text_color(0) # Reset to black
-
+                self.set_text_color(0)
             self.set_y(-15)
             self.set_font('Arial', 'I', 8)
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
+            # ... (This function remains unchanged)
             if self.get_y() + 20 > self.page_break_trigger: self.add_page()
             self.set_font('Arial', 'B', 12)
             self.set_fill_color(230, 230, 230)
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
 
-        def key_value_pair(self, key, value):
-            if self.get_y() + 12 > self.page_break_trigger: self.add_page()
-            key_width = 60
-            value_width = self.w - self.l_margin - self.r_margin - key_width
-            start_y = self.get_y()
-            self.set_font('Arial', 'B', 10)
-            self.multi_cell(key_width, 6, key, border=0, align='L')
-            key_end_y = self.get_y()
-            self.set_xy(self.l_margin + key_width, start_y)
-            self.set_font('Arial', '', 10)
-            self.multi_cell(value_width, 6, str(value), border=0, align='L')
-            value_end_y = self.get_y()
-            self.set_y(max(key_end_y, value_end_y))
-            self.ln(1)
-            
     pdf = PDF('P', 'mm', 'A4')
     pdf.alias_nb_pages()
     pdf.add_page()
@@ -169,68 +138,81 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- START: NEW TECHNICAL SPECIFICATIONS SECTION TO MATCH SCREENSHOT ---
-    pdf.section_title('2. Technical Specifications')
+    # --- START: COMPLETELY REDESIGNED TECHNICAL SPECIFICATION SECTION ---
+    # Main Section Title
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, '2. TECHNICAL SPECIFICATION', 0, 1, 'L')
+    pdf.ln(4)
 
-    col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / 2
-    cell_height = 8
+    # --- Bin Details Table ---
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L')
+    pdf.ln(2)
     
-    # --- Row 1: Item / Infrastructure ---
+    bin_headers = ['Type of Bin', 'Bin Outer\nDimension (MM)', 'Bin Inner\nDimension (MM)', 'Conceptual\nImage', 'Qty Bin']
+    bin_col_widths = [38, 38, 38, 38, 38]
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Item / Infrastructure', border=1, align='C')
+    for i in range(len(bin_headers)):
+        pdf.multi_cell(bin_col_widths[i], 8, bin_headers[i], border=1, align='C', ln=3 if i == len(bin_headers) - 1 else 0)
+    
     pdf.set_font('Arial', '', 10)
-    pdf.cell(col_width, cell_height, f"{data['main_type']} - {data['sub_type']}", border=1, align='C')
-    pdf.ln()
+    num_bin_rows_to_draw = max(4, len(data['bin_details_df']))
+    for i in range(num_bin_rows_to_draw):
+        row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {'Type of Bin': ''}
+        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1)
+        for j in range(1, len(bin_col_widths)):
+            pdf.cell(bin_col_widths[j], 10, '', border=1)
+        pdf.ln()
 
-    # --- Rows 2 & 3: Dimensions ---
+    pdf.ln(8)
+
+    # --- Rack Details Table ---
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L')
+    pdf.ln(2)
+
+    rack_headers = ['Types of\nRack', 'Rack Dimension\n(MM)', 'Level/Rack', 'Type of Bin', 'Bin Dimension\n(MM)', 'Level/Bin']
+    rack_col_widths = [32, 32, 32, 32, 32, 30]
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Internal Dimensions (LxWxH) mm', border=1, align='C')
-    pdf.cell(col_width, cell_height, 'External Dimensions (LxWxH) mm', border=1, align='C')
-    pdf.ln()
-    pdf.set_font('Arial', '', 10)
-    internal_dims = f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f}"
-    external_dims = f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}"
-    pdf.cell(col_width, cell_height, internal_dims, border=1, align='C')
-    pdf.cell(col_width, cell_height, external_dims, border=1, align='C')
-    pdf.ln()
+    for i in range(len(rack_headers)):
+        pdf.multi_cell(rack_col_widths[i], 8, rack_headers[i], border=1, align='C', ln=3 if i == len(rack_headers) - 1 else 0)
 
-    # --- Rows 4 & 5: Color and Capacity ---
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Color', border=1, align='C')
-    pdf.cell(col_width, cell_height, 'Weight Carrying Capacity (KG)', border=1, align='C')
-    pdf.ln()
     pdf.set_font('Arial', '', 10)
-    pdf.cell(col_width, cell_height, str(data['color']), border=1, align='C')
-    pdf.cell(col_width, cell_height, f"{data['capacity']:.2f} KG", border=1, align='C')
-    pdf.ln()
-
-    # --- Conditional Rows for Container Type ---
-    if data['main_type'] == 'Item Type (Container)':
-        # --- Rows 6 & 7: Lid and Label ---
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(col_width, cell_height, 'Lid Required', border=1, align='C')
-        pdf.cell(col_width, cell_height, 'Space for Label (Size)', border=1, align='C')
-        pdf.ln()
-        pdf.set_font('Arial', '', 10)
-        label_info = f"Yes ({data['label_size']})" if data['label_space'] == 'Yes' and data['label_size'] else data['label_space']
-        pdf.cell(col_width, cell_height, str(data['lid']), border=1, align='C')
-        pdf.cell(col_width, cell_height, label_info, border=1, align='C')
-        pdf.ln()
-        
-        # --- Rows 8 & 9: Stacking ---
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(col_width, cell_height, 'Stacking - Static', border=1, align='C')
-        pdf.cell(col_width, cell_height, 'Stacking - Dynamic', border=1, align='C')
-        pdf.ln()
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(col_width, cell_height, str(data['stack_static']), border=1, align='C')
-        pdf.cell(col_width, cell_height, str(data['stack_dynamic']), border=1, align='C')
+    num_rack_rows_to_draw = max(4, len(data['rack_details_df']))
+    for i in range(num_rack_rows_to_draw):
+        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {'Types of Rack': '', 'Type of Bin': ''}
+        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1)
+        pdf.cell(rack_col_widths[1], 10, '', border=1)
+        pdf.cell(rack_col_widths[2], 10, '', border=1)
+        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1)
+        pdf.cell(rack_col_widths[4], 10, '', border=1)
+        pdf.cell(rack_col_widths[5], 10, '', border=1)
         pdf.ln()
     
-    pdf.ln(5) # Add some space after the table
-    # --- END: NEW TECHNICAL SPECIFICATIONS SECTION ---
+    pdf.ln(8)
+
+    # --- Bullet Points for General Specifications ---
+    def add_bullet_point(key, value):
+        if value and value != 'N/A':
+            pdf.set_font('Arial', '', 10)
+            pdf.cell(5, 6, chr(127)) # Bullet point character
+            pdf.set_font('Arial', 'B', 10)
+            pdf.cell(55, 6, f"{key}:")
+            pdf.set_font('Arial', '', 10)
+            pdf.multi_cell(0, 6, str(value), 0, 'L')
+
+    add_bullet_point('Color', data['color'])
+    add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG")
+    add_bullet_point('Lid Required', data['lid'])
+    label_info = f"{data['label_space']} (Size: {data['label_size']})" if data['label_space'] == 'Yes' else data['label_space']
+    add_bullet_point('Space for Label', label_info)
+    add_bullet_point('Stacking - Static', data['stack_static'])
+    add_bullet_point('Stacking - Dynamic', data['stack_dynamic'])
+    pdf.ln(5)
+    # --- END: REDESIGNED SECTION ---
 
     pdf.section_title('3. Timelines')
+    # ... (This section and following sections remain unchanged)
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
@@ -305,6 +287,7 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
+# --- Step 1, 2, 3 (Unchanged) ---
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     st.info("Logos will be displayed on the header of every page. Dimensions are in mm.")
     c1, c2 = st.columns(2)
@@ -330,36 +313,54 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City, 12345")
 
+# --- Form Starts Here ---
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
-    main_type = st.selectbox("Select RFQ Category", ["Item Type (Container)", "Storage Infrastructure"])
-    if main_type == "Item Type (Container)": sub_type_options = ["Bin", "Trolley", "Carton Box", "Wooden Box", "Other"]
-    else: sub_type_options = ["Heavy Duty Rack", "Cantilever Rack", "Shelving Rack", "Bin Flow Rack", "Other"]
-    sub_type_selection = st.selectbox(f"Select {main_type}", sub_type_options)
-    final_sub_type = st.text_input("Please specify 'Other' type") if sub_type_selection == "Other" else sub_type_selection
     purpose = st.text_area("Purpose of Requirement (Max 200 characters)*", max_chars=200, height=100)
 
+    # --- START: REDESIGNED UI FOR TECHNICAL SPECIFICATIONS ---
     with st.expander("Technical Specifications", expanded=True):
-        st.markdown("##### Dimensions (in mm)")
+        st.info("Define the types of Bins and Racks you need quotes for. The vendor will fill in the dimensions and other details on the generated PDF.")
+        
+        st.markdown("##### Bin Details")
+        bin_df = st.data_editor(
+            pd.DataFrame([{"Type of Bin": "Example Bin Type A"}, {"Type of Bin": "Example Bin Type B"}]),
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={"Type of Bin": st.column_config.TextColumn(required=True)}
+        )
+
+        st.markdown("##### Rack Details")
+        rack_df = st.data_editor(
+            pd.DataFrame([
+                {"Types of Rack": "Example Rack Type X", "Type of Bin": "Bin Type A"},
+                {"Types of Rack": "Example Rack Type Y", "Type of Bin": "Bin Type B"}
+            ]),
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Types of Rack": st.column_config.TextColumn(required=True),
+                "Type of Bin": st.column_config.TextColumn(help="Which bin type will be used with this rack?", required=True)
+            }
+        )
+
+        st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
-            dim_int_l, dim_int_w, dim_int_h = st.number_input("Internal - Length", 0.0, format="%.2f"), st.number_input("Internal - Width", 0.0, format="%.2f"), st.number_input("Internal - Height", 0.0, format="%.2f")
+            color = st.text_input("Color")
+            capacity = st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
+            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
         with c2:
-            dim_ext_l, dim_ext_w, dim_ext_h = st.number_input("External - Length", 0.0, format="%.2f"), st.number_input("External - Width", 0.0, format="%.2f"), st.number_input("External - Height", 0.0, format="%.2f")
-        st.markdown("##### Other Specifications")
+            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True)
+            label_size = "N/A"
+            if label_space == "Yes":
+                label_size = st.text_input("Label Size (e.g., 100x50 mm)")
+        
+        st.markdown("###### Stacking Requirements (if applicable)")
         c1, c2 = st.columns(2)
-        with c1:
-            color, capacity = st.text_input("Color"), st.number_input("Weight Carrying Capacity (in KG)", 0.0, format="%.2f")
-        with c2:
-            lid, label_space, label_size = "N/A", "N/A", "N/A"
-            if main_type == "Item Type (Container)":
-                lid, label_space = st.radio("Lid Required?", ["Yes", "No"], horizontal=True), st.radio("Space for Label?", ["Yes", "No"], horizontal=True)
-                if label_space == "Yes": label_size = st.text_input("Label Size (e.g., 100x50 mm)")
-        stack_static, stack_dynamic = "N/A", "N/A"
-        if main_type == "Item Type (Container)":
-            st.markdown("##### Stacking Requirements")
-            c1, c2 = st.columns(2)
-            stack_static, stack_dynamic = c1.text_input("Static (e.g., 1+3)"), c2.text_input("Dynamic (e.g., 1+1)")
+        stack_static = c1.text_input("Static (e.g., 1+3)")
+        stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
+    # --- END: REDESIGNED UI ---
             
     with st.expander("Timelines"):
         st.info("Fields marked with * are mandatory.")
@@ -405,9 +406,12 @@ if submitted:
             'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name, 'company_address': company_address,
             'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
             'logo1_data': logo1_data, 'logo2_data': logo2_data, 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
-            'main_type': main_type, 'sub_type': final_sub_type, 'purpose': purpose,
-            'dim_int_l': dim_int_l, 'dim_int_w': dim_int_w, 'dim_int_h': dim_int_h, 'dim_ext_l': dim_ext_l, 'dim_ext_w': dim_ext_w, 'dim_ext_h': dim_ext_h,
+            'purpose': purpose,
+            # New data from the redesigned UI
+            'bin_details_df': bin_df,
+            'rack_details_df': rack_df,
             'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size, 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
+            # Unchanged data
             'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery, 'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
             'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
             'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
@@ -418,5 +422,5 @@ if submitted:
             pdf_data = create_advanced_rfq_pdf(rfq_data)
         
         st.success("✅ RFQ PDF Generated Successfully!")
-        file_name = f"RFQ_{final_sub_type.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
+        file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
         st.download_button(label="📥 Download RFQ Document (.pdf)", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
