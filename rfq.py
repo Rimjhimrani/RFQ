@@ -125,13 +125,13 @@ def create_advanced_rfq_pdf(data):
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); 
     pdf.set_font('Arial', 'B', 12)
-    rack_headers = ["Types of /nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of /nBin", "Bin \nDimension(MM)", "Level/Bin"]
+    rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
     # MODIFIED: Increased width for text columns and adjusted others
     rack_col_widths = [37, 29.5, 29.5, 37, 29.5, 27.5]
     header_height = 8
     # Draw headers using multi_cell for proper line breaks
     y_before = pdf.get_y()
-    for i, header in enumerate(bin_headers):
+    for i, header in enumerate(rack_headers):
         x_pos = pdf.l_margin + sum(rack_col_widths[:i])
         pdf.set_xy(x_pos, y_before)
         pdf.multi_cell(rack_col_widths[i], header_height, header, border=1, align='C')
