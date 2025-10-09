@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (with Redesigned Technical Specifications) ---
+# --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document with a dedicated cover page and a custom footer on all pages.
@@ -108,6 +108,7 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
             self.ln(15)
 
+        # --- CORRECTED CUSTOMIZABLE FOOTER FOR ALL PAGES ---
         def footer(self):
             self.set_y(-25) 
 
@@ -120,14 +121,16 @@ def create_advanced_rfq_pdf(data):
                 self.set_text_color(128)
 
                 if footer_name:
-                    self.set_font('Arial', 'B', 14) 
+                    # Set a different font for the name
+                    self.set_font('Arial', 'B', 14) # Bold, size 9
                     self.cell(0, 5, footer_name, 0, 1, 'C')
                 
                 if footer_addr:
-                    self.set_font('Arial', '', 8) 
+                    # Set the font for the address
+                    self.set_font('Arial', '', 8) # Regular, size 8
                     self.cell(0, 5, footer_addr, 0, 1, 'C')
                 
-                self.set_text_color(0) 
+                self.set_text_color(0) # Reset to black
 
             self.set_y(-15)
             self.set_font('Arial', 'I', 8)
@@ -166,62 +169,66 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- START: REDESIGNED TECHNICAL SPECIFICATIONS SECTION ---
+    # --- START: NEW TECHNICAL SPECIFICATIONS SECTION TO MATCH SCREENSHOT ---
     pdf.section_title('2. Technical Specifications')
-    
+
     col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / 2
     cell_height = 8
-
-    # --- Main Item Type ---
+    
+    # --- Row 1: Item / Infrastructure ---
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Item / Infrastructure', 1, 0, 'C')
+    pdf.cell(col_width, cell_height, 'Item / Infrastructure', border=1, align='C')
     pdf.set_font('Arial', '', 10)
-    pdf.cell(col_width, cell_height, f"{data['main_type']} - {data['sub_type']}", 1, 1, 'C')
+    pdf.cell(col_width, cell_height, f"{data['main_type']} - {data['sub_type']}", border=1, align='C')
+    pdf.ln()
 
-    # --- Dimensions Table ---
-    # Header
+    # --- Rows 2 & 3: Dimensions ---
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Internal Dimensions (LxWxH) mm', 1, 0, 'C')
-    pdf.cell(col_width, cell_height, 'External Dimensions (LxWxH) mm', 1, 1, 'C')
-    # Values
+    pdf.cell(col_width, cell_height, 'Internal Dimensions (LxWxH) mm', border=1, align='C')
+    pdf.cell(col_width, cell_height, 'External Dimensions (LxWxH) mm', border=1, align='C')
+    pdf.ln()
     pdf.set_font('Arial', '', 10)
     internal_dims = f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f}"
     external_dims = f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}"
-    pdf.cell(col_width, cell_height, internal_dims, 1, 0, 'C')
-    pdf.cell(col_width, cell_height, external_dims, 1, 1, 'C')
+    pdf.cell(col_width, cell_height, internal_dims, border=1, align='C')
+    pdf.cell(col_width, cell_height, external_dims, border=1, align='C')
+    pdf.ln()
 
-    # --- Other Specifications Table ---
-    # Header
+    # --- Rows 4 & 5: Color and Capacity ---
     pdf.set_font('Arial', 'B', 10)
-    pdf.cell(col_width, cell_height, 'Color', 1, 0, 'C')
-    pdf.cell(col_width, cell_height, 'Weight Carrying Capacity (KG)', 1, 1, 'C')
-    # Values
+    pdf.cell(col_width, cell_height, 'Color', border=1, align='C')
+    pdf.cell(col_width, cell_height, 'Weight Carrying Capacity (KG)', border=1, align='C')
+    pdf.ln()
     pdf.set_font('Arial', '', 10)
-    pdf.cell(col_width, cell_height, data['color'], 1, 0, 'C')
-    pdf.cell(col_width, cell_height, f"{data['capacity']:.2f} KG", 1, 1, 'C')
+    pdf.cell(col_width, cell_height, str(data['color']), border=1, align='C')
+    pdf.cell(col_width, cell_height, f"{data['capacity']:.2f} KG", border=1, align='C')
+    pdf.ln()
 
+    # --- Conditional Rows for Container Type ---
     if data['main_type'] == 'Item Type (Container)':
-        # Header for Container Specifics
+        # --- Rows 6 & 7: Lid and Label ---
         pdf.set_font('Arial', 'B', 10)
-        pdf.cell(col_width, cell_height, 'Lid Required', 1, 0, 'C')
-        pdf.cell(col_width, cell_height, 'Space for Label (Size)', 1, 1, 'C')
-        # Values
+        pdf.cell(col_width, cell_height, 'Lid Required', border=1, align='C')
+        pdf.cell(col_width, cell_height, 'Space for Label (Size)', border=1, align='C')
+        pdf.ln()
         pdf.set_font('Arial', '', 10)
-        label_info = f"{data['label_space']} ({data['label_size']})" if data['label_space'] == 'Yes' else data['label_space']
-        pdf.cell(col_width, cell_height, data['lid'], 1, 0, 'C')
-        pdf.cell(col_width, cell_height, label_info, 1, 1, 'C')
+        label_info = f"Yes ({data['label_size']})" if data['label_space'] == 'Yes' and data['label_size'] else data['label_space']
+        pdf.cell(col_width, cell_height, str(data['lid']), border=1, align='C')
+        pdf.cell(col_width, cell_height, label_info, border=1, align='C')
+        pdf.ln()
         
-        # Stacking Requirements
+        # --- Rows 8 & 9: Stacking ---
         pdf.set_font('Arial', 'B', 10)
-        pdf.cell(col_width, cell_height, 'Stacking - Static', 1, 0, 'C')
-        pdf.cell(col_width, cell_height, 'Stacking - Dynamic', 1, 1, 'C')
-        # Values
+        pdf.cell(col_width, cell_height, 'Stacking - Static', border=1, align='C')
+        pdf.cell(col_width, cell_height, 'Stacking - Dynamic', border=1, align='C')
+        pdf.ln()
         pdf.set_font('Arial', '', 10)
-        pdf.cell(col_width, cell_height, data['stack_static'], 1, 0, 'C')
-        pdf.cell(col_width, cell_height, data['stack_dynamic'], 1, 1, 'C')
-        
-    pdf.ln(8)
-    # --- END: REDESIGNED TECHNICAL SPECIFICATIONS SECTION ---
+        pdf.cell(col_width, cell_height, str(data['stack_static']), border=1, align='C')
+        pdf.cell(col_width, cell_height, str(data['stack_dynamic']), border=1, align='C')
+        pdf.ln()
+    
+    pdf.ln(5) # Add some space after the table
+    # --- END: NEW TECHNICAL SPECIFICATIONS SECTION ---
 
     pdf.section_title('3. Timelines')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
