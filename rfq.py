@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (with Bug Fix) ---
+# --- PDF Generation Function (with NameError Bug Fix) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed, professional RFQ document matching the specific table and bullet-point layout.
@@ -190,33 +190,29 @@ def create_advanced_rfq_pdf(data):
     
     pdf.ln(8)
 
-    # --- START: CORRECTED BULLET POINT SECTION ---
+    # --- Bullet Point Section ---
     def add_bullet_point(key, value):
-        # This check prevents empty values from being printed
         if value and str(value).strip() and value != 'N/A':
             start_y = pdf.get_y()
-            
-            # Set position and draw bullet and key
             pdf.set_x(pdf.l_margin)
             pdf.set_font('Arial', '', 10)
-            pdf.cell(5, 6, chr(127)) # Bullet point character
+            pdf.cell(5, 6, chr(127))
             pdf.set_font('Arial', 'B', 10)
             pdf.cell(55, 6, f"{key}:")
-            key_end_y = pdf.get_y() # Will be start_y + 6
+            key_end_y = pdf.get_y() + 6
 
-            # Explicitly set position for the value part
-            value_start_x = pdf.l_margin + 60
-            pdf.set_xy(value_startx, start_y)
+            # --- START: THE FIX IS HERE ---
+            value_start_x = pdf.l_margin + 60 # This variable was defined correctly
+            pdf.set_xy(value_start_x, start_y) # This line had the typo "value_startx"
+            # --- END: THE FIX IS HERE ---
 
-            # Calculate the remaining width and draw the value using multi_cell
             remaining_width = pdf.w - pdf.r_margin - value_start_x
             pdf.set_font('Arial', '', 10)
             pdf.multi_cell(remaining_width, 6, str(value), 0, 'L')
-            value_end_y = pdf.get_y() # multi_cell updates the y-position
+            value_end_y = pdf.get_y()
 
-            # Ensure the next line starts below the tallest part (the key or the value)
             pdf.set_y(max(key_end_y, value_end_y))
-            pdf.ln(1) # Add a small gap
+            pdf.ln(1)
 
     add_bullet_point('Color', data['color'])
     add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG" if data.get('capacity') else None)
@@ -226,7 +222,6 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Static', data['stack_static'])
     add_bullet_point('Stacking - Dynamic', data['stack_dynamic'])
     pdf.ln(5)
-    # --- END: CORRECTED BULLET POINT SECTION ---
 
     # --- All subsequent sections remain unchanged ---
     pdf.section_title('3. Timelines')
