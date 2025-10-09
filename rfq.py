@@ -127,7 +127,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 12)
     rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
     # MODIFIED: Increased width for text columns and adjusted others
-    rack_col_widths = [34, 33.5, 29.5, 32, 33.5, 27.5]
+    rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
     header_height = 8
     # Draw headers using multi_cell for proper line breaks
     y_before = pdf.get_y()
