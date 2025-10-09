@@ -115,7 +115,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
         pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
         pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
     
     # --- Rack Details Table ---
