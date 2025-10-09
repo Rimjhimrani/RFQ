@@ -12,7 +12,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (with Final Bug Fix) ---
+# --- PDF Generation Function (Final, Overhauled Version) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a detailed RFQ document with diagram-style technical specification tables.
@@ -95,109 +95,99 @@ def create_advanced_rfq_pdf(data):
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- TECHNICAL SPECIFICATION SECTION ---
+    # --- START: NEW DIAGRAM-BASED TECHNICAL SPECIFICATION SECTION ---
     pdf.set_font('Arial', 'B', 12)
     pdf.cell(0, 8, '2. TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
     # --- Bin Details Diagram and Table ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L'); pdf.ln(1)
     
+    start_x = pdf.l_margin
+    start_y = pdf.get_y()
     pdf.set_font('Arial', 'B', 9)
-    start_x = pdf.get_x(); start_y = pdf.get_y()
-    bin_col_x = [start_x, start_x + 30, start_x + 65, start_x + 100, start_x + 130, start_x + 160]
-    
-    pdf.set_xy(bin_col_x[0], start_y); pdf.cell(30, 8, 'Type of Bin', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[1], start_y + 4); pdf.cell(35, 8, 'Bin Outer', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[1], start_y + 12); pdf.cell(35, 8, 'Dimension (MM)', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[2], start_y + 8); pdf.cell(35, 8, 'Bin Inner', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[2], start_y + 16); pdf.cell(35, 8, 'Dimension (MM)', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[3], start_y + 12); pdf.cell(30, 8, 'Conceptual', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[3], start_y + 20); pdf.cell(30, 8, 'Image', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[4], start_y + 16); pdf.cell(30, 8, 'Qty Bin', 1, 1, 'C')
-    pdf.set_xy(bin_col_x[5], start_y + 20); pdf.cell(30, 8, 'BIN A', 1, 1, 'C')
 
-    pdf.set_y(start_y + 30)
+    # Define column boundaries (absolute X coordinates)
+    bin_cols = [start_x, start_x + 35, start_x + 70, start_x + 105, start_x + 135, start_x + 160]
+    
+    # Draw diagrammatic headers using precise coordinates and widths
+    pdf.set_xy(bin_cols[0], start_y); pdf.cell(bin_cols[1]-bin_cols[0], 8, 'Type of Bin', 1, 0, 'C')
+    pdf.set_xy(bin_cols[1], start_y + 4); pdf.multi_cell(bin_cols[2]-bin_cols[1], 4, 'Bin Outer\nDimension (MM)', 1, 'C')
+    pdf.set_xy(bin_cols[2], start_y + 8); pdf.multi_cell(bin_cols[3]-bin_cols[2], 4, 'Bin Inner\nDimension (MM)', 1, 'C')
+    pdf.set_xy(bin_cols[3], start_y + 12); pdf.multi_cell(bin_cols[4]-bin_cols[3], 4, 'Conceptual\nImage', 1, 'C')
+    pdf.set_xy(bin_cols[4], start_y + 16); pdf.cell(bin_cols[5]-bin_cols[4], 8, 'Qty Bin', 1, 0, 'C')
+    pdf.set_xy(bin_cols[5], start_y + 20); pdf.cell(pdf.w - pdf.r_margin - bin_cols[5], 8, 'BIN A', 1, 0, 'C')
+
+    # Draw table rows aligned with the same column boundaries
+    table_start_y = start_y + 30
+    pdf.set_y(table_start_y)
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        pdf.set_x(bin_col_x[0]); pdf.cell(bin_col_x[1] - bin_col_x[0], 10, str(row_data.get('Type of Bin', '')), 1, 0, 'C')
-        pdf.cell(bin_col_x[2] - bin_col_x[1], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_x[3] - bin_col_x[2], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_x[4] - bin_col_x[3], 10, '', 1, 0, 'C')
-        pdf.cell(bin_col_x[5] - bin_col_x[4], 10, '', 1, 0, 'C')
-        pdf.cell(190 - bin_col_x[5], 10, '', 1, 1, 'C')
+        pdf.set_x(bin_cols[0]); pdf.cell(bin_cols[1]-bin_cols[0], 10, str(row_data.get('Type of Bin', '')), 1, 0, 'C')
+        pdf.cell(bin_cols[2]-bin_cols[1], 10, '', 1, 0, 'C')
+        pdf.cell(bin_cols[3]-bin_cols[2], 10, '', 1, 0, 'C')
+        pdf.cell(bin_cols[4]-bin_cols[3], 10, '', 1, 0, 'C')
+        pdf.cell(bin_cols[5]-bin_cols[4], 10, '', 1, 0, 'C')
+        pdf.cell(pdf.w - pdf.r_margin - bin_cols[5], 10, '', 1, 1, 'C')
     pdf.ln(8)
     
     # --- Rack Details Diagram and Table ---
     if pdf.get_y() + 100 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L'); pdf.ln(1)
     
+    start_x = pdf.l_margin
+    start_y = pdf.get_y()
     pdf.set_font('Arial', 'B', 9)
-    start_x = pdf.get_x(); start_y = pdf.get_y()
-    rack_col_x = [start_x, start_x + 30, start_x + 65, start_x + 95, start_x + 125, start_x + 155]
 
-    pdf.set_xy(rack_col_x[0], start_y); pdf.cell(30, 8, 'Types of', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[0], start_y + 8); pdf.cell(30, 8, 'Rack', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[1], start_y + 4); pdf.cell(35, 8, 'Rack Dimension', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[1], start_y + 12); pdf.cell(35, 8, '(MM)', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[2], start_y + 8); pdf.cell(30, 8, 'Level/Rack', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[3], start_y + 12); pdf.cell(30, 8, 'Type of Bin', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[4], start_y + 16); pdf.cell(30, 8, 'Bin Dimension', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[4], start_y + 24); pdf.cell(30, 8, '(MM)', 1, 1, 'C')
-    pdf.set_xy(rack_col_x[5], start_y + 20); pdf.cell(30, 8, 'Level/Bin', 1, 1, 'C')
+    # Define column boundaries for the rack table
+    rack_cols = [start_x, start_x + 35, start_x + 70, start_x + 105, start_x + 140, start_x + 165]
     
-    pdf.set_y(start_y + 35)
+    pdf.set_xy(rack_cols[0], start_y); pdf.multi_cell(rack_cols[1]-rack_cols[0], 4, 'Types of\nRack', 1, 'C')
+    pdf.set_xy(rack_cols[1], start_y + 4); pdf.multi_cell(rack_cols[2]-rack_cols[1], 4, 'Rack Dimension\n(MM)', 1, 'C')
+    pdf.set_xy(rack_cols[2], start_y + 8); pdf.cell(rack_cols[3]-rack_cols[2], 8, 'Level/Rack', 1, 0, 'C')
+    pdf.set_xy(rack_cols[3], start_y + 12); pdf.cell(rack_cols[4]-rack_cols[3], 8, 'Type of Bin', 1, 0, 'C')
+    pdf.set_xy(rack_cols[4], start_y + 16); pdf.multi_cell(rack_cols[5]-rack_cols[4], 4, 'Bin Dimension\n(MM)', 1, 'C')
+    pdf.set_xy(rack_cols[5], start_y + 20); pdf.cell(pdf.w - pdf.r_margin - rack_cols[5], 8, 'Level/Bin', 1, 0, 'C')
+
+    table_start_y = start_y + 35
+    pdf.set_y(table_start_y)
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
     for i in range(num_rack_rows):
         row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
-        pdf.set_x(rack_col_x[0]); pdf.cell(rack_col_x[1] - rack_col_x[0], 10, str(row_data.get('Types of Rack', '')), 1, 0, 'C')
-        pdf.cell(rack_col_x[2] - rack_col_x[1], 10, '', 1, 0, 'C')
-        pdf.cell(rack_col_x[3] - rack_col_x[2], 10, '', 1, 0, 'C')
-        pdf.cell(rack_col_x[4] - rack_col_x[3], 10, str(row_data.get('Type of Bin', '')), 1, 0, 'C')
-        pdf.cell(rack_col_x[5] - rack_col_x[4], 10, '', 1, 0, 'C')
-        pdf.cell(190 - rack_col_x[5], 10, str(row_data.get('HRR', '')), 1, 1, 'C')
+        pdf.set_x(rack_cols[0]); pdf.cell(rack_cols[1]-rack_cols[0], 10, str(row_data.get('Types of Rack', '')), 1, 0, 'C')
+        pdf.cell(rack_cols[2]-rack_cols[1], 10, '', 1, 0, 'C')
+        pdf.cell(rack_cols[3]-rack_cols[2], 10, '', 1, 0, 'C')
+        pdf.cell(rack_cols[4]-rack_cols[3], 10, str(row_data.get('Type of Bin', '')), 1, 0, 'C')
+        pdf.cell(rack_cols[5]-rack_cols[4], 10, '', 1, 0, 'C')
+        pdf.cell(pdf.w - pdf.r_margin - rack_cols[5], 10, str(row_data.get('Final Column', '')), 1, 1, 'C')
     pdf.ln(8)
     
-    # --- START: ROBUST, CORRECTED BULLET POINT FUNCTION ---
+    # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
-        if value and str(value).strip() and value != 'N/A':
-            start_y = pdf.get_y()
-            
-            # Draw bullet and key label
-            pdf.set_x(pdf.l_margin)
-            pdf.set_font('Arial', '', 10)
-            pdf.cell(5, 6, chr(127)) # Bullet
-            pdf.set_font('Arial', 'B', 10)
-            pdf.cell(55, 6, f"{key}:")
-            key_end_y = pdf.get_y() + 6 # Predict where this line ends
-
-            # Calculate position and width for the value
+        if value and str(value).strip() and value not in ['N/A', '']:
+            start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
+            pdf.set_font('Arial', '', 10); pdf.cell(5, 6, chr(127))
+            pdf.set_font('Arial', 'B', 10); pdf.cell(55, 6, f"{key}:")
+            key_end_y = pdf.get_y() + 6
             value_start_x = pdf.l_margin + 60
             value_width = pdf.w - pdf.r_margin - value_start_x
-            
-            # Explicitly set the position for the value
             pdf.set_xy(value_start_x, start_y)
-            
-            # Draw the value using multi_cell
             pdf.set_font('Arial', '', 10)
             pdf.multi_cell(value_width, 6, str(value), 0, 'L')
-            value_end_y = pdf.get_y() # Get the true end position after multi_cell
+            value_end_y = pdf.get_y()
+            pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
 
-            # Set the next line's start position below the tallest element
-            pdf.set_y(max(key_end_y, value_end_y))
-            pdf.ln(1) # Small gap
-
-    add_bullet_point('Color', data['color'])
-    add_bullet_point('Weight Carrying Capacity', f"{data['capacity']:.2f} KG" if data.get('capacity') else None)
-    add_bullet_point('Lid Required', data['lid'])
-    label_info = f"{data['label_space']} (Size: {data['label_size']})" if data['label_space'] == 'Yes' else data['label_space']
+    add_bullet_point('Color', data.get('color'))
+    add_bullet_point('Weight Carrying Capacity', f"{data.get('capacity', 0):.2f} KG" if data.get('capacity') else None)
+    add_bullet_point('Lid Required', data.get('lid'))
+    label_info = f"{data['label_space']} (Size: {data['label_size']})" if data.get('label_space') == 'Yes' else data.get('label_space')
     add_bullet_point('Space for Label', label_info)
-    add_bullet_point('Stacking - Static', data['stack_static'])
-    add_bullet_point('Stacking - Dynamic', data['stack_dynamic'])
+    add_bullet_point('Stacking - Static', data.get('stack_static'))
+    add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
     pdf.ln(5)
-    # --- END: ROBUST, CORRECTED BULLET POINT FUNCTION ---
+    # --- END: REDESIGNED SECTION ---
 
     # ... (Rest of the document generation remains unchanged) ...
     pdf.section_title('3. Timelines')
@@ -239,7 +229,7 @@ def create_advanced_rfq_pdf(data):
         
     return bytes(pdf.output())
 
-# --- STREAMLIT APP (Unchanged) ---
+# --- STREAMLIT APP ---
 st.title("🏭 Advanced SCM RFQ Generator")
 st.markdown("---")
 
@@ -268,6 +258,7 @@ with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
     purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
 
+    # --- START: UPDATED UI FOR TECHNICAL SPECIFICATIONS ---
     with st.expander("Technical Specifications", expanded=True):
         st.info("Define the items for the vendor to quote on. The PDF will be generated with empty columns for the vendor to fill.")
         
@@ -281,15 +272,16 @@ with st.form(key="advanced_rfq_form"):
         st.markdown("##### Rack Details")
         rack_df = st.data_editor(
             pd.DataFrame([
-                {"Types of Rack": "CRL", "Type of Bin": "Bin B", "HRR": ""},
-                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "HRR": ""},
-                {"Types of Rack": "SR", "Type of Bin": "BIN C", "HRR": ""}
+                {"Types of Rack": "CRL", "Type of Bin": "Bin B", "Final Column": "R"},
+                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Final Column": "C"},
+                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Final Column": "A"},
+                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Final Column": "S"}
             ]),
             num_rows="dynamic", use_container_width=True,
             column_config={
                 "Types of Rack": st.column_config.TextColumn(required=True),
                 "Type of Bin": st.column_config.TextColumn(required=True),
-                "HRR": st.column_config.TextColumn(required=False)
+                "Final Column": st.column_config.TextColumn(label="Level/Bin Value", required=False, help="This value will appear in the last column under the 'Level/Bin' header."),
             }
         )
 
@@ -297,18 +289,19 @@ with st.form(key="advanced_rfq_form"):
         c1, c2 = st.columns(2)
         with c1:
             color = st.text_input("Color", "BLUE")
-            capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 100.0, 5.00, format="%.2f")
-            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=0, horizontal=True)
+            capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 5.00, format="%.2f")
+            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
         with c2:
-            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=0, horizontal=True)
+            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True)
             label_size = "N/A"
             if label_space == "Yes":
-                label_size = st.text_input("Label Size (e.g., 80*50)", "80*50")
+                label_size = st.text_input("Label Size (e.g., 80*50)", "")
         
         st.markdown("###### Stacking Requirements (if applicable)")
         c1, c2 = st.columns(2)
         stack_static = c1.text_input("Static (e.g., 1+3)")
         stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
+    # --- END: UPDATED UI ---
             
     with st.expander("Timelines"):
         today = date.today()
