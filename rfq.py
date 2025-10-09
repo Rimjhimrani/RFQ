@@ -86,7 +86,7 @@ def create_advanced_rfq_pdf(data):
     pdf.create_cover_page(data)
     pdf.add_page()
 
-    pdf.section_title('1. Purpose of Requirement')
+    pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
@@ -191,7 +191,7 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(5)
     # --- END: REDESIGNED SECTION ---
 
-    pdf.section_title('3. Timelines')
+    pdf.section_title('TIMELINES')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
@@ -202,7 +202,7 @@ def create_advanced_rfq_pdf(data):
     for item, date_val in timeline_data: pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-    pdf.section_title('4. Single Point of Contact (for Query Resolution)')
+    pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x(); pdf.set_font('Arial', 'BU', 10); pdf.multi_cell(90, 6, title, 0, 'L'); pdf.ln(1)
         def draw_kv_row(key, value):
@@ -219,7 +219,7 @@ def create_advanced_rfq_pdf(data):
     else: pdf.set_y(end_y1)
     pdf.ln(8)
 
-    pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
+    pdf.section_title('COMMERCIAL REQUIREMENTS')
     pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
     if pdf.get_y() + (len(data['commercial_df']) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
