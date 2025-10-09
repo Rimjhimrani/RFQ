@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from fpdf import FPDF
 import tempfile
 import os
+import requests # Needed to download the font
 
 # --- App Configuration ---
 st.set_page_config(
@@ -11,6 +12,18 @@ st.set_page_config(
     page_icon="🏭",
     layout="wide"
 )
+
+# --- Font Handling: Download a Unicode-compatible font ---
+# This makes the app portable and works on Streamlit Cloud
+FONT_URL = "https://github.com/dejavu-fonts/dejavu-fonts/raw/main/ttf/DejaVuSans.ttf"
+FONT_PATH = "DejaVuSans.ttf"
+if not os.path.exists(FONT_PATH):
+    try:
+        r = requests.get(FONT_URL, allow_redirects=True)
+        open(FONT_PATH, 'wb').write(r.content)
+    except Exception as e:
+        st.error(f"Failed to download the required font. Please check your internet connection. Error: {e}")
+
 
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
@@ -33,7 +46,7 @@ def create_advanced_rfq_pdf(data):
             # Add "CONFIDENTIAL" on the top left, slightly below the logo
             self.set_y(35)
             self.set_x(self.l_margin)
-            self.set_font('Arial', 'B', 14)
+            self.set_font('DejaVu', 'B', 14) # Changed Font
             self.set_text_color(255, 0, 0)
             self.cell(0, 10, 'CONFIDENTIAL')
             self.set_text_color(0, 0, 0)
@@ -53,28 +66,28 @@ def create_advanced_rfq_pdf(data):
 
             # --- Centered Title Block (Your Custom Design) ---
             self.set_y(60)
-            self.set_font('Arial', 'B', 30)
+            self.set_font('DejaVu', 'B', 30) # Changed Font
             self.cell(0, 15, 'Request for Quotation', 0, 1, 'C')
             self.ln(5)
-            self.set_font('Arial', '', 18)
+            self.set_font('DejaVu', '', 18) # Changed Font
             self.cell(0, 8, 'For', 0, 1, 'C')
             self.ln(3)
-            self.set_font('Arial', 'B', 22)
+            self.set_font('DejaVu', 'B', 22) # Changed Font
             self.cell(0, 8, data['Type_of_items'], 0, 1, 'C')
             self.ln(5)
-            self.set_font('Arial', '', 18)
+            self.set_font('DejaVu', '', 18) # Changed Font
             self.cell(0, 8, 'for', 0, 1, 'C')
             self.ln(3)
-            self.set_font('Arial', 'B', 22)
+            self.set_font('DejaVu', 'B', 22) # Changed Font
             self.cell(0, 8, data['Storage'], 0, 1, 'C')
             self.ln(5)
-            self.set_font('Arial', '', 18)
+            self.set_font('DejaVu', '', 18) # Changed Font
             self.cell(0, 8, 'At', 0, 1, 'C')
             self.ln(3)
-            self.set_font('Arial', 'B', 24)
+            self.set_font('DejaVu', 'B', 24) # Changed Font
             self.cell(0, 10, data['company_name'], 0, 1, 'C')
             self.ln(3)
-            self.set_font('Arial', '', 22)
+            self.set_font('DejaVu', '', 22) # Changed Font
             self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
@@ -102,9 +115,9 @@ def create_advanced_rfq_pdf(data):
                     os.remove(tmp.name)
 
             self.set_y(12)
-            self.set_font('Arial', 'B', 16)
+            self.set_font('DejaVu', 'B', 16) # Changed Font
             self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            self.set_font('Arial', 'I', 10)
+            self.set_font('DejaVu', 'I', 10) # Changed Font
             self.cell(0, 6, f"For: {data['main_type']} - {data['sub_type']}", 0, 1, 'C')
             self.ln(15)
 
@@ -122,23 +135,23 @@ def create_advanced_rfq_pdf(data):
 
                 if footer_name:
                     # Set a different font for the name
-                    self.set_font('Arial', 'B', 14) # Bold, size 9
+                    self.set_font('DejaVu', 'B', 14) # Changed Font
                     self.cell(0, 5, footer_name, 0, 1, 'C')
                 
                 if footer_addr:
                     # Set the font for the address
-                    self.set_font('Arial', '', 8) # Regular, size 8
+                    self.set_font('DejaVu', '', 8) # Changed Font
                     self.cell(0, 5, footer_addr, 0, 1, 'C')
                 
                 self.set_text_color(0) # Reset to black
 
             self.set_y(-15)
-            self.set_font('Arial', 'I', 8)
+            self.set_font('DejaVu', 'I', 8) # Changed Font
             self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
             if self.get_y() + 20 > self.page_break_trigger: self.add_page()
-            self.set_font('Arial', 'B', 12)
+            self.set_font('DejaVu', 'B', 12) # Changed Font
             self.set_fill_color(230, 230, 230)
             self.cell(0, 8, title, 0, 1, 'L', fill=True)
             self.ln(4)
@@ -148,24 +161,30 @@ def create_advanced_rfq_pdf(data):
             key_width = 60
             value_width = self.w - self.l_margin - self.r_margin - key_width
             start_y = self.get_y()
-            self.set_font('Arial', 'B', 10)
+            self.set_font('DejaVu', 'B', 10) # Changed Font
             self.multi_cell(key_width, 6, key, border=0, align='L')
             key_end_y = self.get_y()
             self.set_xy(self.l_margin + key_width, start_y)
-            self.set_font('Arial', '', 10)
+            self.set_font('DejaVu', '', 10) # Changed Font
             self.multi_cell(value_width, 6, str(value), border=0, align='L')
             value_end_y = self.get_y()
             self.set_y(max(key_end_y, value_end_y))
             self.ln(1)
             
     pdf = PDF('P', 'mm', 'A4')
+    # --- KEY CHANGE: Add the Unicode font ---
+    pdf.add_font('DejaVu', '', FONT_PATH, uni=True)
+    pdf.add_font('DejaVu', 'B', FONT_PATH, uni=True) # Add bold style
+    pdf.add_font('DejaVu', 'I', FONT_PATH, uni=True) # Add italic style
+    pdf.add_font('DejaVu', 'BU', FONT_PATH, uni=True) # Add bold-underline style if needed
+    
     pdf.alias_nb_pages()
     pdf.add_page()
     pdf.create_cover_page(data)
     pdf.add_page()
 
     pdf.section_title('1. Purpose of Requirement')
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('DejaVu', '', 10) # Changed Font
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
@@ -174,11 +193,11 @@ def create_advanced_rfq_pdf(data):
 
     if data['main_type'] == 'Item Type (Container)':
         # --- BIN DETAILS TABLE ---
-        pdf.set_font('Arial', 'B', 11)
+        pdf.set_font('DejaVu', 'B', 11) # Changed Font
         pdf.cell(0, 10, 'BIN DETAILS', 0, 1, 'L')
         
         # Table Header
-        pdf.set_font('Arial', 'B', 10)
+        pdf.set_font('DejaVu', 'B', 10) # Changed Font
         col_widths = {'type': 35, 'outer': 40, 'inner': 40, 'img': 40, 'qty': 35}
         pdf.cell(col_widths['type'], 8, 'Type of Bin', 1, 0, 'C')
         pdf.cell(col_widths['outer'], 8, 'Bin Outer Dimension (MM)', 1, 0, 'C')
@@ -187,7 +206,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(col_widths['qty'], 8, 'Qty Bin', 1, 1, 'C')
 
         # Table Data Row 1 (from form)
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('DejaVu', '', 10) # Changed Font
         line_height = 8
         outer_dim = f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}" if data['dim_ext_l'] > 0 else ""
         inner_dim = f"{data['dim_int_l']:.2f} x {data['dim_int_w']:.2f} x {data['dim_int_h']:.2f}" if data['dim_int_l'] > 0 else ""
@@ -213,24 +232,24 @@ def create_advanced_rfq_pdf(data):
         if data['label_space'] == 'Yes' and data['label_size']:
              label_text += f" (Size: {data['label_size']})"
              
-        # Re-using key_value_pair function for consistent layout
-        pdf.key_value_pair(u'\u2022 Color:', data['color'])
-        pdf.key_value_pair(u'\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
-        pdf.key_value_pair(u'\u2022 Lid Required:', data['lid'])
-        pdf.key_value_pair(u'\u2022 Space for Label:', label_text)
-        pdf.key_value_pair(u'\u2022 Stacking - Static:', data['stack_static'])
-        pdf.key_value_pair(u'\u2022 Stacking - Dynamic:', data['stack_dynamic'])
+        # Re-using key_value_pair function for consistent layout - This will now work
+        pdf.key_value_pair('\u2022 Color:', data['color'])
+        pdf.key_value_pair('\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
+        pdf.key_value_pair('\u2022 Lid Required:', data['lid'])
+        pdf.key_value_pair('\u2022 Space for Label:', label_text)
+        pdf.key_value_pair('\u2022 Stacking - Static:', data['stack_static'])
+        pdf.key_value_pair('\u2022 Stacking - Dynamic:', data['stack_dynamic'])
     
     else: # This is for Storage Infrastructure
-        pdf.set_font('Arial', 'B', 11)
+        pdf.set_font('DejaVu', 'B', 11) # Changed Font
         pdf.cell(0, 10, 'RACK DETAILS', 0, 1, 'L')
         
         # Placeholder for the RACK DETAILS table - using key-value pairs for now
         pdf.key_value_pair('Types of Rack:', data['sub_type'])
         pdf.key_value_pair('Rack Dimension (MM):', f"{data['dim_ext_l']:.2f} x {data['dim_ext_w']:.2f} x {data['dim_ext_h']:.2f}")
         pdf.ln(4)
-        pdf.key_value_pair(u'\u2022 Color:', data['color'])
-        pdf.key_value_pair(u'\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
+        pdf.key_value_pair('\u2022 Color:', data['color'])
+        pdf.key_value_pair('\u2022 Weight Carrying Capacity:', f"{data['capacity']:.2f} KG")
 
     pdf.ln(5)
     # --- END OF UPDATED SECTION ---
@@ -244,10 +263,10 @@ def create_advanced_rfq_pdf(data):
     
     table_height = (len(timeline_data) + 1) * 8
     if pdf.get_y() + table_height > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 10)
+    pdf.set_font('DejaVu', 'B', 10) # Changed Font
     pdf.cell(80, 8, 'Milestone', 1, 0, 'C')
     pdf.cell(110, 8, 'Date', 1, 1, 'C')
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('DejaVu', '', 10) # Changed Font
     for item, date_val in timeline_data:
         pdf.cell(80, 8, item, 1, 0, 'L')
         pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
@@ -256,17 +275,17 @@ def create_advanced_rfq_pdf(data):
     pdf.section_title('4. Single Point of Contact (for Query Resolution)')
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x()
-        pdf.set_font('Arial', 'BU', 10)
+        pdf.set_font('DejaVu', 'BU', 10) # Changed Font
         pdf.multi_cell(90, 6, title, 0, 'L')
         pdf.ln(1)
         def draw_kv_row(key, value):
-            key_str, value_str = str(key).encode('latin-1', 'replace').decode('latin-1'), str(value).encode('latin-1', 'replace').decode('latin-1')
+            key_str, value_str = str(key), str(value)
             row_start_y = pdf.get_y()
             pdf.set_x(col_start_x)
-            pdf.set_font('Arial', 'B', 10)
+            pdf.set_font('DejaVu', 'B', 10) # Changed Font
             pdf.cell(25, 6, key_str, 0, 0, 'L')
             pdf.set_xy(col_start_x + 25, row_start_y)
-            pdf.set_font('Arial', '', 10)
+            pdf.set_font('DejaVu', '', 10) # Changed Font
             pdf.multi_cell(65, 6, value_str, 0, 'L')
         draw_kv_row("Name:", name)
         draw_kv_row("Designation:", designation)
@@ -288,19 +307,19 @@ def create_advanced_rfq_pdf(data):
     pdf.ln(8)
 
     pdf.section_title('5. Commercial Requirements (To be filled by vendor)')
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('DejaVu', '', 10) # Changed Font
     pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", border=0, align='L')
     pdf.ln(4)
     table_height = (len(data['commercial_df']) + 1) * 8
     if pdf.get_y() + table_height > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 10)
+    pdf.set_font('DejaVu', 'B', 10) # Changed Font
     pdf.cell(80, 8, 'Cost Component', 1, 0, 'C')
     pdf.cell(40, 8, 'Amount', 1, 0, 'C')
     pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('DejaVu', '', 10) # Changed Font
     for index, row in data['commercial_df'].iterrows():
-        component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
-        remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
+        component = str(row['Cost Component'])
+        remarks = str(row['Remarks'])
         pdf.cell(80, 8, component, 1, 0, 'L')
         pdf.cell(40, 8, '', 1, 0)
         pdf.cell(70, 8, remarks, 1, 1, 'L')
@@ -403,6 +422,8 @@ with st.form(key="advanced_rfq_form"):
 if submitted:
     if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage]):
         st.error("⚠️ Please fill in all mandatory fields: Purpose, Primary Contact, and all Cover Page details.")
+    elif not os.path.exists(FONT_PATH):
+         st.error("Font file not found. PDF generation failed.")
     else:
         logo1_data = logo1_file.getvalue() if logo1_file else None
         logo2_data = logo2_file.getvalue() if logo2_file else None
