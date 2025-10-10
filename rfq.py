@@ -189,14 +189,6 @@ with st.form(key="advanced_rfq_form"):
         submit_to_registered_office = st.text_input("Submit To (Address)", "Nanerwadi, Wagholi")
         
         st.markdown("---")
-        st.markdown("##### Logos for Final Page (Optional)")
-        c1, c2 = st.columns(2)
-        with c1:
-            logo_eka_file = st.file_uploader("Upload First Logo (Left Side)", type=['png', 'jpg', 'jpeg'])
-        with c2:
-            logo_agilo_file = st.file_uploader("Upload Second Logo (Right Side)", type=['png', 'jpg', 'jpeg'])
-        
-        st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
         delivery_location = st.text_area("Delivery Location Address*", "Quarter no:- 1136, Sector:- 6/C, Steel City\nNear Hanuman Mandir", height=100)
         annexures = st.text_area("Annexures (one item per line)", "Please attach technical datasheets for all quoted items.\nA company profile document is requested.", height=100)
