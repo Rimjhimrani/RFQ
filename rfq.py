@@ -242,9 +242,9 @@ def create_advanced_rfq_pdf(data):
 
         pdf.set_font('Arial', '', 12)
         pdf.set_x(pdf.l_margin + 15)
-        pdf.cell(0, 7, data.get('submit_to_placeholder_name', 'Company Name'), 0, 1)
+        pdf.cell(0, 7, data.get('submit_to_placeholder_name'), 0, 1)
         pdf.set_x(pdf.l_margin + 15)
-        pdf.cell(0, 7, data.get('submit_to_placeholder_address', 'Company Full Address'), 0, 1)
+        pdf.cell(0, 7, data.get('submit_to_placeholder_address'), 0, 1)
         pdf.ln(6)
 
         pdf.set_x(pdf.l_margin + 15)
