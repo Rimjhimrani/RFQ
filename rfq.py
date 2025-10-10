@@ -213,7 +213,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_xy(pdf.l_margin + 98, start_y); draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email']); end_y2 = pdf.get_y()
         pdf.set_y(max(end_y1, end_y2))
     else: pdf.set_y(end_y1)
-    pdf.ln(8)
+    pdf.ln(5)
 
     pdf.section_title('COMMERCIAL REQUIREMENTS')
     pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
@@ -257,31 +257,7 @@ def create_advanced_rfq_pdf(data):
             pdf.set_text_color(0, 0, 0)
         # --- MODIFICATION END ---
 
-    pdf.ln(15)
-
-    # --- Logos ---
-    y_before_logos = pdf.get_y()
-    x_cursor = pdf.l_margin + 15
-    logo_drawn = False
-    if data.get('logo_eka_data'):
-        logo_drawn = True
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(data['logo_eka_data'])
-            tmp.flush()
-            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=40, h=20)
-            os.remove(tmp.name)
-        x_cursor += 70
-
-    if data.get('logo_agilo_data'):
-        logo_drawn = True
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(data['logo_agilo_data'])
-            tmp.flush()
-            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=60, h=20)
-            os.remove(tmp.name)
-
-    if logo_drawn:
-      pdf.set_y(y_before_logos + 30)
+    pdf.ln(5)
 
     # --- Delivery Location ---
     if data.get('delivery_location'):
@@ -398,14 +374,6 @@ with st.form(key="advanced_rfq_form"):
         submit_to_name = st.text_input("Submit To (Company Name)*", "Agilomatrix Pvt. Ltd.")
         submit_to_color = st.color_picker("Company Name Color", "#DC3232")
         submit_to_registered_office = st.text_input("Submit To (Registered Office Address)", "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
-        
-        st.markdown("---")
-        st.markdown("##### Logos for Final Section (Optional)")
-        c1, c2 = st.columns(2)
-        with c1:
-            logo_eka_file = st.file_uploader("Upload First Logo (e.g., 'EKA')", type=['png', 'jpg', 'jpeg'], key="logo_eka")
-        with c2:
-            logo_agilo_file = st.file_uploader("Upload Second Logo (e.g., 'Agilomatrix')", type=['png', 'jpg', 'jpeg'], key="logo_agilo")
 
         st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
