@@ -234,7 +234,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
         pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-        pdf.ln(6) # Add a line break for spacing
+        pdf.ln(5) # Add a line break for spacing
 
         # --- MODIFICATION START ---
         # The static text "Company Name" and "Company Full Address" has been removed.
@@ -257,7 +257,7 @@ def create_advanced_rfq_pdf(data):
             pdf.set_text_color(0, 0, 0)
         # --- MODIFICATION END ---
 
-    pdf.ln(10)
+    pdf.ln(5)
 
     # --- Delivery Location ---
     if data.get('delivery_location'):
