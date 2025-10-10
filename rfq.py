@@ -129,6 +129,39 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
 
+    # --- Rack Details Table ---
+    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
+    pdf.set_font('Arial', 'B', 12)
+    rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
+    rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
+
+    y_start = pdf.get_y()
+    x_cursor = pdf.l_margin
+    for i, header in enumerate(rack_headers):
+        col_width = rack_col_widths[i]
+        num_lines = header.count('\n') + 1
+        text_height = num_lines * line_height
+        y_text = y_start + (total_header_height - text_height) / 2
+        pdf.set_xy(x_cursor, y_text)
+        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
+        pdf.rect(x_cursor, y_start, col_width, total_header_height)
+        x_cursor += col_width
+
+    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
+
+    pdf.set_font('Arial', '', 10)
+    num_rack_rows = max(4, len(data['rack_details_df']))
+    for i in range(num_rack_rows):
+        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
+        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
+    pdf.ln(8)
+
     # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
@@ -192,7 +225,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
 
     # --- START: MODIFIED FINAL SECTION (NOW DYNAMIC) ---
-    pdf.ln(5)
+    pdf.ln(10)
     if pdf.get_y() + 90 > pdf.page_break_trigger:
         pdf.add_page()
 
@@ -201,7 +234,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
         pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-        pdf.ln(5) # Add a line break for spacing
+        pdf.ln(6) # Add a line break for spacing
 
         # --- MODIFICATION START ---
         # The static text "Company Name" and "Company Full Address" has been removed.
@@ -224,7 +257,31 @@ def create_advanced_rfq_pdf(data):
             pdf.set_text_color(0, 0, 0)
         # --- MODIFICATION END ---
 
-    pdf.ln(5)
+    pdf.ln(15)
+
+    # --- Logos ---
+    y_before_logos = pdf.get_y()
+    x_cursor = pdf.l_margin + 15
+    logo_drawn = False
+    if data.get('logo_eka_data'):
+        logo_drawn = True
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp.write(data['logo_eka_data'])
+            tmp.flush()
+            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=40, h=20)
+            os.remove(tmp.name)
+        x_cursor += 70
+
+    if data.get('logo_agilo_data'):
+        logo_drawn = True
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp.write(data['logo_agilo_data'])
+            tmp.flush()
+            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=60, h=20)
+            os.remove(tmp.name)
+
+    if logo_drawn:
+      pdf.set_y(y_before_logos + 30)
 
     # --- Delivery Location ---
     if data.get('delivery_location'):
@@ -235,7 +292,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
-    pdf.ln(5)
+    pdf.ln(10)
 
     # --- Annexures ---
     if data.get('annexures'):
@@ -286,7 +343,20 @@ with st.form(key="advanced_rfq_form"):
             num_rows="dynamic", use_container_width=True,
             column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
         )
-
+        st.markdown("##### Rack Details")
+        rack_df = st.data_editor(
+            pd.DataFrame([
+                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
+                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
+                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
+            ]),
+            num_rows="dynamic", use_container_width=True,
+            column_config={
+                "Types of Rack": st.column_config.TextColumn(required=True),
+                "Type of Bin": st.column_config.TextColumn(required=True),
+                "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
+            }
+        )
         st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
@@ -355,7 +425,7 @@ if submitted:
                 'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df, 
+                'bin_details_df': bin_df, 'rack_details_df': rack_df,
                 'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
                 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
                 'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
