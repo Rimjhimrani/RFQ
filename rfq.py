@@ -19,7 +19,6 @@ def create_advanced_rfq_pdf(data):
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
-            # This method remains unchanged
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35); logo1_h = data.get('logo1_h', 20)
             if logo1_data:
@@ -49,7 +48,7 @@ def create_advanced_rfq_pdf(data):
 
         def header(self):
             # The standard header should not appear on the cover page or the new final page
-            if self.page_no() == 1 or self.page_no() == self.pages_count + 1: return
+            if self.page_no() == 1 or getattr(self, 'is_final_page', False): return
             logo1_data = data.get('logo1_data')
             logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 20)
             if logo1_data:
@@ -69,7 +68,6 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'I', 10); self.cell(0, 6, f"For: {data['Type_of_items']}", 0, 1, 'C'); self.ln(15)
 
         def footer(self):
-            # This method remains unchanged
             self.set_y(-25)
             footer_name, footer_addr = data.get('footer_company_name'), data.get('footer_company_address')
             if footer_name or footer_addr:
@@ -80,7 +78,6 @@ def create_advanced_rfq_pdf(data):
             self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
-            # This method remains unchanged
             if self.get_y() + 20 > self.page_break_trigger: self.add_page()
             self.set_font('Arial', 'B', 12); self.set_fill_color(230, 230, 230); self.cell(0, 8, title, 0, 1, 'L', fill=True); self.ln(4)
 
@@ -89,33 +86,56 @@ def create_advanced_rfq_pdf(data):
     pdf.add_page()
     pdf.create_cover_page(data)
     pdf.add_page()
-    
-    # --- All standard sections remain the same ---
+
+    # --- Standard Sections ---
     pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
     pdf.section_title('TECHNICAL SPECIFICATION')
-    # ... (code for Bin, Rack, and other technical details remains unchanged)
+    # ... (code for technical specification tables and details)
     
+    pdf.section_title('TIMELINES')
+    # ... (code for timelines table)
+    
+    pdf.section_title('SINGLE POINT OF CONTACT')
+    # ... (code for SPOC details)
+    
+    pdf.section_title('COMMERCIAL REQUIREMENTS')
+    # ... (code for commercial requirements table)
+
     # --- START: NEW FINAL PAGE AS PER IMAGE ---
     def create_final_page(pdf_obj, data_dict):
         pdf_obj.add_page()
-        
+        pdf_obj.is_final_page = True # Flag to suppress standard header
+
         # --- Header section on this specific page ---
+        if data_dict.get('logo_eka_data'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                tmp.write(data_dict['logo_eka_data']); tmp.flush()
+                pdf_obj.image(tmp.name, x=pdf_obj.l_margin, y=20, w=40)
+                os.remove(tmp.name)
+        
+        if data_dict.get('logo_agilo_data'):
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                tmp.write(data_dict['logo_agilo_data']); tmp.flush()
+                img_w = 40
+                x_pos = pdf_obj.w - pdf_obj.r_margin - img_w
+                pdf_obj.image(tmp.name, x=x_pos, y=20, w=img_w)
+                os.remove(tmp.name)
+
         pdf_obj.set_y(45); pdf_obj.set_font('Arial', 'B', 16)
         pdf_obj.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
         pdf_obj.set_font('Arial', '', 12)
         pdf_obj.cell(0, 8, f"For: {data_dict['Type_of_items']}", 0, 1, 'C')
         pdf_obj.ln(25)
 
-        # --- Quotation Submission Details (WITHOUT PLACEHOLDERS) ---
+        # --- Quotation Submission Details ---
         if data_dict.get('submit_to_name'):
             pdf_obj.set_font('Arial', 'B', 12)
             pdf_obj.cell(5, 8, chr(149)); pdf_obj.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
             pdf_obj.ln(8)
-            
             pdf_obj.set_x(pdf_obj.l_margin + 15)
             pdf_obj.set_font('Arial', '', 12)
             hex_color = data_dict.get('submit_to_color', '#DC3232').lstrip('#')
@@ -123,7 +143,6 @@ def create_advanced_rfq_pdf(data):
             pdf_obj.set_text_color(r, g, b)
             pdf_obj.cell(0, 7, data_dict.get('submit_to_name'), 0, 1)
             pdf_obj.set_text_color(0, 0, 0)
-
             if data_dict.get('submit_to_registered_office'):
                 pdf_obj.set_x(pdf_obj.l_margin + 15)
                 pdf_obj.set_font('Arial', '', 10); pdf_obj.set_text_color(128, 128, 128)
@@ -139,7 +158,7 @@ def create_advanced_rfq_pdf(data):
             pdf_obj.set_font('Arial', '', 11); pdf_obj.set_x(pdf_obj.l_margin + 15)
             pdf_obj.multi_cell(0, 6, data_dict.get('delivery_location'), 0, 'L')
         pdf_obj.ln(15)
-        
+
         # --- Annexures ---
         if data_dict.get('annexures'):
             pdf_obj.set_font('Arial', 'B', 12)
@@ -150,7 +169,7 @@ def create_advanced_rfq_pdf(data):
 
     # Add the final page at the end of the document
     create_final_page(pdf, data)
-        
+    
     return bytes(pdf.output())
 
 # --- STREAMLIT APP ---
@@ -168,7 +187,6 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_w = st.number_input("Logo 2 Width (mm)", 5, 50, 30, 1)
         logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
 
-# ... (All other expanders and form elements remain the same)
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins & Line Side Racks")
     Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
@@ -181,12 +199,36 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
 
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
-    # ... (All form elements like purpose, technical specs, timelines, SPOC, commercial remain the same)
+    
+    purpose = st.text_area("Purpose of Requirement*", "Briefly describe the purpose of this RFQ.", height=100)
+    
+    with st.expander("Technical Specifications", expanded=True):
+        # ... (Technical specs form elements)
+        bin_df = pd.DataFrame() # Placeholder
+        rack_df = pd.DataFrame() # Placeholder
+        color, capacity, lid, label_space, label_size, stack_static, stack_dynamic = [None]*7
+
+    with st.expander("Timelines"):
+        today = date.today()
+        date_release, date_query, date_meet, date_selection, date_delivery, date_quote, date_install, date_review = [today]*8
+
+    with st.expander("Single Point of Contact (SPOC)"):
+        spoc1_name, spoc1_designation, spoc1_phone, spoc1_email, spoc2_name, spoc2_designation, spoc2_phone, spoc2_email = [""]*8
+        
+    with st.expander("Commercial Requirements"):
+        edited_commercial_df = pd.DataFrame() # Placeholder
+
     with st.expander("Submission, Delivery & Annexures"):
         st.markdown("##### Quotation Submission Details*")
         submit_to_name = st.text_input("Submit To (Company Name)*", "Pinnacle Mobility Solutions Pvt. Ltd.")
         submit_to_color = st.color_picker("Company Name Color", "#DC3232")
         submit_to_registered_office = st.text_input("Submit To (Address)", "Nanerwadi, Wagholi")
+        
+        st.markdown("---")
+        st.markdown("##### Logos for Final Page (Optional)")
+        c1, c2 = st.columns(2)
+        with c1: logo_eka_file = st.file_uploader("Upload First Logo (Left Side)", type=['png', 'jpg', 'jpeg'], key="logo_eka")
+        with c2: logo_agilo_file = st.file_uploader("Upload Second Logo (Right Side)", type=['png', 'jpg', 'jpeg'], key="logo_agilo")
         
         st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
@@ -196,7 +238,7 @@ with st.form(key="advanced_rfq_form"):
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    if not all([Type_of_items, Storage, company_name, company_address, submit_to_name, delivery_location]):
+    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage, submit_to_name, delivery_location]):
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
@@ -205,11 +247,18 @@ if submitted:
                 'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
                 'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
-                # ... (rest of the data dictionary remains the same)
-                # --- UPDATED FIELDS FOR FINAL PAGE ---
-                'submit_to_name': submit_to_name,
-                'submit_to_color': submit_to_color,
-                'submit_to_registered_office': submit_to_registered_office,
+                'purpose': purpose,
+                'bin_details_df': bin_df, 'rack_details_df': rack_df,
+                'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
+                'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
+                'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
+                'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
+                'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
+                'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
+                'commercial_df': edited_commercial_df,
+                'submit_to_name': submit_to_name, 'submit_to_color': submit_to_color, 'submit_to_registered_office': submit_to_registered_office,
+                'logo_eka_data': logo_eka_file.getvalue() if logo_eka_file else None,
+                'logo_agilo_data': logo_agilo_file.getvalue() if logo_agilo_file else None,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
