@@ -101,9 +101,8 @@ def create_advanced_rfq_pdf(data):
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [40, 38, 38, 37, 37]
 
-    # MODIFIED: Draw headers with uniform height and centered text
-    total_header_height = 16  # Max height for 2 lines
-    line_height = 8           # Height per line of text
+    total_header_height = 16
+    line_height = 8
     y_start = pdf.get_y()
     x_cursor = pdf.l_margin
 
@@ -112,7 +111,6 @@ def create_advanced_rfq_pdf(data):
         num_lines = header.count('\n') + 1
         text_height = num_lines * line_height
         y_text = y_start + (total_header_height - text_height) / 2
-
         pdf.set_xy(x_cursor, y_text)
         pdf.multi_cell(col_width, line_height, header, border=0, align='C')
         pdf.rect(x_cursor, y_start, col_width, total_header_height)
@@ -138,7 +136,6 @@ def create_advanced_rfq_pdf(data):
     rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
     rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
 
-    # MODIFIED: Draw headers with uniform height and centered text
     y_start = pdf.get_y()
     x_cursor = pdf.l_margin
     for i, header in enumerate(rack_headers):
@@ -146,7 +143,6 @@ def create_advanced_rfq_pdf(data):
         num_lines = header.count('\n') + 1
         text_height = num_lines * line_height
         y_text = y_start + (total_header_height - text_height) / 2
-
         pdf.set_xy(x_cursor, y_text)
         pdf.multi_cell(col_width, line_height, header, border=0, align='C')
         pdf.rect(x_cursor, y_start, col_width, total_header_height)
@@ -238,31 +234,29 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
         pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-        pdf.ln(4)
+        pdf.ln(6) # Add a line break for spacing
 
-        pdf.set_font('Arial', '', 12)
-        pdf.set_x(pdf.l_margin + 15)
-        pdf.cell(0, 7, data.get('submit_to_placeholder_name', 'Company Name'), 0, 1)
-        pdf.set_x(pdf.l_margin + 15)
-        pdf.cell(0, 7, data.get('submit_to_placeholder_address', 'Company Full Address'), 0, 1)
-        pdf.ln(6)
+        # --- MODIFICATION START ---
+        # The static text "Company Name" and "Company Full Address" has been removed.
+        # Now, we directly print the user-provided values.
 
         pdf.set_x(pdf.l_margin + 15)
         pdf.set_font('Arial', '', 12)
-        # Utility to convert hex to RGB
-        hex_color = data.get('submit_to_color', '#000000').lstrip('#')
+        hex_color = data.get('submit_to_color', '#DC3232').lstrip('#')
         r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         pdf.set_text_color(r, g, b)
-        pdf.cell(0, 8, data.get('submit_to_name'))
+        pdf.multi_cell(0, 7, data.get('submit_to_name', '')) # Using multi_cell for safety
         pdf.set_text_color(0, 0, 0)
-        pdf.ln(8)
+        pdf.ln(1)
 
         if data.get('submit_to_registered_office'):
             pdf.set_x(pdf.l_margin + 15)
             pdf.set_font('Arial', '', 10)
             pdf.set_text_color(128, 128, 128)
-            pdf.cell(0, 6, data.get('submit_to_registered_office'), 0, 1)
+            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L') # Using multi_cell for safety
             pdf.set_text_color(0, 0, 0)
+        # --- MODIFICATION END ---
+
     pdf.ln(15)
 
     # --- Logos ---
@@ -276,7 +270,7 @@ def create_advanced_rfq_pdf(data):
             tmp.flush()
             pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=40, h=20)
             os.remove(tmp.name)
-        x_cursor += 70 # spacing
+        x_cursor += 70
 
     if data.get('logo_agilo_data'):
         logo_drawn = True
@@ -287,7 +281,7 @@ def create_advanced_rfq_pdf(data):
             os.remove(tmp.name)
 
     if logo_drawn:
-      pdf.set_y(y_before_logos + 30) # Move cursor below logos
+      pdf.set_y(y_before_logos + 30)
 
     # --- Delivery Location ---
     if data.get('delivery_location'):
@@ -312,7 +306,6 @@ def create_advanced_rfq_pdf(data):
 
     return bytes(pdf.output())
 
-
 # --- STREAMLIT APP ---
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
@@ -320,11 +313,11 @@ st.markdown("---")
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
-        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'])
+        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'], key="logo1")
         logo1_w = st.number_input("Logo 1 Width (mm)", 5, 50, 30, 1)
         logo1_h = st.number_input("Logo 1 Height (mm)", 5, 50, 15, 1)
     with c2:
-        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'])
+        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'], key="logo2")
         logo2_w = st.number_input("Logo 2 Width (mm)", 5, 50, 30, 1)
         logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
 
@@ -344,14 +337,12 @@ with st.form(key="advanced_rfq_form"):
 
     with st.expander("Technical Specifications", expanded=True):
         st.info("Define the items for the vendor to quote on. The PDF will be generated with empty columns for the vendor to fill.")
-
         st.markdown("##### Bin Details")
         bin_df = st.data_editor(
             pd.DataFrame([{"Type of Bin": "TOTE"}, {"Type of Bin": "BIN C"}, {"Type of Bin": "BIN D"}]),
             num_rows="dynamic", use_container_width=True,
             column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
         )
-
         st.markdown("##### Rack Details")
         rack_df = st.data_editor(
             pd.DataFrame([
@@ -366,7 +357,6 @@ with st.form(key="advanced_rfq_form"):
                 "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
             }
         )
-
         st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
@@ -378,7 +368,6 @@ with st.form(key="advanced_rfq_form"):
             label_size = "N/A"
             if label_space == "Yes":
                 label_size = st.text_input("Label Size (e.g., 80*50)", "")
-
         st.markdown("###### Stacking Requirements (if applicable)")
         c1, c2 = st.columns(2)
         stack_static = c1.text_input("Static (e.g., 1+3)")
@@ -404,7 +393,6 @@ with st.form(key="advanced_rfq_form"):
     with st.expander("Commercial Requirements"):
         edited_commercial_df = st.data_editor(pd.DataFrame([{"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},{"Cost Component": "Freight", "Remarks": "Specify if included or extra."},{"Cost Component": "Any other Handling Cost", "Remarks": ""},{"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}]), num_rows="dynamic", use_container_width=True)
 
-    # --- NEW: EXPANDER FOR SUBMISSION, DELIVERY, AND ANNEXURES ---
     with st.expander("Submission, Delivery & Annexures"):
         st.markdown("##### Quotation Submission Details*")
         submit_to_name = st.text_input("Submit To (Company Name)*", "Agilomatrix Pvt. Ltd.")
@@ -412,10 +400,17 @@ with st.form(key="advanced_rfq_form"):
         submit_to_registered_office = st.text_input("Submit To (Registered Office Address)", "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
         
         st.markdown("---")
+        st.markdown("##### Logos for Final Section (Optional)")
+        c1, c2 = st.columns(2)
+        with c1:
+            logo_eka_file = st.file_uploader("Upload First Logo (e.g., 'EKA')", type=['png', 'jpg', 'jpeg'], key="logo_eka")
+        with c2:
+            logo_agilo_file = st.file_uploader("Upload Second Logo (e.g., 'Agilomatrix')", type=['png', 'jpg', 'jpeg'], key="logo_agilo")
+
+        st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
         delivery_location = st.text_area("Delivery Location Address*", height=100)
         annexures = st.text_area("Annexures (one item per line)", height=100)
-
 
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
@@ -430,8 +425,7 @@ if submitted:
                 'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df,
-                'rack_details_df': rack_df,
+                'bin_details_df': bin_df, 'rack_details_df': rack_df,
                 'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
                 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
                 'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
@@ -439,10 +433,9 @@ if submitted:
                 'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
                 'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
                 'commercial_df': edited_commercial_df,
-                # --- ADDING NEW FIELDS TO DATA DICTIONARY ---
-                'submit_to_name': submit_to_name,
-                'submit_to_color': submit_to_color,
-                'submit_to_registered_office': submit_to_registered_office,
+                'submit_to_name': submit_to_name, 'submit_to_color': submit_to_color, 'submit_to_registered_office': submit_to_registered_office,
+                'logo_eka_data': logo_eka_file.getvalue() if logo_eka_file else None,
+                'logo_agilo_data': logo_agilo_file.getvalue() if logo_agilo_file else None,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
