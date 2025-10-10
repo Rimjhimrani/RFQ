@@ -314,7 +314,7 @@ def create_advanced_rfq_pdf(data):
 
 
 # --- STREAMLIT APP ---
-st.title("🏭 Advanced SCM RFQ Generator")
+st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
