@@ -7,7 +7,7 @@ import os
 
 # --- App Configuration ---
 st.set_page_config(
-    page_title="Advanced SCM RFQ Generator",
+    page_title="RFQ Generator",
     page_icon="🏭",
     layout="wide"
 )
