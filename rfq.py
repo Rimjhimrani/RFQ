@@ -412,14 +412,6 @@ with st.form(key="advanced_rfq_form"):
         submit_to_registered_office = st.text_input("Submit To (Registered Office Address)", "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
         
         st.markdown("---")
-        st.markdown("##### Logos for Final Section (Optional)")
-        c1, c2 = st.columns(2)
-        with c1:
-            logo_eka_file = st.file_uploader("Upload First Logo (e.g., 'EKA')", type=['png', 'jpg', 'jpeg'])
-        with c2:
-            logo_agilo_file = st.file_uploader("Upload Second Logo (e.g., 'Agilomatrix')", type=['png', 'jpg', 'jpeg'])
-        
-        st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
         delivery_location = st.text_area("Delivery Location Address*", height=100)
         annexures = st.text_area("Annexures (one item per line)", height=100)
@@ -453,8 +445,6 @@ if submitted:
                 'submit_to_registered_office': submit_to_registered_office,
                 'submit_to_placeholder_name': 'Company Name', # Placeholder text from image
                 'submit_to_placeholder_address': 'Company Full Address', # Placeholder text from image
-                'logo_eka_data': logo_eka_file.getvalue() if logo_eka_file else None,
-                'logo_agilo_data': logo_agilo_file.getvalue() if logo_agilo_file else None,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
