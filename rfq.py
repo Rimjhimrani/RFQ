@@ -225,7 +225,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
 
     # --- START: MODIFIED FINAL SECTION (NOW DYNAMIC) ---
-    pdf.ln(10)
+    pdf.ln(5)
     if pdf.get_y() + 90 > pdf.page_break_trigger:
         pdf.add_page()
 
@@ -257,31 +257,7 @@ def create_advanced_rfq_pdf(data):
             pdf.set_text_color(0, 0, 0)
         # --- MODIFICATION END ---
 
-    pdf.ln(15)
-
-    # --- Logos ---
-    y_before_logos = pdf.get_y()
-    x_cursor = pdf.l_margin + 15
-    logo_drawn = False
-    if data.get('logo_eka_data'):
-        logo_drawn = True
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(data['logo_eka_data'])
-            tmp.flush()
-            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=40, h=20)
-            os.remove(tmp.name)
-        x_cursor += 70
-
-    if data.get('logo_agilo_data'):
-        logo_drawn = True
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-            tmp.write(data['logo_agilo_data'])
-            tmp.flush()
-            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=60, h=20)
-            os.remove(tmp.name)
-
-    if logo_drawn:
-      pdf.set_y(y_before_logos + 30)
+    pdf.ln(10)
 
     # --- Delivery Location ---
     if data.get('delivery_location'):
@@ -292,7 +268,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
-    pdf.ln(10)
+    pdf.ln(5)
 
     # --- Annexures ---
     if data.get('annexures'):
