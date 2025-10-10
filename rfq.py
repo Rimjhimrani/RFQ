@@ -15,11 +15,10 @@ st.set_page_config(
 # --- PDF Generation Function (Final, Corrected Version) ---
 def create_advanced_rfq_pdf(data):
     """
-    Generates a professional RFQ document with a dedicated final page for submission details.
+    Generates a professional RFQ document with clean, standard tabular layouts.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
-            # This method remains unchanged
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35); logo1_h = data.get('logo1_h', 20)
             if logo1_data:
@@ -48,8 +47,7 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', '', 22); self.cell(0, 10, data['company_address'], 0, 1, 'C')
 
         def header(self):
-            # The standard header should not appear on the cover page or the new final page
-            if self.page_no() == 1 or self.page_no() == self.pages_count + 1: return
+            if self.page_no() == 1: return
             logo1_data = data.get('logo1_data')
             logo1_w, logo1_h = data.get('logo1_w', 35), data.get('logo1_h', 20)
             if logo1_data:
@@ -69,7 +67,6 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'I', 10); self.cell(0, 6, f"For: {data['Type_of_items']}", 0, 1, 'C'); self.ln(15)
 
         def footer(self):
-            # This method remains unchanged
             self.set_y(-25)
             footer_name, footer_addr = data.get('footer_company_name'), data.get('footer_company_address')
             if footer_name or footer_addr:
@@ -80,7 +77,6 @@ def create_advanced_rfq_pdf(data):
             self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
-            # This method remains unchanged
             if self.get_y() + 20 > self.page_break_trigger: self.add_page()
             self.set_font('Arial', 'B', 12); self.set_fill_color(230, 230, 230); self.cell(0, 8, title, 0, 1, 'L', fill=True); self.ln(4)
 
@@ -89,83 +85,233 @@ def create_advanced_rfq_pdf(data):
     pdf.add_page()
     pdf.create_cover_page(data)
     pdf.add_page()
-    
-    # --- All standard sections remain the same ---
+
     pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    pdf.section_title('TECHNICAL SPECIFICATION')
-    # ... (code for Bin, Rack, and other technical details remains unchanged)
-    
-    # --- START: NEW FINAL PAGE AS PER IMAGE ---
-    def create_final_page(pdf_obj, data_dict):
-        pdf_obj.add_page()
-        
-        # --- Header section on this specific page ---
-        if data_dict.get('logo_eka_data'):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(data_dict['logo_eka_data']); tmp.flush()
-                pdf_obj.image(tmp.name, x=pdf_obj.l_margin, y=20, w=40)
-                os.remove(tmp.name)
+    # --- START: NEW CLEAN TABLE-BASED TECHNICAL SPECIFICATION SECTION ---
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(0, 8, 'TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
 
-        if data_dict.get('logo_agilo_data'):
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                tmp.write(data_dict['logo_agilo_data']); tmp.flush()
-                img_w = 40
-                x_pos = pdf_obj.w - pdf_obj.r_margin - img_w
-                pdf_obj.image(tmp.name, x=x_pos, y=20, w=img_w)
-                os.remove(tmp.name)
-        
-        pdf_obj.set_y(45); pdf_obj.set_font('Arial', 'B', 16)
-        pdf_obj.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
-        pdf_obj.set_font('Arial', '', 12)
-        pdf_obj.cell(0, 8, f"For: {data_dict['Type_of_items']}", 0, 1, 'C')
-        pdf_obj.ln(25)
+    # --- Bin Details Table ---
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
+    pdf.set_font('Arial', 'B', 12)
+    bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
+    bin_col_widths = [40, 38, 38, 37, 37]
 
-        # --- Quotation Submission Details (WITHOUT PLACEHOLDERS) ---
-        if data_dict.get('submit_to_name'):
-            pdf_obj.set_font('Arial', 'B', 12)
-            pdf_obj.cell(5, 8, chr(149)); pdf_obj.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-            pdf_obj.ln(8)
-            
-            pdf_obj.set_x(pdf_obj.l_margin + 15)
-            pdf_obj.set_font('Arial', '', 12)
-            hex_color = data_dict.get('submit_to_color', '#DC3232').lstrip('#')
-            r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-            pdf_obj.set_text_color(r, g, b)
-            pdf_obj.cell(0, 7, data_dict.get('submit_to_name'), 0, 1)
-            pdf_obj.set_text_color(0, 0, 0)
+    # MODIFIED: Draw headers with uniform height and centered text
+    total_header_height = 16  # Max height for 2 lines
+    line_height = 8           # Height per line of text
+    y_start = pdf.get_y()
+    x_cursor = pdf.l_margin
 
-            if data_dict.get('submit_to_registered_office'):
-                pdf_obj.set_x(pdf_obj.l_margin + 15)
-                pdf_obj.set_font('Arial', '', 10); pdf_obj.set_text_color(128, 128, 128)
-                pdf_obj.multi_cell(0, 6, data_dict.get('submit_to_registered_office'), 0, 'L')
-                pdf_obj.set_text_color(0, 0, 0)
-        pdf_obj.ln(15)
+    for i, header in enumerate(bin_headers):
+        col_width = bin_col_widths[i]
+        num_lines = header.count('\n') + 1
+        text_height = num_lines * line_height
+        y_text = y_start + (total_header_height - text_height) / 2
 
-        # --- Delivery Location ---
-        if data_dict.get('delivery_location'):
-            pdf_obj.set_font('Arial', 'B', 12)
-            pdf_obj.cell(5, 8, chr(149)); pdf_obj.cell(0, 8, 'Delivery Location:', 0, 1)
-            pdf_obj.ln(4)
-            pdf_obj.set_font('Arial', '', 11); pdf_obj.set_x(pdf_obj.l_margin + 15)
-            pdf_obj.multi_cell(0, 6, data_dict.get('delivery_location'), 0, 'L')
-        pdf_obj.ln(15)
-        
-        # --- Annexures ---
-        if data_dict.get('annexures'):
-            pdf_obj.set_font('Arial', 'B', 12)
-            pdf_obj.cell(5, 8, chr(149)); pdf_obj.cell(0, 8, 'ANNEXURES:', 0, 1)
-            pdf_obj.ln(4)
-            pdf_obj.set_font('Arial', '', 11); pdf_obj.set_x(pdf_obj.l_margin + 15)
-            pdf_obj.multi_cell(0, 6, data_dict.get('annexures'), 0, 'L')
+        pdf.set_xy(x_cursor, y_text)
+        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
+        pdf.rect(x_cursor, y_start, col_width, total_header_height)
+        x_cursor += col_width
 
-    # Add the final page at the end of the document
-    create_final_page(pdf, data)
-        
+    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
+
+    pdf.set_font('Arial', '', 10)
+    num_bin_rows = max(4, len(data['bin_details_df']))
+    for i in range(num_bin_rows):
+        row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
+        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
+        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
+    pdf.ln(8)
+
+    # --- Rack Details Table ---
+    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
+    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
+    pdf.set_font('Arial', 'B', 12)
+    rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
+    rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
+
+    # MODIFIED: Draw headers with uniform height and centered text
+    y_start = pdf.get_y()
+    x_cursor = pdf.l_margin
+    for i, header in enumerate(rack_headers):
+        col_width = rack_col_widths[i]
+        num_lines = header.count('\n') + 1
+        text_height = num_lines * line_height
+        y_text = y_start + (total_header_height - text_height) / 2
+
+        pdf.set_xy(x_cursor, y_text)
+        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
+        pdf.rect(x_cursor, y_start, col_width, total_header_height)
+        x_cursor += col_width
+
+    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
+
+    pdf.set_font('Arial', '', 10)
+    num_rack_rows = max(4, len(data['rack_details_df']))
+    for i in range(num_rack_rows):
+        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
+        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+        pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
+        pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
+    pdf.ln(8)
+
+    # --- Robust Bullet Point Function ---
+    def add_bullet_point(key, value):
+        if value and str(value).strip() and value not in ['N/A', '']:
+            start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
+            pdf.set_font('Arial', '', 12); pdf.cell(5, 6, chr(127))
+            pdf.set_font('Arial', 'B', 12); pdf.cell(55, 6, f"{key}:")
+            key_end_y = pdf.get_y() + 6
+            value_start_x = pdf.l_margin + 60
+            value_width = pdf.w - pdf.r_margin - value_start_x
+            pdf.set_xy(value_start_x, start_y)
+            pdf.set_font('Arial', '', 12)
+            pdf.multi_cell(value_width, 6, str(value), 0, 'L')
+            value_end_y = pdf.get_y()
+            pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
+
+    add_bullet_point('Color', data.get('color'))
+    add_bullet_point('Weight Carrying Capacity', f"{data.get('capacity', 0):.2f} KG" if data.get('capacity') else None)
+    add_bullet_point('Lid Required', data.get('lid'))
+    label_info = f"{data['label_space']} (Size: {data['label_size']})" if data.get('label_space') == 'Yes' else data.get('label_space')
+    add_bullet_point('Space for Label', label_info)
+    add_bullet_point('Stacking - Static', data.get('stack_static'))
+    add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
+    pdf.ln(5)
+    # --- END: REDESIGNED SECTION ---
+
+    pdf.section_title('TIMELINES')
+    timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
+    if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
+    if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
+    if data['date_review']: timeline_data.append(("Joint Review of Quotation", data['date_review']))
+    if pdf.get_y() + (len(timeline_data) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
+    pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C')
+    pdf.set_font('Arial', '', 10)
+    for item, date_val in timeline_data: pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
+    pdf.ln(5)
+
+    pdf.section_title('SINGLE POINT OF CONTACT')
+    def draw_contact_column(title, name, designation, phone, email):
+        col_start_x = pdf.get_x(); pdf.set_font('Arial', 'BU', 10); pdf.multi_cell(90, 6, title, 0, 'L'); pdf.ln(1)
+        def draw_kv_row(key, value):
+            key_str = str(key).encode('latin-1', 'replace').decode('latin-1'); value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
+            row_start_y = pdf.get_y(); pdf.set_x(col_start_x); pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, key_str, 0, 0, 'L')
+            pdf.set_xy(col_start_x + 25, row_start_y); pdf.set_font('Arial', '', 10); pdf.multi_cell(65, 6, value_str, 0, 'L')
+        draw_kv_row("Name:", name); draw_kv_row("Designation:", designation); draw_kv_row("Phone No:", phone); draw_kv_row("Email ID:", email)
+    if pdf.get_y() + 45 > pdf.page_break_trigger: pdf.add_page()
+    start_y = pdf.get_y(); pdf.set_xy(pdf.l_margin, start_y); draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
+    end_y1 = pdf.get_y()
+    if data.get('spoc2_name'):
+        pdf.set_xy(pdf.l_margin + 98, start_y); draw_contact_column('Secondary Contact', data['spoc2_name'], data['spoc2_designation'], data['spoc2_phone'], data['spoc2_email']); end_y2 = pdf.get_y()
+        pdf.set_y(max(end_y1, end_y2))
+    else: pdf.set_y(end_y1)
+    pdf.ln(8)
+
+    pdf.section_title('COMMERCIAL REQUIREMENTS')
+    pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
+    if pdf.get_y() + (len(data['commercial_df']) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
+    pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
+    pdf.set_font('Arial', '', 10)
+    for index, row in data['commercial_df'].iterrows():
+        component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
+        pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
+
+    # --- START: MODIFIED FINAL SECTION (NOW DYNAMIC) ---
+    pdf.ln(10)
+    if pdf.get_y() + 90 > pdf.page_break_trigger:
+        pdf.add_page()
+
+    # --- Quotation Submission Details ---
+    if data.get('submit_to_name'):
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(5, 8, chr(149))
+        pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
+        pdf.ln(4)
+
+        pdf.set_font('Arial', '', 12)
+        pdf.set_x(pdf.l_margin + 15)
+        pdf.cell(0, 7, data.get('submit_to_placeholder_name', 'Company Name'), 0, 1)
+        pdf.set_x(pdf.l_margin + 15)
+        pdf.cell(0, 7, data.get('submit_to_placeholder_address', 'Company Full Address'), 0, 1)
+        pdf.ln(6)
+
+        pdf.set_x(pdf.l_margin + 15)
+        pdf.set_font('Arial', '', 12)
+        # Utility to convert hex to RGB
+        hex_color = data.get('submit_to_color', '#000000').lstrip('#')
+        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        pdf.set_text_color(r, g, b)
+        pdf.cell(0, 8, data.get('submit_to_name'))
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(8)
+
+        if data.get('submit_to_registered_office'):
+            pdf.set_x(pdf.l_margin + 15)
+            pdf.set_font('Arial', '', 10)
+            pdf.set_text_color(128, 128, 128)
+            pdf.cell(0, 6, data.get('submit_to_registered_office'), 0, 1)
+            pdf.set_text_color(0, 0, 0)
+    pdf.ln(15)
+
+    # --- Logos ---
+    y_before_logos = pdf.get_y()
+    x_cursor = pdf.l_margin + 15
+    logo_drawn = False
+    if data.get('logo_eka_data'):
+        logo_drawn = True
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp.write(data['logo_eka_data'])
+            tmp.flush()
+            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=40, h=20)
+            os.remove(tmp.name)
+        x_cursor += 70 # spacing
+
+    if data.get('logo_agilo_data'):
+        logo_drawn = True
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+            tmp.write(data['logo_agilo_data'])
+            tmp.flush()
+            pdf.image(tmp.name, x=x_cursor, y=y_before_logos, w=60, h=20)
+            os.remove(tmp.name)
+
+    if logo_drawn:
+      pdf.set_y(y_before_logos + 30) # Move cursor below logos
+
+    # --- Delivery Location ---
+    if data.get('delivery_location'):
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(5, 8, chr(149))
+        pdf.cell(0, 8, 'Delivery Location:', 0, 1)
+        pdf.ln(2)
+        pdf.set_font('Arial', '', 11)
+        pdf.set_x(pdf.l_margin + 5)
+        pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
+    pdf.ln(10)
+
+    # --- Annexures ---
+    if data.get('annexures'):
+        pdf.set_font('Arial', 'B', 14)
+        pdf.cell(0, 8, 'ANNEXURES', 0, 1)
+        pdf.ln(2)
+        pdf.set_font('Arial', '', 11)
+        pdf.set_x(pdf.l_margin + 5)
+        pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
+    # --- END: MODIFIED FINAL SECTION ---
+
     return bytes(pdf.output())
+
 
 # --- STREAMLIT APP ---
 st.title("🏭 Advanced SCM RFQ Generator")
@@ -174,15 +320,14 @@ st.markdown("---")
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
-        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side, for Headers)", type=['png', 'jpg', 'jpeg'])
+        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'])
         logo1_w = st.number_input("Logo 1 Width (mm)", 5, 50, 30, 1)
         logo1_h = st.number_input("Logo 1 Height (mm)", 5, 50, 15, 1)
     with c2:
-        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side, for Headers)", type=['png', 'jpg', 'jpeg'])
+        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'])
         logo2_w = st.number_input("Logo 2 Width (mm)", 5, 50, 30, 1)
         logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
 
-# ... (All other expanders and form elements remain the same)
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins & Line Side Racks")
     Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
@@ -195,30 +340,95 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
 
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
-    # ... (All form elements like purpose, technical specs, timelines, SPOC, commercial remain the same)
-    with st.expander("Submission, Delivery & Annexures"):
-        st.markdown("##### Quotation Submission Details*")
-        submit_to_name = st.text_input("Submit To (Company Name)*", "Pinnacle Mobility Solutions Pvt. Ltd.")
-        submit_to_color = st.color_picker("Company Name Color", "#DC3232")
-        submit_to_registered_office = st.text_input("Submit To (Address)", "Nanerwadi, Wagholi")
-        
-        st.markdown("---")
-        st.markdown("##### Logos for Final Page (Optional)")
+    purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
+
+    with st.expander("Technical Specifications", expanded=True):
+        st.info("Define the items for the vendor to quote on. The PDF will be generated with empty columns for the vendor to fill.")
+
+        st.markdown("##### Bin Details")
+        bin_df = st.data_editor(
+            pd.DataFrame([{"Type of Bin": "TOTE"}, {"Type of Bin": "BIN C"}, {"Type of Bin": "BIN D"}]),
+            num_rows="dynamic", use_container_width=True,
+            column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
+        )
+
+        st.markdown("##### Rack Details")
+        rack_df = st.data_editor(
+            pd.DataFrame([
+                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
+                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
+                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
+            ]),
+            num_rows="dynamic", use_container_width=True,
+            column_config={
+                "Types of Rack": st.column_config.TextColumn(required=True),
+                "Type of Bin": st.column_config.TextColumn(required=True),
+                "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
+            }
+        )
+
+        st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
-            logo_eka_file = st.file_uploader("Upload First Logo (Left Side)", type=['png', 'jpg', 'jpeg'])
+            color = st.text_input("Color")
+            capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 0.0, format="%.2f")
+            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
         with c2:
-            logo_agilo_file = st.file_uploader("Upload Second Logo (Right Side)", type=['png', 'jpg', 'jpeg'])
+            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True)
+            label_size = "N/A"
+            if label_space == "Yes":
+                label_size = st.text_input("Label Size (e.g., 80*50)", "")
+
+        st.markdown("###### Stacking Requirements (if applicable)")
+        c1, c2 = st.columns(2)
+        stack_static = c1.text_input("Static (e.g., 1+3)")
+        stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
+
+    with st.expander("Timelines"):
+        today = date.today()
+        c1, c2, c3 = st.columns(3)
+        with c1: date_release, date_query, date_meet = st.date_input("Date of RFQ Release *", today), st.date_input("Query Resolution Deadline *", today + timedelta(days=7)), st.date_input("Face to Face Meet", None)
+        with c2: date_selection, date_delivery, date_quote = st.date_input("Negotiation & Vendor Selection *", today + timedelta(days=30)), st.date_input("Delivery Deadline *", today + timedelta(days=60)), st.date_input("First Level Quotation", None)
+        with c3: date_install, date_review = st.date_input("Installation Deadline *", today + timedelta(days=75)), st.date_input("Joint Review of Quotation", None)
+
+    with st.expander("Single Point of Contact (SPOC)"):
+        st.markdown("##### Primary Contact*")
+        c1, c2 = st.columns(2)
+        with c1: spoc1_name, spoc1_designation = st.text_input("Name*", key="s1n"), st.text_input("Designation", key="s1d")
+        with c2: spoc1_phone, spoc1_email = st.text_input("Phone No*", key="s1p"), st.text_input("Email ID*", key="s1e")
+        st.markdown("##### Secondary Contact (Optional)")
+        c1, c2 = st.columns(2)
+        with c1: spoc2_name, spoc2_designation = st.text_input("Name", key="s2n"), st.text_input("Designation", key="s2d")
+        with c2: spoc2_phone, spoc2_email = st.text_input("Phone No", key="s2p"), st.text_input("Email ID", key="s2e")
+
+    with st.expander("Commercial Requirements"):
+        edited_commercial_df = st.data_editor(pd.DataFrame([{"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},{"Cost Component": "Freight", "Remarks": "Specify if included or extra."},{"Cost Component": "Any other Handling Cost", "Remarks": ""},{"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}]), num_rows="dynamic", use_container_width=True)
+
+    # --- NEW: EXPANDER FOR SUBMISSION, DELIVERY, AND ANNEXURES ---
+    with st.expander("Submission, Delivery & Annexures"):
+        st.markdown("##### Quotation Submission Details*")
+        submit_to_name = st.text_input("Submit To (Company Name)*", "Agilomatrix Pvt. Ltd.")
+        submit_to_color = st.color_picker("Company Name Color", "#DC3232")
+        submit_to_registered_office = st.text_input("Submit To (Registered Office Address)", "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
+        
+        st.markdown("---")
+        st.markdown("##### Logos for Final Section (Optional)")
+        c1, c2 = st.columns(2)
+        with c1:
+            logo_eka_file = st.file_uploader("Upload First Logo (e.g., 'EKA')", type=['png', 'jpg', 'jpeg'])
+        with c2:
+            logo_agilo_file = st.file_uploader("Upload Second Logo (e.g., 'Agilomatrix')", type=['png', 'jpg', 'jpeg'])
         
         st.markdown("---")
         st.markdown("##### Delivery & Annexures*")
-        delivery_location = st.text_area("Delivery Location Address*", "Quarter no:- 1136, Sector:- 6/C, Steel City\nNear Hanuman Mandir", height=100)
-        annexures = st.text_area("Annexures (one item per line)", "Please attach technical datasheets for all quoted items.\nA company profile document is requested.", height=100)
+        delivery_location = st.text_area("Delivery Location Address*", height=100)
+        annexures = st.text_area("Annexures (one item per line)", height=100)
+
 
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    if not all([Type_of_items, Storage, company_name, company_address, submit_to_name, delivery_location]):
+    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage, submit_to_name, delivery_location]):
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
@@ -227,11 +437,22 @@ if submitted:
                 'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
                 'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
-                # ... (rest of the data dictionary remains the same)
-                # --- UPDATED FIELDS FOR FINAL PAGE ---
+                'purpose': purpose,
+                'bin_details_df': bin_df,
+                'rack_details_df': rack_df,
+                'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
+                'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
+                'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
+                'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
+                'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
+                'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
+                'commercial_df': edited_commercial_df,
+                # --- ADDING NEW FIELDS TO DATA DICTIONARY ---
                 'submit_to_name': submit_to_name,
                 'submit_to_color': submit_to_color,
                 'submit_to_registered_office': submit_to_registered_office,
+                'submit_to_placeholder_name': 'Company Name', # Placeholder text from image
+                'submit_to_placeholder_address': 'Company Full Address', # Placeholder text from image
                 'logo_eka_data': logo_eka_file.getvalue() if logo_eka_file else None,
                 'logo_agilo_data': logo_agilo_file.getvalue() if logo_agilo_file else None,
                 'delivery_location': delivery_location,
