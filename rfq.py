@@ -355,7 +355,7 @@ if submitted:
                 'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df, 'rack_details_df': rack_df,
+                'bin_details_df': bin_df, 
                 'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
                 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
                 'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
