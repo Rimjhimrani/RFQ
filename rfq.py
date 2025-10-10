@@ -443,8 +443,6 @@ if submitted:
                 'submit_to_name': submit_to_name,
                 'submit_to_color': submit_to_color,
                 'submit_to_registered_office': submit_to_registered_office,
-                'submit_to_placeholder_name': 'Company Name', # Placeholder text from image
-                'submit_to_placeholder_address': 'Company Full Address', # Placeholder text from image
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
