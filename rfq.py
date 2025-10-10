@@ -402,8 +402,6 @@ if submitted:
                 'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
                 'commercial_df': edited_commercial_df,
                 'submit_to_name': submit_to_name, 'submit_to_color': submit_to_color, 'submit_to_registered_office': submit_to_registered_office,
-                'logo_eka_data': logo_eka_file.getvalue() if logo_eka_file else None,
-                'logo_agilo_data': logo_agilo_file.getvalue() if logo_agilo_file else None,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
