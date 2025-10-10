@@ -228,6 +228,64 @@ def create_advanced_rfq_pdf(data):
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
         
+    # --- START: NEW FINAL SECTION AS PER IMAGE ---
+    pdf.ln(10)
+    if pdf.get_y() + 90 > pdf.page_break_trigger:
+        pdf.add_page()
+
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(5, 8, chr(149))
+    pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
+    pdf.ln(4)
+
+    pdf.set_font('Arial', '', 12)
+    pdf.set_x(pdf.l_margin + 15)
+    pdf.cell(0, 7, 'Company Name', 0, 1)
+    pdf.set_x(pdf.l_margin + 15)
+    pdf.cell(0, 7, 'Company Full Address', 0, 1)
+    pdf.ln(6)
+
+    pdf.set_x(pdf.l_margin + 15)
+    pdf.set_font('Arial', '', 12)
+    pdf.set_text_color(220, 50, 50)
+    pdf.cell(45, 8, 'Agilomatrix Pvt. Ltd.')
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(8)
+
+    pdf.set_x(pdf.l_margin + 15)
+    pdf.set_font('Arial', '', 10)
+    pdf.set_text_color(128, 128, 128)
+    pdf.cell(0, 6, 'Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033', 0, 1)
+    pdf.set_text_color(0, 0, 0)
+    pdf.ln(15)
+
+    # Placeholders for logos. Replace with pdf.image() if you have the files.
+    y_before_logos = pdf.get_y()
+    
+    # EKA Logo Placeholder
+    pdf.set_xy(pdf.l_margin + 15, y_before_logos)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.set_fill_color(211, 228, 245) # Light blue from image
+    pdf.set_text_color(68, 114, 196) # Blue text from image
+    pdf.cell(40, 20, 'єkα', 1, 0, 'C', fill=True)
+    pdf.set_text_color(0, 0, 0)
+
+    # Agilomatrix Logo Placeholder
+    pdf.set_xy(pdf.l_margin + 85, y_before_logos)
+    pdf.set_font('Arial', 'B', 16)
+    pdf.cell(60, 20, 'AGILOMATRIX Logo', 1, 0, 'C') # Simple placeholder
+    
+    pdf.set_y(y_before_logos + 30) # Move cursor below logos
+
+    pdf.set_font('Arial', 'B', 12)
+    pdf.cell(5, 8, chr(149))
+    pdf.cell(0, 8, 'Delivery Location:', 0, 1)
+    pdf.ln(10)
+    
+    pdf.set_font('Arial', 'B', 14)
+    pdf.cell(0, 8, 'ANNEXURES', 0, 1)
+    # --- END: NEW FINAL SECTION ---
+        
     return bytes(pdf.output())
 
 # --- STREAMLIT APP ---
