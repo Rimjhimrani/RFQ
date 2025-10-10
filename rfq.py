@@ -129,39 +129,6 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
     pdf.ln(8)
 
-    # --- Rack Details Table ---
-    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
-    pdf.set_font('Arial', 'B', 12)
-    rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
-    rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-
-    y_start = pdf.get_y()
-    x_cursor = pdf.l_margin
-    for i, header in enumerate(rack_headers):
-        col_width = rack_col_widths[i]
-        num_lines = header.count('\n') + 1
-        text_height = num_lines * line_height
-        y_text = y_start + (total_header_height - text_height) / 2
-        pdf.set_xy(x_cursor, y_text)
-        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
-        pdf.rect(x_cursor, y_start, col_width, total_header_height)
-        x_cursor += col_width
-
-    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
-
-    pdf.set_font('Arial', '', 10)
-    num_rack_rows = max(4, len(data['rack_details_df']))
-    for i in range(num_rack_rows):
-        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
-        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
-        pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-        pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
-    pdf.ln(8)
-
     # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
@@ -319,20 +286,7 @@ with st.form(key="advanced_rfq_form"):
             num_rows="dynamic", use_container_width=True,
             column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
         )
-        st.markdown("##### Rack Details")
-        rack_df = st.data_editor(
-            pd.DataFrame([
-                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
-                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
-                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
-            ]),
-            num_rows="dynamic", use_container_width=True,
-            column_config={
-                "Types of Rack": st.column_config.TextColumn(required=True),
-                "Type of Bin": st.column_config.TextColumn(required=True),
-                "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
-            }
-        )
+
         st.markdown("##### General Specifications")
         c1, c2 = st.columns(2)
         with c1:
