@@ -4,6 +4,8 @@ from datetime import date, timedelta
 from fpdf import FPDF
 import tempfile
 import os
+from PIL import Image
+import io
 
 # --- App Configuration ---
 st.set_page_config(
@@ -12,10 +14,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final, Corrected Version) ---
+# --- PDF Generation Function (Final, Corrected Version with Image Support) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with clean, standard tabular layouts.
+    Now with support for embedding uploaded images in the Bin Details table.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -90,66 +93,84 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
+    
+    pdf.section_title('TECHNICAL SPECIFICATION')
 
-    # --- START: NEW CLEAN TABLE-BASED TECHNICAL SPECIFICATION SECTION ---
-    pdf.set_font('Arial', 'B', 12)
-    pdf.cell(0, 8, 'TECHNICAL SPECIFICATION', 0, 1, 'L'); pdf.ln(4)
-
-    # --- Bin Details Table ---
+    # --- Bin Details Table with Image Support---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
-    pdf.set_font('Arial', 'B', 12)
+    pdf.set_font('Arial', 'B', 10)
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
-    bin_col_widths = [40, 38, 38, 37, 37]
+    bin_col_widths = [38, 38, 38, 40, 36]
+    row_height = 30 # Increased row height for images
 
-    total_header_height = 16
-    line_height = 8
-    y_start = pdf.get_y()
-    x_cursor = pdf.l_margin
-
+    # Draw header
     for i, header in enumerate(bin_headers):
-        col_width = bin_col_widths[i]
-        num_lines = header.count('\n') + 1
-        text_height = num_lines * line_height
-        y_text = y_start + (total_header_height - text_height) / 2
-        pdf.set_xy(x_cursor, y_text)
-        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
-        pdf.rect(x_cursor, y_start, col_width, total_header_height)
-        x_cursor += col_width
+        pdf.multi_cell(bin_col_widths[i], 8, header, border=1, align='C', ln=3)
+    pdf.ln(16)
 
-    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
-
+    # Draw rows
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
+        row_y = pdf.get_y()
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[1], 10, str(row_data.get('Bin Outer Dimension (MM)', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[2], 10, str(row_data.get('Bin Inner Dimension (MM)', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[3], 10, str(row_data.get('Conceptual Image', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[4], 10, str(row_data.get('Qty Bin', '')), border=1, align='C', ln=1)
+        
+        pdf.multi_cell(bin_col_widths[0], row_height, str(row_data.get('Type of Bin', '')), border=1, align='C', ln=3)
+        pdf.multi_cell(bin_col_widths[1], row_height, str(row_data.get('Bin Outer Dimension (MM)', '')), border=1, align='C', ln=3)
+        pdf.multi_cell(bin_col_widths[2], row_height, str(row_data.get('Bin Inner Dimension (MM)', '')), border=1, align='C', ln=3)
+        
+        # Image cell
+        image_data = row_data.get('Conceptual Image')
+        image_cell_x = pdf.get_x()
+        pdf.rect(image_cell_x, row_y, bin_col_widths[3], row_height) # Draw border for image cell
+        if image_data:
+            try:
+                img = Image.open(io.BytesIO(image_data))
+                img_w, img_h = img.size
+                aspect_ratio = img_w / img_h
+                
+                # Fit image within cell with padding
+                padding = 2
+                cell_inner_w = bin_col_widths[3] - 2 * padding
+                cell_inner_h = row_height - 2 * padding
+                
+                img_display_w = cell_inner_w
+                img_display_h = img_display_w / aspect_ratio
+                
+                if img_display_h > cell_inner_h:
+                    img_display_h = cell_inner_h
+                    img_display_w = img_display_h * aspect_ratio
+
+                img_x = image_cell_x + (bin_col_widths[3] - img_display_w) / 2
+                img_y = row_y + (row_height - img_display_h) / 2
+                
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    img.save(tmp.name, format='PNG')
+                    pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
+                    os.remove(tmp.name)
+            except Exception as e:
+                pass # Could log an error if image processing fails
+        pdf.set_x(image_cell_x + bin_col_widths[3])
+
+
+        pdf.multi_cell(bin_col_widths[4], row_height, str(row_data.get('Qty Bin', '')), border=1, align='C', ln=3)
+        pdf.ln(row_height)
     pdf.ln(8)
+
 
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
-    pdf.set_font('Arial', 'B', 12)
+    pdf.set_font('Arial', 'B', 10)
     rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
     rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-
-    y_start = pdf.get_y()
-    x_cursor = pdf.l_margin
+    
+    # Draw header
     for i, header in enumerate(rack_headers):
-        col_width = rack_col_widths[i]
-        num_lines = header.count('\n') + 1
-        text_height = num_lines * line_height
-        y_text = y_start + (total_header_height - text_height) / 2
-        pdf.set_xy(x_cursor, y_text)
-        pdf.multi_cell(col_width, line_height, header, border=0, align='C')
-        pdf.rect(x_cursor, y_start, col_width, total_header_height)
-        x_cursor += col_width
+        pdf.multi_cell(rack_col_widths[i], 8, header, border=1, align='C', ln=3)
+    pdf.ln(16)
 
-    pdf.set_xy(pdf.l_margin, y_start + total_header_height)
-
+    # Draw rows
     pdf.set_font('Arial', '', 10)
     num_rack_rows = max(4, len(data['rack_details_df']))
     for i in range(num_rack_rows):
@@ -185,7 +206,6 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Static', data.get('stack_static'))
     add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
     pdf.ln(5)
-    # --- END: REDESIGNED SECTION ---
 
     pdf.section_title('TIMELINES')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
@@ -224,12 +244,10 @@ def create_advanced_rfq_pdf(data):
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
 
-    # --- START: MODIFIED FINAL SECTION (NOW DYNAMIC) ---
     pdf.ln(10)
     if pdf.get_y() + 90 > pdf.page_break_trigger:
         pdf.add_page()
 
-    # --- Quotation Submission Details ---
     if data.get('submit_to_name'):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
@@ -254,7 +272,6 @@ def create_advanced_rfq_pdf(data):
 
     pdf.ln(5)
 
-    # --- Delivery Location ---
     if data.get('delivery_location'):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
@@ -265,7 +282,6 @@ def create_advanced_rfq_pdf(data):
         pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
     pdf.ln(10)
 
-    # --- Annexures ---
     if data.get('annexures'):
         pdf.set_font('Arial', 'B', 14)
         pdf.cell(0, 8, 'ANNEXURES', 0, 1)
@@ -273,8 +289,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
-    # --- END: MODIFIED FINAL SECTION ---
-
+    
     return bytes(pdf.output())
 
 # --- STREAMLIT APP ---
@@ -307,23 +322,31 @@ with st.form(key="advanced_rfq_form"):
     purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
 
     with st.expander("Technical Specifications", expanded=True):
-        st.info("Define the items for the vendor to quote on. The PDF will be generated with the data you provide.")
+        st.info("Define the items for the vendor to quote on. You can now upload images for the 'Conceptual Image' column.")
         st.markdown("##### Bin Details")
-        bin_df = st.data_editor(
-            pd.DataFrame([
-                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""},
-                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""},
-                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""}
-            ]),
-            num_rows="dynamic", use_container_width=True,
+        
+        # Initialize session state for the dataframe if it doesn't exist
+        if 'bin_df' not in st.session_state:
+            st.session_state.bin_df = pd.DataFrame([
+                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x320", "Bin Inner Dimension (MM)": "550x350x300", "Conceptual Image": None, "Qty Bin": 100},
+                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": None, "Qty Bin": ""},
+                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": None, "Qty Bin": ""}
+            ])
+
+        bin_df_edited = st.data_editor(
+            st.session_state.bin_df,
+            num_rows="dynamic",
+            use_container_width=True,
             column_config={
                 "Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin."),
                 "Bin Outer Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 600x400x300"),
                 "Bin Inner Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 580x380x280"),
-                "Conceptual Image": st.column_config.TextColumn(required=False, help="Image description or reference"),
-                "Qty Bin": st.column_config.TextColumn(required=False, help="Quantity of bins")
-            }
+                "Conceptual Image": st.column_config.ImageColumn(help="Upload a conceptual image for the bin."),
+                "Qty Bin": st.column_config.NumberColumn(required=False, help="Quantity of bins")
+            },
+            key="bin_df_editor"
         )
+        
         st.markdown("##### Rack Details")
         rack_df = st.data_editor(
             pd.DataFrame([
@@ -431,7 +454,7 @@ if submitted:
                 'logo2_w': logo2_w, 
                 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df, 
+                'bin_details_df': bin_df_edited, 
                 'rack_details_df': rack_df,
                 'color': color, 
                 'capacity': capacity, 
