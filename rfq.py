@@ -14,13 +14,14 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Final, Corrected Version with Image Support) ---
+# --- PDF Generation Function (Now correctly handles image data) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with clean, standard tabular layouts.
     Now with support for embedding uploaded images in the Bin Details table.
     """
     class PDF(FPDF):
+        # ... [The inner workings of the PDF class (header, footer, etc.) remain the same] ...
         def create_cover_page(self, data):
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35); logo1_h = data.get('logo1_h', 20)
@@ -93,7 +94,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
-    
+
     pdf.section_title('TECHNICAL SPECIFICATION')
 
     # --- Bin Details Table with Image Support---
@@ -103,58 +104,72 @@ def create_advanced_rfq_pdf(data):
     bin_col_widths = [38, 38, 38, 40, 36]
     row_height = 30 # Increased row height for images
 
-    # Draw header
+    y_start_header = pdf.get_y()
     for i, header in enumerate(bin_headers):
-        pdf.multi_cell(bin_col_widths[i], 8, header, border=1, align='C', ln=3)
+        pdf.set_y(y_start_header)
+        pdf.set_x(pdf.l_margin + sum(bin_col_widths[:i]))
+        pdf.multi_cell(bin_col_widths[i], 8, header, border=1, align='C', new_x="RIGHT", new_y="TOP")
     pdf.ln(16)
+
 
     # Draw rows
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
-        row_y = pdf.get_y()
+        row_y_start = pdf.get_y()
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-        
-        pdf.multi_cell(bin_col_widths[0], row_height, str(row_data.get('Type of Bin', '')), border=1, align='C', ln=3)
-        pdf.multi_cell(bin_col_widths[1], row_height, str(row_data.get('Bin Outer Dimension (MM)', '')), border=1, align='C', ln=3)
-        pdf.multi_cell(bin_col_widths[2], row_height, str(row_data.get('Bin Inner Dimension (MM)', '')), border=1, align='C', ln=3)
-        
-        # Image cell
-        image_data = row_data.get('Conceptual Image')
-        image_cell_x = pdf.get_x()
-        pdf.rect(image_cell_x, row_y, bin_col_widths[3], row_height) # Draw border for image cell
-        if image_data:
+
+        # Draw text cells and get max height
+        text_cells_data = [
+            (str(row_data.get('Type of Bin', '')), bin_col_widths[0]),
+            (str(row_data.get('Bin Outer Dimension (MM)', '')), bin_col_widths[1]),
+            (str(row_data.get('Bin Inner Dimension (MM)', '')), bin_col_widths[2]),
+        ]
+        current_x = pdf.l_margin
+        for text, width in text_cells_data:
+            pdf.set_xy(current_x, row_y_start)
+            pdf.multi_cell(width, 6, text, border=1, align='C')
+            current_x += width
+
+        # Placeholder for image cell
+        image_cell_x = pdf.l_margin + sum(bin_col_widths[:3])
+        pdf.set_xy(image_cell_x, row_y_start)
+        pdf.multi_cell(bin_col_widths[3], row_height, "", border=1) # Draw the cell border
+
+        # Final cell for Qty
+        pdf.set_xy(image_cell_x + bin_col_widths[3], row_y_start)
+        pdf.multi_cell(bin_col_widths[4], row_height, str(row_data.get('Qty Bin', '')), border=1, align='C')
+
+        # --- NEW: Image drawing logic ---
+        image_data = row_data.get('image_data_bytes') # Look for the raw image data
+        if isinstance(image_data, bytes):
             try:
                 img = Image.open(io.BytesIO(image_data))
                 img_w, img_h = img.size
                 aspect_ratio = img_w / img_h
-                
-                # Fit image within cell with padding
+
                 padding = 2
                 cell_inner_w = bin_col_widths[3] - 2 * padding
                 cell_inner_h = row_height - 2 * padding
-                
+
                 img_display_w = cell_inner_w
                 img_display_h = img_display_w / aspect_ratio
-                
+
                 if img_display_h > cell_inner_h:
                     img_display_h = cell_inner_h
                     img_display_w = img_display_h * aspect_ratio
 
                 img_x = image_cell_x + (bin_col_widths[3] - img_display_w) / 2
-                img_y = row_y + (row_height - img_display_h) / 2
-                
+                img_y = row_y_start + (row_height - img_display_h) / 2
+
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     img.save(tmp.name, format='PNG')
                     pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
                     os.remove(tmp.name)
             except Exception as e:
-                pass # Could log an error if image processing fails
-        pdf.set_x(image_cell_x + bin_col_widths[3])
+                pass # Fail silently if image is corrupt
 
-
-        pdf.multi_cell(bin_col_widths[4], row_height, str(row_data.get('Qty Bin', '')), border=1, align='C', ln=3)
-        pdf.ln(row_height)
+        pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
 
 
@@ -164,10 +179,12 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 10)
     rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
     rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-    
-    # Draw header
+
+    y_start_header = pdf.get_y()
     for i, header in enumerate(rack_headers):
-        pdf.multi_cell(rack_col_widths[i], 8, header, border=1, align='C', ln=3)
+        pdf.set_y(y_start_header)
+        pdf.set_x(pdf.l_margin + sum(rack_col_widths[:i]))
+        pdf.multi_cell(rack_col_widths[i], 8, header, border=1, align='C', new_x="RIGHT", new_y="TOP")
     pdf.ln(16)
 
     # Draw rows
@@ -209,14 +226,17 @@ def create_advanced_rfq_pdf(data):
 
     pdf.section_title('TIMELINES')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
-    if data['date_meet']: timeline_data.append(("Face to Face Meet", data['date_meet']))
-    if data['date_quote']: timeline_data.append(("First Level Quotation", data['date_quote']))
-    if data['date_review']: timeline_data.append(("Joint Review of Quotation", data['date_review']))
+    if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
+    if data.get('date_quote') and pd.notna(data['date_quote']): timeline_data.append(("First Level Quotation", data['date_quote']))
+    if data.get('date_review') and pd.notna(data['date_review']): timeline_data.append(("Joint Review of Quotation", data['date_review']))
     if pdf.get_y() + (len(timeline_data) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C')
     pdf.set_font('Arial', '', 10)
-    for item, date_val in timeline_data: pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
+    for item, date_val in timeline_data:
+        if date_val and pd.notna(date_val):
+            pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
+
 
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
@@ -289,13 +309,15 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
-    
+
     return bytes(pdf.output())
+
 
 # --- STREAMLIT APP ---
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
+# --- All expanders and inputs before the form go here ---
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
@@ -317,6 +339,8 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City")
 
+
+# --- Main Form ---
 with st.form(key="advanced_rfq_form"):
     st.subheader("Step 4: Fill Core RFQ Details")
     purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
@@ -324,29 +348,44 @@ with st.form(key="advanced_rfq_form"):
     with st.expander("Technical Specifications", expanded=True):
         st.info("Define the items for the vendor to quote on. You can now upload images for the 'Conceptual Image' column.")
         st.markdown("##### Bin Details")
-        
-        # Initialize session state for the dataframe if it doesn't exist
-        if 'bin_df' not in st.session_state:
-            st.session_state.bin_df = pd.DataFrame([
-                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x320", "Bin Inner Dimension (MM)": "550x350x300", "Conceptual Image": None, "Qty Bin": 100},
-                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": None, "Qty Bin": ""},
-                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": None, "Qty Bin": ""}
-            ])
 
-        bin_df_edited = st.data_editor(
-            st.session_state.bin_df,
-            num_rows="dynamic",
-            use_container_width=True,
+        bin_df = st.data_editor(
+            pd.DataFrame([
+                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": "Image to be uploaded below", "Qty Bin": 150},
+                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""},
+                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""}
+            ]),
+            num_rows="dynamic", use_container_width=True,
             column_config={
-                "Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin."),
+                "Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin. This name is used to link the image you upload below."),
                 "Bin Outer Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 600x400x300"),
                 "Bin Inner Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 580x380x280"),
-                "Conceptual Image": st.column_config.ImageColumn(help="Upload a conceptual image for the bin."),
+                "Conceptual Image": st.column_config.TextColumn(required=False, help="Enter a brief note. The actual image is uploaded in the next section."),
                 "Qty Bin": st.column_config.NumberColumn(required=False, help="Quantity of bins")
             },
             key="bin_df_editor"
         )
-        
+
+        st.markdown("##### Upload Conceptual Images for Bins")
+        st.info("Upload an image for each **'Type of Bin'** you defined in the table above. The name must be an exact match for the PDF to include the image.")
+
+        # --- NEW: Image Upload Logic ---
+        uploaded_images_data = {}
+        # Iterate through the current state of the data editor to create uploaders
+        for index, row in bin_df.iterrows():
+            bin_type = row["Type of Bin"]
+            # Only show uploader if a bin type is specified in the row
+            if bin_type and pd.notna(bin_type):
+                uploaded_file = st.file_uploader(
+                    f"Upload Image for '{bin_type}'",
+                    type=['png', 'jpg', 'jpeg'],
+                    key=f"image_uploader_{index}" # A unique key for each uploader
+                )
+                if uploaded_file is not None:
+                    # Store the raw bytes of the file, linked to the bin type
+                    uploaded_images_data[bin_type] = uploaded_file.getvalue()
+
+        st.markdown("---")
         st.markdown("##### Rack Details")
         rack_df = st.data_editor(
             pd.DataFrame([
@@ -377,36 +416,38 @@ with st.form(key="advanced_rfq_form"):
         stack_static = c1.text_input("Static (e.g., 1+3)")
         stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
 
+
     with st.expander("Timelines"):
         today = date.today()
         c1, c2, c3 = st.columns(3)
-        with c1: 
+        with c1:
             date_release = st.date_input("Date of RFQ Release *", today)
             date_query = st.date_input("Query Resolution Deadline *", today + timedelta(days=7))
-            date_meet = st.date_input("Face to Face Meet", None)
-        with c2: 
+            date_meet = st.date_input("Face to Face Meet", None, key="meet_date")
+        with c2:
             date_selection = st.date_input("Negotiation & Vendor Selection *", today + timedelta(days=30))
             date_delivery = st.date_input("Delivery Deadline *", today + timedelta(days=60))
-            date_quote = st.date_input("First Level Quotation", None)
-        with c3: 
+            date_quote = st.date_input("First Level Quotation", None, key="quote_date")
+        with c3:
             date_install = st.date_input("Installation Deadline *", today + timedelta(days=75))
-            date_review = st.date_input("Joint Review of Quotation", None)
+            date_review = st.date_input("Joint Review of Quotation", None, key="review_date")
+
 
     with st.expander("Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact*")
         c1, c2 = st.columns(2)
-        with c1: 
+        with c1:
             spoc1_name = st.text_input("Name*", key="s1n")
             spoc1_designation = st.text_input("Designation", key="s1d")
-        with c2: 
+        with c2:
             spoc1_phone = st.text_input("Phone No*", key="s1p")
             spoc1_email = st.text_input("Email ID*", key="s1e")
         st.markdown("##### Secondary Contact (Optional)")
         c1, c2 = st.columns(2)
-        with c1: 
+        with c1:
             spoc2_name = st.text_input("Name", key="s2n")
             spoc2_designation = st.text_input("Designation", key="s2d")
-        with c2: 
+        with c2:
             spoc2_phone = st.text_input("Phone No", key="s2p")
             spoc2_email = st.text_input("Email ID", key="s2e")
 
@@ -417,8 +458,8 @@ with st.form(key="advanced_rfq_form"):
                 {"Cost Component": "Freight", "Remarks": "Specify if included or extra."},
                 {"Cost Component": "Any other Handling Cost", "Remarks": ""},
                 {"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}
-            ]), 
-            num_rows="dynamic", 
+            ]),
+            num_rows="dynamic",
             use_container_width=True
         )
 
@@ -440,48 +481,53 @@ if submitted:
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
+            # --- NEW: Combine text data with uploaded image data ---
+            final_bin_df = bin_df.copy()
+            # The map function efficiently links the uploaded image data to the correct row using the 'Type of Bin' name
+            final_bin_df['image_data_bytes'] = final_bin_df['Type of Bin'].map(uploaded_images_data)
+
             rfq_data = {
-                'Type_of_items': Type_of_items, 
-                'Storage': Storage, 
-                'company_name': company_name, 
+                'Type_of_items': Type_of_items,
+                'Storage': Storage,
+                'company_name': company_name,
                 'company_address': company_address,
-                'footer_company_name': footer_company_name, 
+                'footer_company_name': footer_company_name,
                 'footer_company_address': footer_company_address,
-                'logo1_data': logo1_file.getvalue() if logo1_file else None, 
+                'logo1_data': logo1_file.getvalue() if logo1_file else None,
                 'logo2_data': logo2_file.getvalue() if logo2_file else None,
-                'logo1_w': logo1_w, 
-                'logo1_h': logo1_h, 
-                'logo2_w': logo2_w, 
+                'logo1_w': logo1_w,
+                'logo1_h': logo1_h,
+                'logo2_w': logo2_w,
                 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df_edited, 
+                'bin_details_df': final_bin_df,  # Pass the combined dataframe
                 'rack_details_df': rack_df,
-                'color': color, 
-                'capacity': capacity, 
-                'lid': lid, 
-                'label_space': label_space, 
+                'color': color,
+                'capacity': capacity,
+                'lid': lid,
+                'label_space': label_space,
                 'label_size': label_size,
-                'stack_static': stack_static, 
+                'stack_static': stack_static,
                 'stack_dynamic': stack_dynamic,
-                'date_release': date_release, 
-                'date_query': date_query, 
-                'date_selection': date_selection, 
+                'date_release': date_release,
+                'date_query': date_query,
+                'date_selection': date_selection,
                 'date_delivery': date_delivery,
-                'date_install': date_install, 
-                'date_meet': date_meet, 
-                'date_quote': date_quote, 
+                'date_install': date_install,
+                'date_meet': date_meet,
+                'date_quote': date_quote,
                 'date_review': date_review,
-                'spoc1_name': spoc1_name, 
-                'spoc1_designation': spoc1_designation, 
-                'spoc1_phone': spoc1_phone, 
+                'spoc1_name': spoc1_name,
+                'spoc1_designation': spoc1_designation,
+                'spoc1_phone': spoc1_phone,
                 'spoc1_email': spoc1_email,
-                'spoc2_name': spoc2_name, 
-                'spoc2_designation': spoc2_designation, 
-                'spoc2_phone': spoc2_phone, 
+                'spoc2_name': spoc2_name,
+                'spoc2_designation': spoc2_designation,
+                'spoc2_phone': spoc2_phone,
                 'spoc2_email': spoc2_email,
                 'commercial_df': edited_commercial_df,
-                'submit_to_name': submit_to_name, 
-                'submit_to_color': submit_to_color, 
+                'submit_to_name': submit_to_name,
+                'submit_to_color': submit_to_color,
                 'submit_to_registered_office': submit_to_registered_office,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
@@ -491,10 +537,10 @@ if submitted:
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
         st.download_button(
-            label="📥 Download RFQ Document", 
-            data=pdf_data, 
-            file_name=file_name, 
-            mime="application/pdf", 
-            use_container_width=True, 
+            label="📥 Download RFQ Document",
+            data=pdf_data,
+            file_name=file_name,
+            mime="application/pdf",
+            use_container_width=True,
             type="primary"
         )
