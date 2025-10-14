@@ -14,11 +14,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (With Larger Images) ---
+# --- PDF Generation Function (With Maximized Images) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
-    This version increases the image size by reducing cell padding.
+    This version increases the row height to maximize image size.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -101,7 +101,8 @@ def create_advanced_rfq_pdf(data):
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 38, 38]
     header_height = 16
-    row_height = 20
+    # --- THIS IS THE ONLY CHANGE: INCREASED ROW HEIGHT FOR LARGER IMAGES ---
+    row_height = 28
 
     # Draw Header
     pdf.set_font('Arial', 'B', 10)
@@ -152,10 +153,7 @@ def create_advanced_rfq_pdf(data):
                 img = Image.open(io.BytesIO(image_data))
                 img_w, img_h = img.size
                 aspect_ratio = img_w / img_h
-                
-                # --- THIS IS THE ONLY CHANGE: REDUCED PADDING FOR LARGER IMAGE ---
-                padding = 1 
-                
+                padding = 1
                 cell_inner_w = bin_col_widths[3] - 2 * padding
                 cell_inner_h = row_height - 2 * padding
                 img_display_w = cell_inner_w
