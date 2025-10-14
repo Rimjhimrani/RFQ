@@ -104,10 +104,10 @@ def create_advanced_rfq_pdf(data):
     # === EASY ADJUSTMENT AREA FOR BIN DETAILS TABLE ==================================
     # =================================================================================
     # 1. To change COLUMN WIDTHS, edit the numbers in this list. The sum should be <= 190.
-    bin_col_widths = [36, 38, 38, 42, 36]
+    bin_col_widths = [36, 38, 38, 44, 34]
     
     # 2. To change ROW HEIGHT (which also affects image height), edit this number.
-    row_height = 30
+    row_height = 32
     # =================================================================================
 
     header_height = 16
