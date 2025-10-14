@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (With Adjustable Layout Variables) ---
+# --- PDF Generation Function (With Your Final Layout Adjustments) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
