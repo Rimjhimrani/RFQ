@@ -123,10 +123,10 @@ def create_advanced_rfq_pdf(data):
     for i in range(num_bin_rows):
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
         pdf.cell(bin_col_widths[0], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-        pdf.cell(bin_col_widths[1], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[2], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[3], 10, '', border=1, align='C')
-        pdf.cell(bin_col_widths[4], 10, '', border=1, align='C', ln=1)
+        pdf.cell(bin_col_widths[1], 10, str(row_data.get('Bin Outer Dimension (MM)', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[2], 10, str(row_data.get('Bin Inner Dimension (MM)', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[3], 10, str(row_data.get('Conceptual Image', '')), border=1, align='C')
+        pdf.cell(bin_col_widths[4], 10, str(row_data.get('Qty Bin', '')), border=1, align='C', ln=1)
     pdf.ln(8)
 
     # --- Rack Details Table ---
@@ -234,18 +234,14 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
         pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-        pdf.ln(5) # Add a line break for spacing
-
-        # --- MODIFICATION START ---
-        # The static text "Company Name" and "Company Full Address" has been removed.
-        # Now, we directly print the user-provided values.
+        pdf.ln(5)
 
         pdf.set_x(pdf.l_margin + 15)
         pdf.set_font('Arial', '', 12)
         hex_color = data.get('submit_to_color', '#DC3232').lstrip('#')
         r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
         pdf.set_text_color(r, g, b)
-        pdf.multi_cell(0, 7, data.get('submit_to_name', '')) # Using multi_cell for safety
+        pdf.multi_cell(0, 7, data.get('submit_to_name', ''))
         pdf.set_text_color(0, 0, 0)
         pdf.ln(1)
 
@@ -253,9 +249,8 @@ def create_advanced_rfq_pdf(data):
             pdf.set_x(pdf.l_margin + 15)
             pdf.set_font('Arial', '', 10)
             pdf.set_text_color(128, 128, 128)
-            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L') # Using multi_cell for safety
+            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L')
             pdf.set_text_color(0, 0, 0)
-        # --- MODIFICATION END ---
 
     pdf.ln(5)
 
@@ -312,12 +307,22 @@ with st.form(key="advanced_rfq_form"):
     purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
 
     with st.expander("Technical Specifications", expanded=True):
-        st.info("Define the items for the vendor to quote on. The PDF will be generated with empty columns for the vendor to fill.")
+        st.info("Define the items for the vendor to quote on. The PDF will be generated with the data you provide.")
         st.markdown("##### Bin Details")
         bin_df = st.data_editor(
-            pd.DataFrame([{"Type of Bin": "TOTE"}, {"Type of Bin": "BIN C"}, {"Type of Bin": "BIN D"}]),
+            pd.DataFrame([
+                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""},
+                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""},
+                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "", "Bin Inner Dimension (MM)": "", "Conceptual Image": "", "Qty Bin": ""}
+            ]),
             num_rows="dynamic", use_container_width=True,
-            column_config={"Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin.")}
+            column_config={
+                "Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin."),
+                "Bin Outer Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 600x400x300"),
+                "Bin Inner Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 580x380x280"),
+                "Conceptual Image": st.column_config.TextColumn(required=False, help="Image description or reference"),
+                "Qty Bin": st.column_config.TextColumn(required=False, help="Quantity of bins")
+            }
         )
         st.markdown("##### Rack Details")
         rack_df = st.data_editor(
@@ -352,22 +357,47 @@ with st.form(key="advanced_rfq_form"):
     with st.expander("Timelines"):
         today = date.today()
         c1, c2, c3 = st.columns(3)
-        with c1: date_release, date_query, date_meet = st.date_input("Date of RFQ Release *", today), st.date_input("Query Resolution Deadline *", today + timedelta(days=7)), st.date_input("Face to Face Meet", None)
-        with c2: date_selection, date_delivery, date_quote = st.date_input("Negotiation & Vendor Selection *", today + timedelta(days=30)), st.date_input("Delivery Deadline *", today + timedelta(days=60)), st.date_input("First Level Quotation", None)
-        with c3: date_install, date_review = st.date_input("Installation Deadline *", today + timedelta(days=75)), st.date_input("Joint Review of Quotation", None)
+        with c1: 
+            date_release = st.date_input("Date of RFQ Release *", today)
+            date_query = st.date_input("Query Resolution Deadline *", today + timedelta(days=7))
+            date_meet = st.date_input("Face to Face Meet", None)
+        with c2: 
+            date_selection = st.date_input("Negotiation & Vendor Selection *", today + timedelta(days=30))
+            date_delivery = st.date_input("Delivery Deadline *", today + timedelta(days=60))
+            date_quote = st.date_input("First Level Quotation", None)
+        with c3: 
+            date_install = st.date_input("Installation Deadline *", today + timedelta(days=75))
+            date_review = st.date_input("Joint Review of Quotation", None)
 
     with st.expander("Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact*")
         c1, c2 = st.columns(2)
-        with c1: spoc1_name, spoc1_designation = st.text_input("Name*", key="s1n"), st.text_input("Designation", key="s1d")
-        with c2: spoc1_phone, spoc1_email = st.text_input("Phone No*", key="s1p"), st.text_input("Email ID*", key="s1e")
+        with c1: 
+            spoc1_name = st.text_input("Name*", key="s1n")
+            spoc1_designation = st.text_input("Designation", key="s1d")
+        with c2: 
+            spoc1_phone = st.text_input("Phone No*", key="s1p")
+            spoc1_email = st.text_input("Email ID*", key="s1e")
         st.markdown("##### Secondary Contact (Optional)")
         c1, c2 = st.columns(2)
-        with c1: spoc2_name, spoc2_designation = st.text_input("Name", key="s2n"), st.text_input("Designation", key="s2d")
-        with c2: spoc2_phone, spoc2_email = st.text_input("Phone No", key="s2p"), st.text_input("Email ID", key="s2e")
+        with c1: 
+            spoc2_name = st.text_input("Name", key="s2n")
+            spoc2_designation = st.text_input("Designation", key="s2d")
+        with c2: 
+            spoc2_phone = st.text_input("Phone No", key="s2p")
+            spoc2_email = st.text_input("Email ID", key="s2e")
 
     with st.expander("Commercial Requirements"):
-        edited_commercial_df = st.data_editor(pd.DataFrame([{"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},{"Cost Component": "Freight", "Remarks": "Specify if included or extra."},{"Cost Component": "Any other Handling Cost", "Remarks": ""},{"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}]), num_rows="dynamic", use_container_width=True)
+        edited_commercial_df = st.data_editor(
+            pd.DataFrame([
+                {"Cost Component": "Unit Cost", "Remarks": "Per item/unit specified in Section 2."},
+                {"Cost Component": "Freight", "Remarks": "Specify if included or extra."},
+                {"Cost Component": "Any other Handling Cost", "Remarks": ""},
+                {"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}
+            ]), 
+            num_rows="dynamic", 
+            use_container_width=True
+        )
 
     with st.expander("Submission, Delivery & Annexures"):
         st.markdown("##### Quotation Submission Details*")
@@ -388,20 +418,48 @@ if submitted:
     else:
         with st.spinner("Generating PDF..."):
             rfq_data = {
-                'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name, 'company_address': company_address,
-                'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
-                'logo1_data': logo1_file.getvalue() if logo1_file else None, 'logo2_data': logo2_file.getvalue() if logo2_file else None,
-                'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
+                'Type_of_items': Type_of_items, 
+                'Storage': Storage, 
+                'company_name': company_name, 
+                'company_address': company_address,
+                'footer_company_name': footer_company_name, 
+                'footer_company_address': footer_company_address,
+                'logo1_data': logo1_file.getvalue() if logo1_file else None, 
+                'logo2_data': logo2_file.getvalue() if logo2_file else None,
+                'logo1_w': logo1_w, 
+                'logo1_h': logo1_h, 
+                'logo2_w': logo2_w, 
+                'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': bin_df, 'rack_details_df': rack_df,
-                'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
-                'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
-                'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection, 'date_delivery': date_delivery,
-                'date_install': date_install, 'date_meet': date_meet, 'date_quote': date_quote, 'date_review': date_review,
-                'spoc1_name': spoc1_name, 'spoc1_designation': spoc1_designation, 'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
-                'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation, 'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
+                'bin_details_df': bin_df, 
+                'rack_details_df': rack_df,
+                'color': color, 
+                'capacity': capacity, 
+                'lid': lid, 
+                'label_space': label_space, 
+                'label_size': label_size,
+                'stack_static': stack_static, 
+                'stack_dynamic': stack_dynamic,
+                'date_release': date_release, 
+                'date_query': date_query, 
+                'date_selection': date_selection, 
+                'date_delivery': date_delivery,
+                'date_install': date_install, 
+                'date_meet': date_meet, 
+                'date_quote': date_quote, 
+                'date_review': date_review,
+                'spoc1_name': spoc1_name, 
+                'spoc1_designation': spoc1_designation, 
+                'spoc1_phone': spoc1_phone, 
+                'spoc1_email': spoc1_email,
+                'spoc2_name': spoc2_name, 
+                'spoc2_designation': spoc2_designation, 
+                'spoc2_phone': spoc2_phone, 
+                'spoc2_email': spoc2_email,
                 'commercial_df': edited_commercial_df,
-                'submit_to_name': submit_to_name, 'submit_to_color': submit_to_color, 'submit_to_registered_office': submit_to_registered_office,
+                'submit_to_name': submit_to_name, 
+                'submit_to_color': submit_to_color, 
+                'submit_to_registered_office': submit_to_registered_office,
                 'delivery_location': delivery_location,
                 'annexures': annexures,
             }
@@ -409,4 +467,11 @@ if submitted:
 
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-        st.download_button(label="📥 Download RFQ Document", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
+        st.download_button(
+            label="📥 Download RFQ Document", 
+            data=pdf_data, 
+            file_name=file_name, 
+            mime="application/pdf", 
+            use_container_width=True, 
+            type="primary"
+        )
