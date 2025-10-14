@@ -177,7 +177,7 @@ def create_advanced_rfq_pdf(data):
         # Step 4: Move cursor to the start of the next row
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
-    
+
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
@@ -481,5 +481,70 @@ with st.form(key="advanced_rfq_form"):
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
 if submitted:
-    if not all([purpose, spoc1_name, sp.tool_code
-print(google_search.search(queries=["fpdf2 vertical center text in cell", "fpdf2 multi_cell vertical alignment", "pyfpdf center text in table cell with fixed height"]))
+    # --- THIS IS THE CORRECTED LINE ---
+    if not all([purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage, submit_to_name, delivery_location]):
+        st.error("⚠️ Please fill in all mandatory (*) fields.")
+    else:
+        with st.spinner("Generating PDF..."):
+            # Combine text data with uploaded image data
+            final_bin_df = bin_df.copy()
+            final_bin_df['image_data_bytes'] = final_bin_df['Type of Bin'].map(uploaded_images_data)
+
+            rfq_data = {
+                'Type_of_items': Type_of_items,
+                'Storage': Storage,
+                'company_name': company_name,
+                'company_address': company_address,
+                'footer_company_name': footer_company_name,
+                'footer_company_address': footer_company_address,
+                'logo1_data': logo1_file.getvalue() if logo1_file else None,
+                'logo2_data': logo2_file.getvalue() if logo2_file else None,
+                'logo1_w': logo1_w,
+                'logo1_h': logo1_h,
+                'logo2_w': logo2_w,
+                'logo2_h': logo2_h,
+                'purpose': purpose,
+                'bin_details_df': final_bin_df,
+                'rack_details_df': rack_df,
+                'color': color,
+                'capacity': capacity,
+                'lid': lid,
+                'label_space': label_space,
+                'label_size': label_size,
+                'stack_static': stack_static,
+                'stack_dynamic': stack_dynamic,
+                'date_release': date_release,
+                'date_query': date_query,
+                'date_selection': date_selection,
+                'date_delivery': date_delivery,
+                'date_install': date_install,
+                'date_meet': date_meet,
+                'date_quote': date_quote,
+                'date_review': date_review,
+                'spoc1_name': spoc1_name,
+                'spoc1_designation': spoc1_designation,
+                'spoc1_phone': spoc1_phone,
+                'spoc1_email': spoc1_email,
+                'spoc2_name': spoc2_name,
+                'spoc2_designation': spoc2_designation,
+                'spoc2_phone': spoc2_phone,
+                'spoc2_email': spoc2_email,
+                'commercial_df': edited_commercial_df,
+                'submit_to_name': submit_to_name,
+                'submit_to_color': submit_to_color,
+                'submit_to_registered_office': submit_to_registered_office,
+                'delivery_location': delivery_location,
+                'annexures': annexures,
+            }
+            pdf_data = create_advanced_rfq_pdf(rfq_data)
+
+        st.success("✅ RFQ PDF Generated Successfully!")
+        file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
+        st.download_button(
+            label="📥 Download RFQ Document",
+            data=pdf_data,
+            file_name=file_name,
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary"
+        )
