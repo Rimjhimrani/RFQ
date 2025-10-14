@@ -14,11 +14,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (With Your Final Layout Adjustments) ---
+# --- PDF Generation Function (With Final Corrected Layout Logic) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
-    Layout variables for the Bin Details table can be adjusted in the code below.
+    This version has corrected logic to ensure variable column widths are respected.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -100,16 +100,10 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     
-    # =================================================================================
-    # === EASY ADJUSTMENT AREA FOR BIN DETAILS TABLE ==================================
-    # =================================================================================
-    # 1. To change COLUMN WIDTHS, edit the numbers in this list. The sum should be <= 190.
+    # Using your specified column widths and row height
     bin_col_widths = [36, 38, 38, 44, 34]
-    
-    # 2. To change ROW HEIGHT (which also affects image height), edit this number.
     row_height = 32
-    # =================================================================================
-
+    
     header_height = 16
 
     # Draw Header
@@ -126,7 +120,7 @@ def create_advanced_rfq_pdf(data):
         current_x_header += bin_col_widths[i]
     pdf.set_y(y_start_header + header_height)
 
-    # Draw Rows
+    # --- CORRECTED LOGIC FOR DRAWING ROWS ---
     pdf.set_font('Arial', '', 10)
     line_height_row = 6
     num_bin_rows = max(4, len(data['bin_details_df']))
@@ -134,56 +128,56 @@ def create_advanced_rfq_pdf(data):
         row_y_start = pdf.get_y()
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
 
-        current_x = pdf.l_margin
-        for width in bin_col_widths:
-            pdf.rect(current_x, row_y_start, width, row_height)
-            current_x += width
+        # Define the content for each cell in the row
+        row_contents = [
+            str(row_data.get('Type of Bin', '')),
+            str(row_data.get('Bin Outer Dimension (MM)', '')),
+            str(row_data.get('Bin Inner Dimension (MM)', '')),
+            '', # Placeholder for image
+            str(row_data.get('Qty Bin', ''))
+        ]
 
+        current_x = pdf.l_margin
         text_y = row_y_start + (row_height - line_height_row) / 2
 
-        pdf.set_xy(pdf.l_margin, text_y)
-        pdf.multi_cell(bin_col_widths[0], line_height_row, str(row_data.get('Type of Bin', '')), align='C')
+        # Loop through each column to draw its border and content
+        for j, content in enumerate(row_contents):
+            width = bin_col_widths[j]
+            pdf.rect(current_x, row_y_start, width, row_height)
+            
+            # For the image column (index 3), handle image drawing
+            if j == 3:
+                image_data = row_data.get('image_data_bytes')
+                if isinstance(image_data, bytes):
+                    try:
+                        img = Image.open(io.BytesIO(image_data))
+                        img_w, img_h = img.size
+                        aspect_ratio = img_w / img_h
+                        padding = 1
+                        cell_inner_w = width - 2 * padding
+                        cell_inner_h = row_height - 2 * padding
+                        img_display_w = cell_inner_w
+                        img_display_h = img_display_w / aspect_ratio
+                        if img_display_h > cell_inner_h:
+                            img_display_h = cell_inner_h
+                            img_display_w = img_display_h * aspect_ratio
+                        img_x = current_x + (width - img_display_w) / 2
+                        img_y = row_y_start + (row_height - img_display_h) / 2
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                            img.save(tmp.name, format='PNG')
+                            pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
+                            os.remove(tmp.name)
+                    except Exception:
+                        pass
+            # For all other columns, draw the text
+            else:
+                pdf.set_xy(current_x, text_y)
+                pdf.multi_cell(width, line_height_row, content, align='C')
+            
+            # Move x-cursor to the start of the next cell
+            current_x += width
 
-        pdf.set_xy(pdf.l_margin + bin_col_widths[0], text_y)
-        pdf.multi_cell(bin_col_widths[1], line_height_row, str(row_data.get('Bin Outer Dimension (MM)', '')), align='C')
-
-        pdf.set_xy(pdf.l_margin + sum(bin_col_widths[0:2]), text_y)
-        pdf.multi_cell(bin_col_widths[2], line_height_row, str(row_data.get('Bin Inner Dimension (MM)', '')), align='C')
-
-        pdf.set_xy(pdf.l_margin + sum(bin_col_widths[0:4]), text_y)
-        pdf.multi_cell(bin_col_widths[4], line_height_row, str(row_data.get('Qty Bin', '')), align='C')
-
-        # Draw Image
-        image_cell_x = pdf.l_margin + sum(bin_col_widths[:3])
-        image_data = row_data.get('image_data_bytes')
-        if isinstance(image_data, bytes):
-            try:
-                img = Image.open(io.BytesIO(image_data))
-                img_w, img_h = img.size
-                aspect_ratio = img_w / img_h
-                
-                # ===============================================================================
-                # === 3. To adjust PADDING around the image, edit the number below. ============
-                # === Smaller number = larger image. 1 is usually best. ========================
-                padding = 1
-                # ===============================================================================
-                
-                cell_inner_w = bin_col_widths[3] - 2 * padding
-                cell_inner_h = row_height - 2 * padding
-                img_display_w = cell_inner_w
-                img_display_h = img_display_w / aspect_ratio
-                if img_display_h > cell_inner_h:
-                    img_display_h = cell_inner_h
-                    img_display_w = img_display_h * aspect_ratio
-                img_x = image_cell_x + (bin_col_widths[3] - img_display_w) / 2
-                img_y = row_y_start + (row_height - img_display_h) / 2
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                    img.save(tmp.name, format='PNG')
-                    pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
-                    os.remove(tmp.name)
-            except Exception:
-                pass
-
+        # Move y-cursor to the start of the next row
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
 
