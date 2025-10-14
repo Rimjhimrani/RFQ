@@ -14,11 +14,11 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (With Maximized Images) ---
+# --- PDF Generation Function (With Adjustable Layout Variables) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
-    This version increases the row height to maximize image size.
+    Layout variables for the Bin Details table can be adjusted in the code below.
     """
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -99,10 +99,18 @@ def create_advanced_rfq_pdf(data):
     # --- Bin Details Table with Final Formatting ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
+    
+    # =================================================================================
+    # === EASY ADJUSTMENT AREA FOR BIN DETAILS TABLE ==================================
+    # =================================================================================
+    # 1. To change COLUMN WIDTHS, edit the numbers in this list. The sum should be <= 190.
     bin_col_widths = [38, 38, 38, 38, 38]
-    header_height = 16
-    # --- THIS IS THE ONLY CHANGE: INCREASED ROW HEIGHT FOR LARGER IMAGES ---
+    
+    # 2. To change ROW HEIGHT (which also affects image height), edit this number.
     row_height = 28
+    # =================================================================================
+
+    header_height = 16
 
     # Draw Header
     pdf.set_font('Arial', 'B', 10)
@@ -153,7 +161,13 @@ def create_advanced_rfq_pdf(data):
                 img = Image.open(io.BytesIO(image_data))
                 img_w, img_h = img.size
                 aspect_ratio = img_w / img_h
+                
+                # ===============================================================================
+                # === 3. To adjust PADDING around the image, edit the number below. ============
+                # === Smaller number = larger image. 1 is usually best. ========================
                 padding = 1
+                # ===============================================================================
+                
                 cell_inner_w = bin_col_widths[3] - 2 * padding
                 cell_inner_h = row_height - 2 * padding
                 img_display_w = cell_inner_w
