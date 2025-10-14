@@ -14,14 +14,13 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Now correctly handles image data) ---
+# --- PDF Generation Function (With corrected vertical alignment) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with clean, standard tabular layouts.
-    Now with support for embedding uploaded images in the Bin Details table.
+    This version ensures all cells in a row have the same height with vertically centered content.
     """
     class PDF(FPDF):
-        # ... [The inner workings of the PDF class (header, footer, etc.) remain the same] ...
         def create_cover_page(self, data):
             logo1_data = data.get('logo1_data')
             logo1_w = data.get('logo1_w', 35); logo1_h = data.get('logo1_h', 20)
@@ -97,13 +96,14 @@ def create_advanced_rfq_pdf(data):
 
     pdf.section_title('TECHNICAL SPECIFICATION')
 
-    # --- Bin Details Table with Image Support---
+    # --- Bin Details Table with Image Support ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 10)
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [38, 38, 38, 40, 36]
-    row_height = 30 # Increased row height for images
+    row_height = 30 # Fixed height for all rows to accommodate images
 
+    # Draw header
     y_start_header = pdf.get_y()
     for i, header in enumerate(bin_headers):
         pdf.set_y(y_start_header)
@@ -111,37 +111,42 @@ def create_advanced_rfq_pdf(data):
         pdf.multi_cell(bin_col_widths[i], 8, header, border=1, align='C', new_x="RIGHT", new_y="TOP")
     pdf.ln(16)
 
-
-    # Draw rows
+    # --- UPDATED ROW DRAWING LOGIC ---
     pdf.set_font('Arial', '', 10)
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_y_start = pdf.get_y()
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
 
-        # Draw text cells and get max height
-        text_cells_data = [
-            (str(row_data.get('Type of Bin', '')), bin_col_widths[0]),
-            (str(row_data.get('Bin Outer Dimension (MM)', '')), bin_col_widths[1]),
-            (str(row_data.get('Bin Inner Dimension (MM)', '')), bin_col_widths[2]),
-        ]
+        # Step 1: Draw all cell borders for the row first
         current_x = pdf.l_margin
-        for text, width in text_cells_data:
-            pdf.set_xy(current_x, row_y_start)
-            pdf.multi_cell(width, 6, text, border=1, align='C')
+        for width in bin_col_widths:
+            pdf.rect(current_x, row_y_start, width, row_height)
             current_x += width
 
-        # Placeholder for image cell
+        # Step 2: Write text content, vertically centered
+        line_height = 6  # A reasonable line height for the font
+        y_for_text = row_y_start + (row_height - line_height) / 2
+
+        # Cell 1: Type of Bin
+        pdf.set_xy(pdf.l_margin, y_for_text)
+        pdf.multi_cell(bin_col_widths[0], line_height, str(row_data.get('Type of Bin', '')), align='C')
+
+        # Cell 2: Outer Dimension
+        pdf.set_xy(pdf.l_margin + bin_col_widths[0], y_for_text)
+        pdf.multi_cell(bin_col_widths[1], line_height, str(row_data.get('Bin Outer Dimension (MM)', '')), align='C')
+
+        # Cell 3: Inner Dimension
+        pdf.set_xy(pdf.l_margin + sum(bin_col_widths[0:2]), y_for_text)
+        pdf.multi_cell(bin_col_widths[2], line_height, str(row_data.get('Bin Inner Dimension (MM)', '')), align='C')
+
+        # Cell 5: Qty Bin
+        pdf.set_xy(pdf.l_margin + sum(bin_col_widths[0:4]), y_for_text)
+        pdf.multi_cell(bin_col_widths[4], line_height, str(row_data.get('Qty Bin', '')), align='C')
+
+        # Step 3: Draw the image within its designated cell area
         image_cell_x = pdf.l_margin + sum(bin_col_widths[:3])
-        pdf.set_xy(image_cell_x, row_y_start)
-        pdf.multi_cell(bin_col_widths[3], row_height, "", border=1) # Draw the cell border
-
-        # Final cell for Qty
-        pdf.set_xy(image_cell_x + bin_col_widths[3], row_y_start)
-        pdf.multi_cell(bin_col_widths[4], row_height, str(row_data.get('Qty Bin', '')), border=1, align='C')
-
-        # --- NEW: Image drawing logic ---
-        image_data = row_data.get('image_data_bytes') # Look for the raw image data
+        image_data = row_data.get('image_data_bytes')
         if isinstance(image_data, bytes):
             try:
                 img = Image.open(io.BytesIO(image_data))
@@ -166,13 +171,13 @@ def create_advanced_rfq_pdf(data):
                     img.save(tmp.name, format='PNG')
                     pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
                     os.remove(tmp.name)
-            except Exception as e:
+            except Exception:
                 pass # Fail silently if image is corrupt
 
+        # Step 4: Move cursor to the start of the next row
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
-
-
+    
     # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
@@ -236,7 +241,6 @@ def create_advanced_rfq_pdf(data):
         if date_val and pd.notna(date_val):
             pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
-
 
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
@@ -369,7 +373,7 @@ with st.form(key="advanced_rfq_form"):
         st.markdown("##### Upload Conceptual Images for Bins")
         st.info("Upload an image for each **'Type of Bin'** you defined in the table above. The name must be an exact match for the PDF to include the image.")
 
-        # --- NEW: Image Upload Logic ---
+        # --- Image Upload Logic ---
         uploaded_images_data = {}
         # Iterate through the current state of the data editor to create uploaders
         for index, row in bin_df.iterrows():
@@ -481,9 +485,8 @@ if submitted:
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
-            # --- NEW: Combine text data with uploaded image data ---
+            # Combine text data with uploaded image data
             final_bin_df = bin_df.copy()
-            # The map function efficiently links the uploaded image data to the correct row using the 'Type of Bin' name
             final_bin_df['image_data_bytes'] = final_bin_df['Type of Bin'].map(uploaded_images_data)
 
             rfq_data = {
@@ -500,7 +503,7 @@ if submitted:
                 'logo2_w': logo2_w,
                 'logo2_h': logo2_h,
                 'purpose': purpose,
-                'bin_details_df': final_bin_df,  # Pass the combined dataframe
+                'bin_details_df': final_bin_df,
                 'rack_details_df': rack_df,
                 'color': color,
                 'capacity': capacity,
