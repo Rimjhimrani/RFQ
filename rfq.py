@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (With Final Corrected Layout Logic) ---
+# --- PDF Generation Function (Full function from before) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
@@ -99,14 +99,9 @@ def create_advanced_rfq_pdf(data):
     # --- Bin Details Table with Final Formatting ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
-    
-    # Using your specified column widths and row height
     bin_col_widths = [36, 38, 38, 44, 34]
     row_height = 32
-    
     header_height = 16
-
-    # Draw Header
     pdf.set_font('Arial', 'B', 10)
     y_start_header = pdf.get_y()
     line_height_header = 6
@@ -119,33 +114,24 @@ def create_advanced_rfq_pdf(data):
         pdf.multi_cell(bin_col_widths[i], line_height_header, header, align='C')
         current_x_header += bin_col_widths[i]
     pdf.set_y(y_start_header + header_height)
-
-    # --- CORRECTED LOGIC FOR DRAWING ROWS ---
     pdf.set_font('Arial', '', 10)
     line_height_row = 6
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_y_start = pdf.get_y()
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
-
-        # Define the content for each cell in the row
         row_contents = [
             str(row_data.get('Type of Bin', '')),
             str(row_data.get('Bin Outer Dimension (MM)', '')),
             str(row_data.get('Bin Inner Dimension (MM)', '')),
-            '', # Placeholder for image
+            '',
             str(row_data.get('Qty Bin', ''))
         ]
-
         current_x = pdf.l_margin
         text_y = row_y_start + (row_height - line_height_row) / 2
-
-        # Loop through each column to draw its border and content
         for j, content in enumerate(row_contents):
             width = bin_col_widths[j]
             pdf.rect(current_x, row_y_start, width, row_height)
-            
-            # For the image column (index 3), handle image drawing
             if j == 3:
                 image_data = row_data.get('image_data_bytes')
                 if isinstance(image_data, bytes):
@@ -169,19 +155,12 @@ def create_advanced_rfq_pdf(data):
                             os.remove(tmp.name)
                     except Exception:
                         pass
-            # For all other columns, draw the text
             else:
                 pdf.set_xy(current_x, text_y)
                 pdf.multi_cell(width, line_height_row, content, align='C')
-            
-            # Move x-cursor to the start of the next cell
             current_x += width
-
-        # Move y-cursor to the start of the next row
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
-
-    # --- Rack Details Table ---
     if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
     pdf.set_font('Arial', 'B', 10)
@@ -204,8 +183,6 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
         pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
     pdf.ln(8)
-
-    # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
             start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
@@ -219,7 +196,6 @@ def create_advanced_rfq_pdf(data):
             pdf.multi_cell(value_width, 6, str(value), 0, 'L')
             value_end_y = pdf.get_y()
             pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
-
     add_bullet_point('Color', data.get('color'))
     add_bullet_point('Weight Carrying Capacity', f"{data.get('capacity', 0):.2f} KG" if data.get('capacity') else None)
     add_bullet_point('Lid Required', data.get('lid'))
@@ -228,7 +204,6 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Static', data.get('stack_static'))
     add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
     pdf.ln(5)
-
     pdf.section_title('TIMELINES')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
@@ -241,7 +216,6 @@ def create_advanced_rfq_pdf(data):
         if date_val and pd.notna(date_val):
             pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
-
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x(); pdf.set_font('Arial', 'BU', 10); pdf.multi_cell(90, 6, title, 0, 'L'); pdf.ln(1)
@@ -258,7 +232,6 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(max(end_y1, end_y2))
     else: pdf.set_y(end_y1)
     pdf.ln(5)
-
     pdf.section_title('COMMERCIAL REQUIREMENTS')
     pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
     if pdf.get_y() + (len(data['commercial_df']) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
@@ -267,17 +240,13 @@ def create_advanced_rfq_pdf(data):
     for index, row in data['commercial_df'].iterrows():
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
-
     pdf.ln(10)
-    if pdf.get_y() + 90 > pdf.page_break_trigger:
-        pdf.add_page()
-
+    if pdf.get_y() + 90 > pdf.page_break_trigger: pdf.add_page()
     if data.get('submit_to_name'):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
         pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
         pdf.ln(5)
-
         pdf.set_x(pdf.l_margin + 15)
         pdf.set_font('Arial', '', 12)
         hex_color = data.get('submit_to_color', '#DC3232').lstrip('#')
@@ -286,16 +255,13 @@ def create_advanced_rfq_pdf(data):
         pdf.multi_cell(0, 7, data.get('submit_to_name', ''))
         pdf.set_text_color(0, 0, 0)
         pdf.ln(1)
-
         if data.get('submit_to_registered_office'):
             pdf.set_x(pdf.l_margin + 15)
             pdf.set_font('Arial', '', 10)
             pdf.set_text_color(128, 128, 128)
             pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L')
             pdf.set_text_color(0, 0, 0)
-
     pdf.ln(5)
-
     if data.get('delivery_location'):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
@@ -305,7 +271,6 @@ def create_advanced_rfq_pdf(data):
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
     pdf.ln(10)
-
     if data.get('annexures'):
         pdf.set_font('Arial', 'B', 14)
         pdf.cell(0, 8, 'ANNEXURES', 0, 1)
@@ -313,9 +278,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
-
     return bytes(pdf.output())
-
 
 # --- STREAMLIT APP ---
 st.title("🏭 Request For Quotation Generator")
@@ -342,92 +305,97 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City")
 
-with st.form(key="advanced_rfq_form"):
-    st.subheader("Step 4: Fill Core RFQ Details")
-    purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
+st.subheader("Step 4: Fill Core RFQ Details")
 
-    with st.expander("Technical Specifications", expanded=True):
-        st.info("Define the items for the vendor to quote on. You can now upload images for the 'Conceptual Image' column.")
-        st.markdown("##### Bin Details")
+# ==========================================================================================
+# ===== THIS ENTIRE SECTION IS NOW OUTSIDE THE FORM FOR AUTOMATION TO WORK CORRECTLY =======
+# ==========================================================================================
+with st.expander("Technical Specifications", expanded=True):
+    st.info("Define the items for the vendor. Add or remove rows in the table; the image uploaders will update automatically.")
+    st.markdown("##### Bin Details")
 
-        # --- MODIFIED SECTION FOR BIN DETAILS AND IMAGE UPLOAD ---
-        if 'bin_df' not in st.session_state:
-            st.session_state.bin_df = pd.DataFrame([
-                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": None, "Qty Bin": 150},
-                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "200x180x400", "Bin Inner Dimension (MM)": "130x150x130", "Conceptual Image": None, "Qty Bin": 200},
-                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "440x120x150", "Bin Inner Dimension (MM)": "120x234x340", "Conceptual Image": None, "Qty Bin": 250}
-            ])
+    if 'bin_df' not in st.session_state:
+        st.session_state.bin_df = pd.DataFrame([
+            {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": None, "Qty Bin": 150},
+            {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "200x180x400", "Bin Inner Dimension (MM)": "130x150x130", "Conceptual Image": None, "Qty Bin": 200},
+            {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "440x120x150", "Bin Inner Dimension (MM)": "120x234x340", "Conceptual Image": None, "Qty Bin": 250}
+        ])
 
-        st.markdown("###### Edit Bin Details and Upload Images per Row")
-        
-        # Create a layout with two columns: one for the data editor, one for the uploaders
-        editor_col, uploader_col = st.columns([3, 2])
+    st.markdown("###### Edit Bin Details and Upload Images per Row")
+    editor_col, uploader_col = st.columns([3, 2])
 
-        with editor_col:
-            # Display the data editor
-            edited_bin_df = st.data_editor(
-                st.session_state.bin_df,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "Type of Bin": st.column_config.TextColumn(required=True),
-                    "Bin Outer Dimension (MM)": st.column_config.TextColumn(),
-                    "Bin Inner Dimension (MM)": st.column_config.TextColumn(),
-                    "Qty Bin": st.column_config.NumberColumn(),
-                    "Conceptual Image": st.column_config.ImageColumn("Image Preview") # Display preview
-                },
-                key="bin_df_editor"
-            )
-        
-        with uploader_col:
-            # Dynamically create a file uploader for each row in the edited dataframe
-            for i in range(len(edited_bin_df)):
-                bin_type = edited_bin_df.iloc[i]["Type of Bin"]
-                label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
-                uploaded_file = st.file_uploader(
-                    label,
-                    type=['png', 'jpg', 'jpeg'],
-                    key=f"image_uploader_{i}"
-                )
-                if uploaded_file is not None:
-                    # When a file is uploaded, store its content in the dataframe
-                    edited_bin_df.at[i, 'Conceptual Image'] = uploaded_file.getvalue()
-        
-        # Update the session state with the latest edited dataframe
-        st.session_state.bin_df = edited_bin_df
-        # --- END OF MODIFIED SECTION ---
-
-        st.markdown("---")
-        st.markdown("##### Rack Details")
-        rack_df = st.data_editor(
-            pd.DataFrame([
-                {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
-                {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
-                {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
-            ]),
-            num_rows="dynamic", use_container_width=True,
+    with editor_col:
+        edited_bin_df = st.data_editor(
+            st.session_state.bin_df,
+            num_rows="dynamic",
+            use_container_width=True,
             column_config={
-                "Types of Rack": st.column_config.TextColumn(required=True),
                 "Type of Bin": st.column_config.TextColumn(required=True),
-                "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
-            }
+                "Bin Outer Dimension (MM)": st.column_config.TextColumn(),
+                "Bin Inner Dimension (MM)": st.column_config.TextColumn(),
+                "Qty Bin": st.column_config.NumberColumn(),
+                "Conceptual Image": st.column_config.ImageColumn("Image Preview")
+            },
+            key="bin_df_editor"
         )
-        st.markdown("##### General Specifications")
-        c1, c2 = st.columns(2)
-        with c1:
-            color = st.text_input("Color")
-            capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 0.0, format="%.2f")
-            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
-        with c2:
-            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True)
-            label_size = "N/A"
-            if label_space == "Yes":
-                label_size = st.text_input("Label Size (e.g., 80*50)", "")
-        st.markdown("###### Stacking Requirements (if applicable)")
-        c1, c2 = st.columns(2)
-        stack_static = c1.text_input("Static (e.g., 1+3)")
-        stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
 
+    with uploader_col:
+        # This loop now correctly iterates over the most recent version of the table
+        for i in range(len(edited_bin_df)):
+            bin_type = edited_bin_df.iloc[i]["Type of Bin"]
+            label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
+            uploaded_file = st.file_uploader(
+                label,
+                type=['png', 'jpg', 'jpeg'],
+                key=f"image_uploader_{i}"
+            )
+            if uploaded_file is not None:
+                edited_bin_df.at[i, 'Conceptual Image'] = uploaded_file.getvalue()
+
+    # Always update session_state with the latest version from the editor
+    st.session_state.bin_df = edited_bin_df
+
+    st.markdown("---")
+    st.markdown("##### Rack Details")
+    # This editor can also be interactive outside the form
+    if 'rack_df' not in st.session_state:
+        st.session_state.rack_df = pd.DataFrame([
+            {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
+            {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
+            {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
+        ])
+    
+    st.session_state.rack_df = st.data_editor(
+        st.session_state.rack_df,
+        num_rows="dynamic", use_container_width=True,
+        column_config={
+            "Types of Rack": st.column_config.TextColumn(required=True),
+            "Type of Bin": st.column_config.TextColumn(required=True),
+            "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
+        }
+    )
+    st.markdown("##### General Specifications")
+    c1, c2 = st.columns(2)
+    with c1:
+        color = st.text_input("Color")
+        capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 0.0, format="%.2f")
+        lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
+    with c2:
+        label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True)
+        label_size = "N/A"
+        if label_space == "Yes":
+            label_size = st.text_input("Label Size (e.g., 80*50)", "")
+    st.markdown("###### Stacking Requirements (if applicable)")
+    c1, c2 = st.columns(2)
+    stack_static = c1.text_input("Static (e.g., 1+3)")
+    stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
+# ==========================================================================================
+# ======================= INTERACTIVE SECTION ENDS HERE ====================================
+# ==========================================================================================
+
+
+with st.form(key="advanced_rfq_form"):
+    purpose = st.text_area("Purpose of Requirement*", max_chars=300, height=100)
 
     with st.expander("Timelines"):
         today = date.today()
@@ -443,7 +411,6 @@ with st.form(key="advanced_rfq_form"):
         with c3:
             date_install = st.date_input("Installation Deadline *", today + timedelta(days=75))
             date_review = st.date_input("Joint Review of Quotation", None, key="review_date")
-
 
     with st.expander("Single Point of Contact (SPOC)"):
         st.markdown("##### Primary Contact*")
@@ -493,8 +460,8 @@ if submitted:
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
-            # Prepare the final dataframe for PDF generation
             final_bin_df = st.session_state.bin_df.rename(columns={"Conceptual Image": "image_data_bytes"})
+            rack_df = st.session_state.rack_df
 
             rfq_data = {
                 'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name,
