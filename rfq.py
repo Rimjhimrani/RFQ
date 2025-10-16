@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- PDF Generation Function (Full function from before) ---
+# --- PDF Generation Function (With Final Corrected Layout Logic) ---
 def create_advanced_rfq_pdf(data):
     """
     Generates a professional RFQ document with polished table layouts.
@@ -161,28 +161,8 @@ def create_advanced_rfq_pdf(data):
             current_x += width
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
-    if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
-    pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L');
-    pdf.set_font('Arial', 'B', 10)
-    rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
-    rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-    y_start_header = pdf.get_y()
-    for i, header in enumerate(rack_headers):
-        pdf.set_y(y_start_header)
-        pdf.set_x(pdf.l_margin + sum(rack_col_widths[:i]))
-        pdf.multi_cell(rack_col_widths[i], 8, header, border=1, align='C', new_x="RIGHT", new_y="TOP")
-    pdf.ln(16)
-    pdf.set_font('Arial', '', 10)
-    num_rack_rows = max(4, len(data['rack_details_df']))
-    for i in range(num_rack_rows):
-        row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
-        pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
-        pdf.cell(rack_col_widths[1], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[2], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-        pdf.cell(rack_col_widths[4], 10, '', border=1, align='C')
-        pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
-    pdf.ln(8)
+
+    # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
             start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
@@ -196,6 +176,7 @@ def create_advanced_rfq_pdf(data):
             pdf.multi_cell(value_width, 6, str(value), 0, 'L')
             value_end_y = pdf.get_y()
             pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
+
     add_bullet_point('Color', data.get('color'))
     add_bullet_point('Weight Carrying Capacity', f"{data.get('capacity', 0):.2f} KG" if data.get('capacity') else None)
     add_bullet_point('Lid Required', data.get('lid'))
@@ -204,6 +185,7 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Static', data.get('stack_static'))
     add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
     pdf.ln(5)
+
     pdf.section_title('TIMELINES')
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
@@ -216,6 +198,7 @@ def create_advanced_rfq_pdf(data):
         if date_val and pd.notna(date_val):
             pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
+
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x(); pdf.set_font('Arial', 'BU', 10); pdf.multi_cell(90, 6, title, 0, 'L'); pdf.ln(1)
@@ -232,6 +215,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(max(end_y1, end_y2))
     else: pdf.set_y(end_y1)
     pdf.ln(5)
+
     pdf.section_title('COMMERCIAL REQUIREMENTS')
     pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
     if pdf.get_y() + (len(data['commercial_df']) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
@@ -241,6 +225,7 @@ def create_advanced_rfq_pdf(data):
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
     pdf.ln(10)
+
     if pdf.get_y() + 90 > pdf.page_break_trigger: pdf.add_page()
     if data.get('submit_to_name'):
         pdf.set_font('Arial', 'B', 12)
@@ -262,6 +247,7 @@ def create_advanced_rfq_pdf(data):
             pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L')
             pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
+
     if data.get('delivery_location'):
         pdf.set_font('Arial', 'B', 12)
         pdf.cell(5, 8, chr(149))
@@ -271,6 +257,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
     pdf.ln(10)
+
     if data.get('annexures'):
         pdf.set_font('Arial', 'B', 14)
         pdf.cell(0, 8, 'ANNEXURES', 0, 1)
@@ -278,7 +265,9 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         pdf.set_x(pdf.l_margin + 5)
         pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
+        
     return bytes(pdf.output())
+
 
 # --- STREAMLIT APP ---
 st.title("🏭 Request For Quotation Generator")
@@ -296,7 +285,7 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
 
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
-    Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins & Line Side Racks")
+    Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins")
     Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
     company_name = st.text_input("Requester Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd")
     company_address = st.text_input("Requester Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
@@ -307,9 +296,6 @@ with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
 
 st.subheader("Step 4: Fill Core RFQ Details")
 
-# ==========================================================================================
-# ===== THIS ENTIRE SECTION IS NOW OUTSIDE THE FORM FOR AUTOMATION TO WORK CORRECTLY =======
-# ==========================================================================================
 with st.expander("Technical Specifications", expanded=True):
     st.info("Define the items for the vendor. Add or remove rows in the table; the image uploaders will update automatically.")
     st.markdown("##### Bin Details")
@@ -340,7 +326,6 @@ with st.expander("Technical Specifications", expanded=True):
         )
 
     with uploader_col:
-        # This loop now correctly iterates over the most recent version of the table
         for i in range(len(edited_bin_df)):
             bin_type = edited_bin_df.iloc[i]["Type of Bin"]
             label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
@@ -352,28 +337,9 @@ with st.expander("Technical Specifications", expanded=True):
             if uploaded_file is not None:
                 edited_bin_df.at[i, 'Conceptual Image'] = uploaded_file.getvalue()
 
-    # Always update session_state with the latest version from the editor
     st.session_state.bin_df = edited_bin_df
 
     st.markdown("---")
-    st.markdown("##### Rack Details")
-    # This editor can also be interactive outside the form
-    if 'rack_df' not in st.session_state:
-        st.session_state.rack_df = pd.DataFrame([
-            {"Types of Rack": "MDR", "Type of Bin": "TOTE", "Level/Bin": "C"},
-            {"Types of Rack": "SR", "Type of Bin": "BIN C", "Level/Bin": "A"},
-            {"Types of Rack": "HRR", "Type of Bin": "BIN D", "Level/Bin": "S"}
-        ])
-    
-    st.session_state.rack_df = st.data_editor(
-        st.session_state.rack_df,
-        num_rows="dynamic", use_container_width=True,
-        column_config={
-            "Types of Rack": st.column_config.TextColumn(required=True),
-            "Type of Bin": st.column_config.TextColumn(required=True),
-            "Level/Bin": st.column_config.TextColumn(required=False, help="This value will appear in the 'Level/Bin' column."),
-        }
-    )
     st.markdown("##### General Specifications")
     c1, c2 = st.columns(2)
     with c1:
@@ -389,9 +355,6 @@ with st.expander("Technical Specifications", expanded=True):
     c1, c2 = st.columns(2)
     stack_static = c1.text_input("Static (e.g., 1+3)")
     stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
-# ==========================================================================================
-# ======================= INTERACTIVE SECTION ENDS HERE ====================================
-# ==========================================================================================
 
 
 with st.form(key="advanced_rfq_form"):
@@ -461,7 +424,6 @@ if submitted:
     else:
         with st.spinner("Generating PDF..."):
             final_bin_df = st.session_state.bin_df.rename(columns={"Conceptual Image": "image_data_bytes"})
-            rack_df = st.session_state.rack_df
 
             rfq_data = {
                 'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name,
@@ -470,7 +432,7 @@ if submitted:
                 'logo1_data': logo1_file.getvalue() if logo1_file else None,
                 'logo2_data': logo2_file.getvalue() if logo2_file else None,
                 'logo1_w': logo1_w, 'logo1_h': logo1_h, 'logo2_w': logo2_w, 'logo2_h': logo2_h,
-                'purpose': purpose, 'bin_details_df': final_bin_df, 'rack_details_df': rack_df,
+                'purpose': purpose, 'bin_details_df': final_bin_df,
                 'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space,
                 'label_size': label_size, 'stack_static': stack_static, 'stack_dynamic': stack_dynamic,
                 'date_release': date_release, 'date_query': date_query, 'date_selection': date_selection,
