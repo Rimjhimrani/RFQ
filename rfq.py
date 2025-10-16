@@ -350,37 +350,52 @@ with st.form(key="advanced_rfq_form"):
         st.info("Define the items for the vendor to quote on. You can now upload images for the 'Conceptual Image' column.")
         st.markdown("##### Bin Details")
 
-        bin_df = st.data_editor(
-            pd.DataFrame([
-                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": "Upload image below", "Qty Bin": 150},
-                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "200x180x400", "Bin Inner Dimension (MM)": "130x150x130", "Conceptual Image": "Upload image below", "Qty Bin": 200},
-                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "440x120x150", "Bin Inner Dimension (MM)": "120x234x340", "Conceptual Image": "Upload image below", "Qty Bin": 250}
-            ]),
-            num_rows="dynamic", use_container_width=True,
-            column_config={
-                "Type of Bin": st.column_config.TextColumn(required=True, help="Specify the name or type of the bin. This name is used to link the image you upload below."),
-                "Bin Outer Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 600x400x300"),
-                "Bin Inner Dimension (MM)": st.column_config.TextColumn(required=False, help="e.g., 580x380x280"),
-                "Conceptual Image": st.column_config.TextColumn(required=False, help="Enter a brief note. The actual image is uploaded in the next section."),
-                "Qty Bin": st.column_config.NumberColumn(required=False, help="Quantity of bins")
-            },
-            key="bin_df_editor"
-        )
+        # --- MODIFIED SECTION FOR BIN DETAILS AND IMAGE UPLOAD ---
+        if 'bin_df' not in st.session_state:
+            st.session_state.bin_df = pd.DataFrame([
+                {"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": None, "Qty Bin": 150},
+                {"Type of Bin": "BIN C", "Bin Outer Dimension (MM)": "200x180x400", "Bin Inner Dimension (MM)": "130x150x130", "Conceptual Image": None, "Qty Bin": 200},
+                {"Type of Bin": "BIN D", "Bin Outer Dimension (MM)": "440x120x150", "Bin Inner Dimension (MM)": "120x234x340", "Conceptual Image": None, "Qty Bin": 250}
+            ])
 
-        st.markdown("##### Upload Conceptual Images for Bins")
-        st.info("Upload an image for each **'Type of Bin'** you defined in the table above. The name must be an exact match for the PDF to include the image.")
+        st.markdown("###### Edit Bin Details and Upload Images per Row")
+        
+        # Create a layout with two columns: one for the data editor, one for the uploaders
+        editor_col, uploader_col = st.columns([3, 2])
 
-        uploaded_images_data = {}
-        for index, row in bin_df.iterrows():
-            bin_type = row["Type of Bin"]
-            if bin_type and pd.notna(bin_type):
+        with editor_col:
+            # Display the data editor
+            edited_bin_df = st.data_editor(
+                st.session_state.bin_df,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "Type of Bin": st.column_config.TextColumn(required=True),
+                    "Bin Outer Dimension (MM)": st.column_config.TextColumn(),
+                    "Bin Inner Dimension (MM)": st.column_config.TextColumn(),
+                    "Qty Bin": st.column_config.NumberColumn(),
+                    "Conceptual Image": st.column_config.ImageColumn("Image Preview") # Display preview
+                },
+                key="bin_df_editor"
+            )
+        
+        with uploader_col:
+            # Dynamically create a file uploader for each row in the edited dataframe
+            for i in range(len(edited_bin_df)):
+                bin_type = edited_bin_df.iloc[i]["Type of Bin"]
+                label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
                 uploaded_file = st.file_uploader(
-                    f"Upload Image for '{bin_type}'",
+                    label,
                     type=['png', 'jpg', 'jpeg'],
-                    key=f"image_uploader_{index}"
+                    key=f"image_uploader_{i}"
                 )
                 if uploaded_file is not None:
-                    uploaded_images_data[bin_type] = uploaded_file.getvalue()
+                    # When a file is uploaded, store its content in the dataframe
+                    edited_bin_df.at[i, 'Conceptual Image'] = uploaded_file.getvalue()
+        
+        # Update the session state with the latest edited dataframe
+        st.session_state.bin_df = edited_bin_df
+        # --- END OF MODIFIED SECTION ---
 
         st.markdown("---")
         st.markdown("##### Rack Details")
@@ -478,8 +493,8 @@ if submitted:
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     else:
         with st.spinner("Generating PDF..."):
-            final_bin_df = bin_df.copy()
-            final_bin_df['image_data_bytes'] = final_bin_df['Type of Bin'].map(uploaded_images_data)
+            # Prepare the final dataframe for PDF generation
+            final_bin_df = st.session_state.bin_df.rename(columns={"Conceptual Image": "image_data_bytes"})
 
             rfq_data = {
                 'Type_of_items': Type_of_items, 'Storage': Storage, 'company_name': company_name,
