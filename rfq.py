@@ -171,8 +171,6 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L')
         rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
         rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
-
-        # --- CORRECTED RACK HEADER DRAWING LOGIC ---
         header_height = 16
         line_height_header = 6
         pdf.set_font('Arial', 'B', 10)
@@ -186,8 +184,6 @@ def create_advanced_rfq_pdf(data):
             pdf.multi_cell(rack_col_widths[i], line_height_header, header, align='C', border=0)
             current_x_header += rack_col_widths[i]
         pdf.set_y(y_start_header + header_height)
-        # --- END OF CORRECTION ---
-
         pdf.set_font('Arial', '', 10)
         num_rack_rows = max(4, len(data['rack_details_df']))
         for i in range(num_rack_rows):
@@ -215,6 +211,14 @@ def create_advanced_rfq_pdf(data):
                     available_width = pdf.w - pdf.l_margin - pdf.r_margin
                     img_display_w = available_width
                     img_display_h = img_display_w * aspect_ratio
+                    
+                    # --- IMAGE HEIGHT CORRECTION ---
+                    max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.65 # Cap at 65% of page height
+                    if img_display_h > max_img_height:
+                        img_display_h = max_img_height
+                        img_display_w = img_display_h / aspect_ratio # Recalculate width
+                    # --- END CORRECTION ---
+
                     if pdf.get_y() + img_display_h > pdf.page_break_trigger: pdf.add_page()
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         img.save(tmp.name, format='PNG')
@@ -348,9 +352,27 @@ elif rfq_type == 'Storage Infrastructure':
         st.markdown("##### Rack Details")
         if 'rack_df' not in st.session_state or st.session_state.rack_df.empty:
             st.session_state.rack_df = pd.DataFrame([{"Types of Rack": "", "Rack Dimension (MM)": "", "Level/Rack": "", "Type of Bin": "", "Bin Dimension (MM)": "", "Level/Bin": ""}])
-        st.session_state.rack_df = st.data_editor(st.session_state.rack_df, num_rows="dynamic", use_container_width=True, column_config={"Types of Rack": st.column_config.TextColumn(required=True), "Rack Dimension (MM)": st.column_config.TextColumn(), "Level/Rack": st.column_config.TextColumn(), "Type of Bin": st.column_config.TextColumn(), "Bin Dimension (MM)": st.column_config.TextColumn(), "Level/Bin": st.column_config.TextColumn()})
-        st.markdown("---"); st.markdown("##### Key Inputs")
         
+        # --- RACK DETAILS EDITABLE FIX ---
+        # The full column_config makes all columns editable text fields.
+        edited_rack_df = st.data_editor(
+            st.session_state.rack_df,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Types of Rack": st.column_config.TextColumn(required=True),
+                "Rack Dimension (MM)": st.column_config.TextColumn(),
+                "Level/Rack": st.column_config.TextColumn(),
+                "Type of Bin": st.column_config.TextColumn(),
+                "Bin Dimension (MM)": st.column_config.TextColumn(),
+                "Level/Bin": st.column_config.TextColumn()
+            },
+            key="rack_df_editor"
+        )
+        st.session_state.rack_df = edited_rack_df
+        # --- END OF FIX ---
+        
+        st.markdown("---"); st.markdown("##### Key Inputs")
         if 'key_inputs_df' not in st.session_state or st.session_state.key_inputs_df.empty:
             st.session_state.key_inputs_df = pd.DataFrame([{"Input Text": "", "Upload Image?": False, "Image Data": None}])
         
