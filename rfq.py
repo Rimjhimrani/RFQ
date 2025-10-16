@@ -79,8 +79,9 @@ def create_advanced_rfq_pdf(data):
                 self.set_text_color(0)
             self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
+        # --- CORRECTED ---
+        # Removed the automatic page break from this function. The control is now in the main script body.
         def section_title(self, title):
-            if self.get_y() + 20 > self.page_break_trigger: self.add_page()
             self.set_font('Arial', 'B', 12); self.set_fill_color(230, 230, 230); self.cell(0, 8, title, 0, 1, 'L', fill=True); self.ln(4)
 
     pdf = PDF('P', 'mm', 'A4')
@@ -96,7 +97,6 @@ def create_advanced_rfq_pdf(data):
 
     pdf.section_title('TECHNICAL SPECIFICATION')
 
-    # --- Bin Details Table with Final Formatting ---
     pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L');
     bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
     bin_col_widths = [36, 38, 38, 44, 34]
@@ -119,13 +119,11 @@ def create_advanced_rfq_pdf(data):
     num_bin_rows = max(4, len(data['bin_details_df']))
     for i in range(num_bin_rows):
         row_y_start = pdf.get_y()
+        if pdf.get_y() + row_height > pdf.page_break_trigger: pdf.add_page() # Add page if a row overflows
         row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
         row_contents = [
-            str(row_data.get('Type of Bin', '')),
-            str(row_data.get('Bin Outer Dimension (MM)', '')),
-            str(row_data.get('Bin Inner Dimension (MM)', '')),
-            '',
-            str(row_data.get('Qty Bin', ''))
+            str(row_data.get('Type of Bin', '')), str(row_data.get('Bin Outer Dimension (MM)', '')),
+            str(row_data.get('Bin Inner Dimension (MM)', '')), '', str(row_data.get('Qty Bin', ''))
         ]
         current_x = pdf.l_margin
         text_y = row_y_start + (row_height - line_height_row) / 2
@@ -153,8 +151,7 @@ def create_advanced_rfq_pdf(data):
                             img.save(tmp.name, format='PNG')
                             pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h)
                             os.remove(tmp.name)
-                    except Exception:
-                        pass
+                    except Exception: pass
             else:
                 pdf.set_xy(current_x, text_y)
                 pdf.multi_cell(width, line_height_row, content, align='C')
@@ -162,9 +159,9 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(row_y_start + row_height)
     pdf.ln(8)
 
-    # --- Robust Bullet Point Function ---
     def add_bullet_point(key, value):
         if value and str(value).strip() and value not in ['N/A', '']:
+            if pdf.get_y() + 12 > pdf.page_break_trigger: pdf.add_page()
             start_y = pdf.get_y(); pdf.set_x(pdf.l_margin)
             pdf.set_font('Arial', '', 12); pdf.cell(5, 6, chr(127))
             pdf.set_font('Arial', 'B', 12); pdf.cell(55, 6, f"{key}:")
@@ -186,19 +183,33 @@ def create_advanced_rfq_pdf(data):
     add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
     pdf.ln(5)
 
-    pdf.section_title('TIMELINES')
+    # --- CORRECTED ---
+    # Smarter page break logic for the Timelines section
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data.get('date_quote') and pd.notna(data['date_quote']): timeline_data.append(("First Level Quotation", data['date_quote']))
     if data.get('date_review') and pd.notna(data['date_review']): timeline_data.append(("Joint Review of Quotation", data['date_review']))
-    if pdf.get_y() + (len(timeline_data) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
+    
+    # Check if there is enough space for the title, header, and one row.
+    height_needed = 12 + 8 + 8 # title(12) + header(8) + one_row(8)
+    if pdf.get_y() + height_needed > pdf.page_break_trigger:
+        pdf.add_page()
+
+    pdf.section_title('TIMELINES')
     pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C')
     pdf.set_font('Arial', '', 10)
     for item, date_val in timeline_data:
         if date_val and pd.notna(date_val):
+            if pdf.get_y() + 8 > pdf.page_break_trigger: pdf.add_page(); pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C'); pdf.set_font('Arial', '', 10) # Redraw header on new page
             pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
+    # --- CORRECTED ---
+    # Smarter page break logic for the SPOC section
+    height_needed = 12 + 25 # title(12) + contact block (approx 25)
+    if pdf.get_y() + height_needed > pdf.page_break_trigger:
+        pdf.add_page()
+        
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
         col_start_x = pdf.get_x(); pdf.set_font('Arial', 'BU', 10); pdf.multi_cell(90, 6, title, 0, 'L'); pdf.ln(1)
@@ -207,7 +218,6 @@ def create_advanced_rfq_pdf(data):
             row_start_y = pdf.get_y(); pdf.set_x(col_start_x); pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, key_str, 0, 0, 'L')
             pdf.set_xy(col_start_x + 25, row_start_y); pdf.set_font('Arial', '', 10); pdf.multi_cell(65, 6, value_str, 0, 'L')
         draw_kv_row("Name:", name); draw_kv_row("Designation:", designation); draw_kv_row("Phone No:", phone); draw_kv_row("Email ID:", email)
-    if pdf.get_y() + 45 > pdf.page_break_trigger: pdf.add_page()
     start_y = pdf.get_y(); pdf.set_xy(pdf.l_margin, start_y); draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
     if data.get('spoc2_name'):
@@ -216,58 +226,46 @@ def create_advanced_rfq_pdf(data):
     else: pdf.set_y(end_y1)
     pdf.ln(5)
 
+    # --- CORRECTED ---
+    # Smarter page break logic for the Commercial section
+    height_needed = 12 + 12 + 8 + 8 # title(12) + description text(12) + header(8) + one_row(8)
+    if pdf.get_y() + height_needed > pdf.page_break_trigger:
+        pdf.add_page()
+
     pdf.section_title('COMMERCIAL REQUIREMENTS')
     pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
-    if pdf.get_y() + (len(data['commercial_df']) + 1) * 8 > pdf.page_break_trigger: pdf.add_page()
     pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
     pdf.set_font('Arial', '', 10)
     for index, row in data['commercial_df'].iterrows():
+        if pdf.get_y() + 8 > pdf.page_break_trigger: pdf.add_page(); pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C'); pdf.set_font('Arial', '', 10) # Redraw header
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1'); remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
-    pdf.ln(10)
 
+    pdf.ln(10)
+    
+    # Check for remaining content
     if pdf.get_y() + 90 > pdf.page_break_trigger: pdf.add_page()
+
     if data.get('submit_to_name'):
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(5, 8, chr(149))
-        pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1)
-        pdf.ln(5)
-        pdf.set_x(pdf.l_margin + 15)
-        pdf.set_font('Arial', '', 12)
-        hex_color = data.get('submit_to_color', '#DC3232').lstrip('#')
-        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        pdf.set_text_color(r, g, b)
-        pdf.multi_cell(0, 7, data.get('submit_to_name', ''))
-        pdf.set_text_color(0, 0, 0)
-        pdf.ln(1)
+        pdf.set_font('Arial', 'B', 12); pdf.cell(5, 8, chr(149)); pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1); pdf.ln(5)
+        pdf.set_x(pdf.l_margin + 15); pdf.set_font('Arial', '', 12)
+        hex_color = data.get('submit_to_color', '#DC3232').lstrip('#'); r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        pdf.set_text_color(r, g, b); pdf.multi_cell(0, 7, data.get('submit_to_name', '')); pdf.set_text_color(0, 0, 0); pdf.ln(1)
         if data.get('submit_to_registered_office'):
-            pdf.set_x(pdf.l_margin + 15)
-            pdf.set_font('Arial', '', 10)
-            pdf.set_text_color(128, 128, 128)
-            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L')
-            pdf.set_text_color(0, 0, 0)
+            pdf.set_x(pdf.l_margin + 15); pdf.set_font('Arial', '', 10); pdf.set_text_color(128, 128, 128)
+            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L'); pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
 
     if data.get('delivery_location'):
-        pdf.set_font('Arial', 'B', 12)
-        pdf.cell(5, 8, chr(149))
-        pdf.cell(0, 8, 'Delivery Location:', 0, 1)
-        pdf.ln(2)
-        pdf.set_font('Arial', '', 11)
-        pdf.set_x(pdf.l_margin + 5)
-        pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
+        pdf.set_font('Arial', 'B', 12); pdf.cell(5, 8, chr(149)); pdf.cell(0, 8, 'Delivery Location:', 0, 1); pdf.ln(2)
+        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5); pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
     pdf.ln(10)
 
     if data.get('annexures'):
-        pdf.set_font('Arial', 'B', 14)
-        pdf.cell(0, 8, 'ANNEXURES', 0, 1)
-        pdf.ln(2)
-        pdf.set_font('Arial', '', 11)
-        pdf.set_x(pdf.l_margin + 5)
-        pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
+        pdf.set_font('Arial', 'B', 14); pdf.cell(0, 8, 'ANNEXURES', 0, 1); pdf.ln(2)
+        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5); pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
         
     return bytes(pdf.output())
-
 
 # --- STREAMLIT APP ---
 st.title("🏭 Request For Quotation Generator")
