@@ -171,11 +171,23 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L')
         rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
         rack_col_widths = [34, 34.5, 29.5, 30, 34.5, 27.5]
+
+        # --- CORRECTED RACK HEADER DRAWING LOGIC ---
+        header_height = 16
+        line_height_header = 6
+        pdf.set_font('Arial', 'B', 10)
         y_start_header = pdf.get_y()
+        current_x_header = pdf.l_margin
         for i, header in enumerate(rack_headers):
-            pdf.set_y(y_start_header); pdf.set_x(pdf.l_margin + sum(rack_col_widths[:i]))
-            pdf.multi_cell(rack_col_widths[i], 8, header, border=1, align='C', new_x="RIGHT", new_y="TOP")
-        pdf.ln(16)
+            pdf.rect(current_x_header, y_start_header, rack_col_widths[i], header_height)
+            num_lines = header.count('\n') + 1
+            y_text_header = y_start_header + (header_height - num_lines * line_height_header) / 2
+            pdf.set_xy(current_x_header, y_text_header)
+            pdf.multi_cell(rack_col_widths[i], line_height_header, header, align='C', border=0)
+            current_x_header += rack_col_widths[i]
+        pdf.set_y(y_start_header + header_height)
+        # --- END OF CORRECTION ---
+
         pdf.set_font('Arial', '', 10)
         num_rack_rows = max(4, len(data['rack_details_df']))
         for i in range(num_rack_rows):
@@ -188,47 +200,29 @@ def create_advanced_rfq_pdf(data):
             pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
         pdf.ln(8)
         
-        # --- NEW LAYOUT FOR KEY INPUTS ---
         pdf.set_font('Arial', 'B', 12); pdf.cell(0, 8, 'Key Inputs:', 0, 1, 'L'); pdf.ln(2)
         for index, row in data['key_inputs_df'].iterrows():
-            if not row['Input Text']: continue # Skip if no text
-            
-            # Check if there's enough space for the title and a reasonably sized image
-            if pdf.get_y() + 80 > pdf.page_break_trigger:
-                pdf.add_page()
-
-            # 1. Draw the input text as a bold title
+            if not row['Input Text']: continue
+            if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
             pdf.set_font('Arial', 'B', 11)
             pdf.multi_cell(0, 6, f"{index + 1}. {row['Input Text']}", 0, 'L')
-            pdf.ln(3) # Space after title
-            
-            # 2. Draw the large, page-width image
+            pdf.ln(3)
             image_data = row.get('image_data_bytes')
             if isinstance(image_data, bytes):
                 try:
-                    img = Image.open(io.BytesIO(image_data))
-                    img_w, img_h = img.size
-                    aspect_ratio = img_h / img_w # Note: h/w for height calculation
-                    
-                    # Calculate dimensions to fit page width
+                    img = Image.open(io.BytesIO(image_data)); img_w, img_h = img.size
+                    aspect_ratio = img_h / img_w
                     available_width = pdf.w - pdf.l_margin - pdf.r_margin
                     img_display_w = available_width
                     img_display_h = img_display_w * aspect_ratio
-                    
-                    # If image is too tall for remaining space, put it on a new page
-                    if pdf.get_y() + img_display_h > pdf.page_break_trigger:
-                        pdf.add_page()
-                    
+                    if pdf.get_y() + img_display_h > pdf.page_break_trigger: pdf.add_page()
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         img.save(tmp.name, format='PNG')
                         pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h)
                         os.remove(tmp.name)
-                    pdf.set_y(pdf.get_y() + img_display_h + 8) # Move cursor below image with margin
-                except Exception:
-                    pdf.ln(5)
-            else:
-                 pdf.ln(5) # Add space even if there is no image
-        # --- END OF NEW LAYOUT BLOCK ---
+                    pdf.set_y(pdf.get_y() + img_display_h + 8)
+                except Exception: pdf.ln(5)
+            else: pdf.ln(5)
 
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
