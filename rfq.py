@@ -212,15 +212,21 @@ def create_advanced_rfq_pdf(data):
                     img_display_w = available_width
                     img_display_h = img_display_w * aspect_ratio
                     
-                    # --- IMAGE HEIGHT CORRECTION (FIXED) ---
+                    # --- IMAGE HEIGHT CAP (FIXED) ---
                     # Cap image height at 45% of the printable page area to prevent excessively large images.
                     max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.45 
                     if img_display_h > max_img_height:
                         img_display_h = max_img_height
                         img_display_w = img_display_h / aspect_ratio # Recalculate width to maintain aspect ratio
-                    # --- END CORRECTION ---
+                    
+                    # --- PAGE BREAK AND FOOTER COLLISION AVOIDANCE (FIXED) ---
+                    # Check if the image plus a safety margin would exceed the page break trigger.
+                    # This prevents the image from getting too close to the footer.
+                    safety_margin = 5 # 5mm margin
+                    if pdf.get_y() + img_display_h + safety_margin > pdf.page_break_trigger:
+                        pdf.add_page()
+                    # --- END OF FIX ---
 
-                    if pdf.get_y() + img_display_h > pdf.page_break_trigger: pdf.add_page()
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         img.save(tmp.name, format='PNG')
                         pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h)
@@ -355,7 +361,7 @@ elif rfq_type == 'Storage Infrastructure':
             st.session_state.rack_df = pd.DataFrame([{"Types of Rack": "", "Rack Dimension (MM)": "", "Level/Rack": "", "Type of Bin": "", "Bin Dimension (MM)": "", "Level/Bin": ""}])
         
         # --- RACK DETAILS EDITABLE FIX ---
-        # Explicitly setting the column_config ensures all columns are treated as editable text fields.
+        # The full column_config makes all columns editable text fields.
         edited_rack_df = st.data_editor(
             st.session_state.rack_df,
             num_rows="dynamic",
