@@ -114,11 +114,15 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(y_start_header + header_height)
         pdf.set_font('Arial', '', 10)
         line_height_row = 6
-        num_bin_rows = max(4, len(data['bin_details_df']))
+        
+        # --- DYNAMIC ROW FIX FOR BINS ---
+        bin_df = data['bin_details_df']
+        num_bin_rows = len(bin_df) if not bin_df.empty else 4 # Show 4 empty rows if no input
+        
         for i in range(num_bin_rows):
             row_y_start = pdf.get_y()
             if pdf.get_y() + row_height > pdf.page_break_trigger: pdf.add_page()
-            row_data = data['bin_details_df'].iloc[i] if i < len(data['bin_details_df']) else {}
+            row_data = bin_df.iloc[i] if i < len(bin_df) else {}
             row_contents = [
                 str(row_data.get('Type of Bin', '')), str(row_data.get('Bin Outer Dimension (MM)', '')),
                 str(row_data.get('Bin Inner Dimension (MM)', '')), '', str(row_data.get('Qty Bin', ''))
@@ -185,21 +189,31 @@ def create_advanced_rfq_pdf(data):
             current_x_header += rack_col_widths[i]
         pdf.set_y(y_start_header + header_height)
         pdf.set_font('Arial', '', 10)
-        num_rack_rows = max(4, len(data['rack_details_df']))
-        for i in range(num_rack_rows):
-            row_data = data['rack_details_df'].iloc[i] if i < len(data['rack_details_df']) else {}
-            pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
-            pdf.cell(rack_col_widths[1], 10, str(row_data.get('Rack Dimension (MM)', '')), border=1, align='C')
-            pdf.cell(rack_col_widths[2], 10, str(row_data.get('Level/Rack', '')), border=1, align='C')
-            pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
-            pdf.cell(rack_col_widths[4], 10, str(row_data.get('Bin Dimension (MM)', '')), border=1, align='C')
-            pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
+        
+        # --- DYNAMIC RACK DETAILS PDF GENERATION (FIXED) ---
+        # This loop now correctly iterates through all rows provided by the user.
+        rack_df = data['rack_details_df']
+        if not rack_df.empty:
+            for _, row_data in rack_df.iterrows():
+                if pdf.get_y() + 10 > pdf.page_break_trigger: pdf.add_page() # Add page if row won't fit
+                pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
+                pdf.cell(rack_col_widths[1], 10, str(row_data.get('Rack Dimension (MM)', '')), border=1, align='C')
+                pdf.cell(rack_col_widths[2], 10, str(row_data.get('Level/Rack', '')), border=1, align='C')
+                pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
+                pdf.cell(rack_col_widths[4], 10, str(row_data.get('Bin Dimension (MM)', '')), border=1, align='C')
+                pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
+        else: # If user provided no rows, show a placeholder in the PDF.
+            pdf.cell(sum(rack_col_widths), 10, "No rack details provided.", border=1, align='C', ln=1)
+        # --- END OF FIX ---
         pdf.ln(8)
         
         pdf.set_font('Arial', 'B', 12); pdf.cell(0, 8, 'Key Inputs:', 0, 1, 'L'); pdf.ln(2)
+        
+        # --- DYNAMIC KEY INPUTS PDF GENERATION (AUTOMATED) ---
+        # This loop correctly processes all user inputs and their images.
         for index, row in data['key_inputs_df'].iterrows():
             if not row['Input Text']: continue
-            if pdf.get_y() + 80 > pdf.page_break_trigger: pdf.add_page()
+            if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page() # Check space for text
             pdf.set_font('Arial', 'B', 11)
             pdf.multi_cell(0, 6, f"{index + 1}. {row['Input Text']}", 0, 'L')
             pdf.ln(3)
@@ -212,20 +226,14 @@ def create_advanced_rfq_pdf(data):
                     img_display_w = available_width
                     img_display_h = img_display_w * aspect_ratio
                     
-                    # --- IMAGE HEIGHT CAP (FIXED) ---
-                    # Cap image height at 45% of the printable page area to prevent excessively large images.
                     max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.45 
                     if img_display_h > max_img_height:
                         img_display_h = max_img_height
-                        img_display_w = img_display_h / aspect_ratio # Recalculate width to maintain aspect ratio
+                        img_display_w = img_display_h / aspect_ratio
                     
-                    # --- PAGE BREAK AND FOOTER COLLISION AVOIDANCE (FIXED) ---
-                    # Check if the image plus a safety margin would exceed the page break trigger.
-                    # This prevents the image from getting too close to the footer.
-                    safety_margin = 5 # 5mm margin
+                    safety_margin = 5
                     if pdf.get_y() + img_display_h + safety_margin > pdf.page_break_trigger:
                         pdf.add_page()
-                    # --- END OF FIX ---
 
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         img.save(tmp.name, format='PNG')
@@ -234,6 +242,7 @@ def create_advanced_rfq_pdf(data):
                     pdf.set_y(pdf.get_y() + img_display_h + 8)
                 except Exception: pdf.ln(5)
             else: pdf.ln(5)
+        # --- END OF AUTOMATION ---
 
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
@@ -333,10 +342,12 @@ if rfq_type == 'Item':
         if 'bin_df' not in st.session_state:
             st.session_state.bin_df = pd.DataFrame([{"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": None, "Qty Bin": 150}])
         st.markdown("###### Edit Bin Details and Upload Images per Row")
+        st.info("ℹ️ Double-click a cell to edit. Use the `+` button at the bottom of the table to add more bin types.")
         editor_col, uploader_col = st.columns([3, 2])
         with editor_col:
             edited_bin_df = st.data_editor(st.session_state.bin_df, num_rows="dynamic", use_container_width=True, column_config={"Type of Bin": st.column_config.TextColumn(required=True), "Bin Outer Dimension (MM)": st.column_config.TextColumn(), "Bin Inner Dimension (MM)": st.column_config.TextColumn(), "Qty Bin": st.column_config.NumberColumn(), "Conceptual Image": st.column_config.ImageColumn("Image Preview")}, key="bin_df_editor")
         with uploader_col:
+            st.write("**Upload Images**")
             for i in range(len(edited_bin_df)):
                 bin_type = edited_bin_df.iloc[i]["Type of Bin"]
                 label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
@@ -360,8 +371,9 @@ elif rfq_type == 'Storage Infrastructure':
         if 'rack_df' not in st.session_state or st.session_state.rack_df.empty:
             st.session_state.rack_df = pd.DataFrame([{"Types of Rack": "", "Rack Dimension (MM)": "", "Level/Rack": "", "Type of Bin": "", "Bin Dimension (MM)": "", "Level/Bin": ""}])
         
-        # --- RACK DETAILS EDITABLE FIX ---
-        # The full column_config makes all columns editable text fields.
+        # --- UI IMPROVEMENT ---
+        st.info("ℹ️ Double-click any cell to edit. Use the `+` button at the bottom of the table to add more rack types.")
+        
         edited_rack_df = st.data_editor(
             st.session_state.rack_df,
             num_rows="dynamic",
@@ -377,11 +389,13 @@ elif rfq_type == 'Storage Infrastructure':
             key="rack_df_editor"
         )
         st.session_state.rack_df = edited_rack_df
-        # --- END OF FIX ---
         
         st.markdown("---"); st.markdown("##### Key Inputs")
         if 'key_inputs_df' not in st.session_state or st.session_state.key_inputs_df.empty:
             st.session_state.key_inputs_df = pd.DataFrame([{"Input Text": "", "Upload Image?": False, "Image Data": None}])
+        
+        # --- UI IMPROVEMENT ---
+        st.info("ℹ️ Describe each key requirement below. Check the box to enable the image uploader for that row. Use the `+` button to add more inputs.")
         
         edited_key_inputs_df = st.data_editor(
             st.session_state.key_inputs_df,
@@ -453,8 +467,9 @@ if submitted:
                 rfq_data.update({'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
                                  'stack_static': stack_static, 'stack_dynamic': stack_dynamic})
             elif rfq_type == 'Storage Infrastructure':
-                rfq_data['rack_details_df'] = st.session_state.rack_df
-                rfq_data['key_inputs_df'] = st.session_state.key_inputs_df.rename(columns={"Image Data": "image_data_bytes"})
+                # Filter out empty rows before sending to PDF function
+                rfq_data['rack_details_df'] = st.session_state.rack_df[st.session_state.rack_df["Types of Rack"].str.strip() != ""]
+                rfq_data['key_inputs_df'] = st.session_state.key_inputs_df[st.session_state.key_inputs_df["Input Text"].str.strip() != ""].rename(columns={"Image Data": "image_data_bytes"})
 
             pdf_data = create_advanced_rfq_pdf(rfq_data)
 
