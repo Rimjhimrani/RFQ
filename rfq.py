@@ -112,7 +112,7 @@ def create_advanced_rfq_pdf(data):
             pdf.multi_cell(bin_col_widths[i], line_height_header, header, align='C')
             current_x_header += bin_col_widths[i]
         pdf.set_y(y_start_header + header_height)
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('Arial', '', 12)
         line_height_row = 6
         bin_df = data['bin_details_df']
         num_bin_rows = len(bin_df) if not bin_df.empty else 4
