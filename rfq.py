@@ -114,11 +114,8 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(y_start_header + header_height)
         pdf.set_font('Arial', '', 10)
         line_height_row = 6
-        
-        # --- DYNAMIC ROW FIX FOR BINS ---
         bin_df = data['bin_details_df']
-        num_bin_rows = len(bin_df) if not bin_df.empty else 4 # Show 4 empty rows if no input
-        
+        num_bin_rows = len(bin_df) if not bin_df.empty else 4
         for i in range(num_bin_rows):
             row_y_start = pdf.get_y()
             if pdf.get_y() + row_height > pdf.page_break_trigger: pdf.add_page()
@@ -190,60 +187,55 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(y_start_header + header_height)
         pdf.set_font('Arial', '', 10)
         
-        # --- DYNAMIC RACK DETAILS PDF GENERATION (FIXED) ---
-        # This loop now correctly iterates through all rows provided by the user.
         rack_df = data['rack_details_df']
         if not rack_df.empty:
             for _, row_data in rack_df.iterrows():
-                if pdf.get_y() + 10 > pdf.page_break_trigger: pdf.add_page() # Add page if row won't fit
+                if pdf.get_y() + 10 > pdf.page_break_trigger: pdf.add_page()
                 pdf.cell(rack_col_widths[0], 10, str(row_data.get('Types of Rack', '')), border=1, align='C')
                 pdf.cell(rack_col_widths[1], 10, str(row_data.get('Rack Dimension (MM)', '')), border=1, align='C')
                 pdf.cell(rack_col_widths[2], 10, str(row_data.get('Level/Rack', '')), border=1, align='C')
                 pdf.cell(rack_col_widths[3], 10, str(row_data.get('Type of Bin', '')), border=1, align='C')
                 pdf.cell(rack_col_widths[4], 10, str(row_data.get('Bin Dimension (MM)', '')), border=1, align='C')
                 pdf.cell(rack_col_widths[5], 10, str(row_data.get('Level/Bin', '')), border=1, align='C', ln=1)
-        else: # If user provided no rows, show a placeholder in the PDF.
+        else:
             pdf.cell(sum(rack_col_widths), 10, "No rack details provided.", border=1, align='C', ln=1)
-        # --- END OF FIX ---
         pdf.ln(8)
         
         pdf.set_font('Arial', 'B', 12); pdf.cell(0, 8, 'Key Inputs:', 0, 1, 'L'); pdf.ln(2)
+        key_inputs_df = data['key_inputs_df']
+        if not key_inputs_df.empty:
+            for index, row in key_inputs_df.iterrows():
+                if not row['Input Text']: continue
+                if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
+                pdf.set_font('Arial', 'B', 11)
+                pdf.multi_cell(0, 6, f"{index + 1}. {row['Input Text']}", 0, 'L')
+                pdf.ln(3)
+                image_data = row.get('image_data_bytes')
+                if isinstance(image_data, bytes):
+                    try:
+                        img = Image.open(io.BytesIO(image_data)); img_w, img_h = img.size
+                        aspect_ratio = img_h / img_w
+                        available_width = pdf.w - pdf.l_margin - pdf.r_margin
+                        img_display_w = available_width
+                        img_display_h = img_display_w * aspect_ratio
+                        
+                        max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.45 
+                        if img_display_h > max_img_height:
+                            img_display_h = max_img_height
+                            img_display_w = img_display_h / aspect_ratio
+                        
+                        safety_margin = 5
+                        if pdf.get_y() + img_display_h + safety_margin > pdf.page_break_trigger:
+                            pdf.add_page()
+
+                        with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                            img.save(tmp.name, format='PNG')
+                            pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h)
+                            os.remove(tmp.name)
+                        pdf.set_y(pdf.get_y() + img_display_h + 8)
+                    except Exception: pdf.ln(5)
+                else: pdf.ln(5)
         
-        # --- DYNAMIC KEY INPUTS PDF GENERATION (AUTOMATED) ---
-        # This loop correctly processes all user inputs and their images.
-        for index, row in data['key_inputs_df'].iterrows():
-            if not row['Input Text']: continue
-            if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page() # Check space for text
-            pdf.set_font('Arial', 'B', 11)
-            pdf.multi_cell(0, 6, f"{index + 1}. {row['Input Text']}", 0, 'L')
-            pdf.ln(3)
-            image_data = row.get('image_data_bytes')
-            if isinstance(image_data, bytes):
-                try:
-                    img = Image.open(io.BytesIO(image_data)); img_w, img_h = img.size
-                    aspect_ratio = img_h / img_w
-                    available_width = pdf.w - pdf.l_margin - pdf.r_margin
-                    img_display_w = available_width
-                    img_display_h = img_display_w * aspect_ratio
-                    
-                    max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.45 
-                    if img_display_h > max_img_height:
-                        img_display_h = max_img_height
-                        img_display_w = img_display_h / aspect_ratio
-                    
-                    safety_margin = 5
-                    if pdf.get_y() + img_display_h + safety_margin > pdf.page_break_trigger:
-                        pdf.add_page()
-
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        img.save(tmp.name, format='PNG')
-                        pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h)
-                        os.remove(tmp.name)
-                    pdf.set_y(pdf.get_y() + img_display_h + 8)
-                except Exception: pdf.ln(5)
-            else: pdf.ln(5)
-        # --- END OF AUTOMATION ---
-
     timeline_data = [("Date of RFQ Release", data['date_release']),("Query Resolution Deadline", data['date_query']),("Negotiation & Vendor Selection", data['date_selection']),("Delivery Deadline", data['date_delivery']),("Installation Deadline", data['date_install'])]
     if data.get('date_meet') and pd.notna(data['date_meet']): timeline_data.append(("Face to Face Meet", data['date_meet']))
     if data.get('date_quote') and pd.notna(data['date_quote']): timeline_data.append(("First Level Quotation", data['date_quote']))
@@ -368,10 +360,22 @@ if rfq_type == 'Item':
 elif rfq_type == 'Storage Infrastructure':
     with st.expander("Technical Specifications", expanded=True):
         st.markdown("##### Rack Details")
-        if 'rack_df' not in st.session_state or st.session_state.rack_df.empty:
-            st.session_state.rack_df = pd.DataFrame([{"Types of Rack": "", "Rack Dimension (MM)": "", "Level/Rack": "", "Type of Bin": "", "Bin Dimension (MM)": "", "Level/Bin": ""}])
         
-        # --- UI IMPROVEMENT ---
+        # --- FIX FOR ALL COLUMNS NOT EDITING ---
+        # Initialize the DataFrame with all columns explicitly set to string type.
+        # This prevents Streamlit/Pandas from inferring a numeric type for empty columns,
+        # which would make them non-editable for text input like "600x400".
+        if 'rack_df' not in st.session_state or st.session_state.rack_df.empty:
+            rack_data = {
+                "Types of Rack": [""],
+                "Rack Dimension (MM)": [""],
+                "Level/Rack": [""],
+                "Type of Bin": [""],
+                "Bin Dimension (MM)": [""],
+                "Level/Bin": [""]
+            }
+            st.session_state.rack_df = pd.DataFrame(rack_data).astype(str)
+
         st.info("ℹ️ Double-click any cell to edit. Use the `+` button at the bottom of the table to add more rack types.")
         
         edited_rack_df = st.data_editor(
@@ -394,7 +398,6 @@ elif rfq_type == 'Storage Infrastructure':
         if 'key_inputs_df' not in st.session_state or st.session_state.key_inputs_df.empty:
             st.session_state.key_inputs_df = pd.DataFrame([{"Input Text": "", "Upload Image?": False, "Image Data": None}])
         
-        # --- UI IMPROVEMENT ---
         st.info("ℹ️ Describe each key requirement below. Check the box to enable the image uploader for that row. Use the `+` button to add more inputs.")
         
         edited_key_inputs_df = st.data_editor(
@@ -463,13 +466,17 @@ if submitted:
             }
 
             if rfq_type == 'Item':
-                rfq_data['bin_details_df'] = st.session_state.bin_df.rename(columns={"Conceptual Image": "image_data_bytes"})
+                df_to_process = st.session_state.bin_df.dropna(subset=["Type of Bin"]).copy()
+                df_to_process = df_to_process[df_to_process["Type of Bin"].str.strip() != ""]
+                rfq_data['bin_details_df'] = df_to_process.rename(columns={"Conceptual Image": "image_data_bytes"})
                 rfq_data.update({'color': color, 'capacity': capacity, 'lid': lid, 'label_space': label_space, 'label_size': label_size,
                                  'stack_static': stack_static, 'stack_dynamic': stack_dynamic})
             elif rfq_type == 'Storage Infrastructure':
-                # Filter out empty rows before sending to PDF function
-                rfq_data['rack_details_df'] = st.session_state.rack_df[st.session_state.rack_df["Types of Rack"].str.strip() != ""]
-                rfq_data['key_inputs_df'] = st.session_state.key_inputs_df[st.session_state.key_inputs_df["Input Text"].str.strip() != ""].rename(columns={"Image Data": "image_data_bytes"})
+                df_rack = st.session_state.rack_df.dropna(subset=["Types of Rack"]).copy()
+                rfq_data['rack_details_df'] = df_rack[df_rack["Types of Rack"].str.strip() != ""]
+                
+                df_key = st.session_state.key_inputs_df.dropna(subset=["Input Text"]).copy()
+                rfq_data['key_inputs_df'] = df_key[df_key["Input Text"].str.strip() != ""].rename(columns={"Image Data": "image_data_bytes"})
 
             pdf_data = create_advanced_rfq_pdf(rfq_data)
 
