@@ -212,11 +212,12 @@ def create_advanced_rfq_pdf(data):
                     img_display_w = available_width
                     img_display_h = img_display_w * aspect_ratio
                     
-                    # --- IMAGE HEIGHT CORRECTION ---
-                    max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.65 # Cap at 65% of page height
+                    # --- IMAGE HEIGHT CORRECTION (FIXED) ---
+                    # Cap image height at 45% of the printable page area to prevent excessively large images.
+                    max_img_height = (pdf.h - pdf.t_margin - pdf.b_margin) * 0.45 
                     if img_display_h > max_img_height:
                         img_display_h = max_img_height
-                        img_display_w = img_display_h / aspect_ratio # Recalculate width
+                        img_display_w = img_display_h / aspect_ratio # Recalculate width to maintain aspect ratio
                     # --- END CORRECTION ---
 
                     if pdf.get_y() + img_display_h > pdf.page_break_trigger: pdf.add_page()
@@ -354,7 +355,7 @@ elif rfq_type == 'Storage Infrastructure':
             st.session_state.rack_df = pd.DataFrame([{"Types of Rack": "", "Rack Dimension (MM)": "", "Level/Rack": "", "Type of Bin": "", "Bin Dimension (MM)": "", "Level/Bin": ""}])
         
         # --- RACK DETAILS EDITABLE FIX ---
-        # The full column_config makes all columns editable text fields.
+        # Explicitly setting the column_config ensures all columns are treated as editable text fields.
         edited_rack_df = st.data_editor(
             st.session_state.rack_df,
             num_rows="dynamic",
