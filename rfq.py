@@ -920,10 +920,9 @@ elif rfq_type == 'Dynamic (Category-Based)':
             st.session_state.last_category = rfq_category
 
         if is_warehouse:
-            st.info("**Warehouse RFQ** — Select an item category from the dropdown below.")
-            st.markdown("---")
+            st.markdown("#### Select Warehouse Item Category")
 
-            # ── Single category dropdown ──
+            # ── 5-option dropdown — drives everything below ──
             WH_SUB_CATEGORIES = [
                 "Storage System",
                 "Material Handling",
@@ -956,77 +955,106 @@ elif rfq_type == 'Dynamic (Category-Based)':
                 help="Fields will change based on your selection"
             )
 
-            # Reset state when sub-category changes
+            # ── Reset state when sub-category changes ──
             if st.session_state.get('last_wh_sub') != wh_sub:
                 for k in ['wh_items_df', 'storage_containers_df', 'storage_containers_images',
                           'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df']:
-                    if k in st.session_state: del st.session_state[k]
+                    if k in st.session_state:
+                        del st.session_state[k]
                 st.session_state['last_wh_sub'] = wh_sub
 
-            import copy
+            import copy as _wh_copy
 
-            # ── STORAGE SYSTEM / MATERIAL HANDLING / DOCK LEVELLER ──
-            if wh_sub in ("Storage System", "Material Handling", "Dock Leveller"):
-                item_options = [""] + WH_CATEGORY_ITEMS[wh_sub]
+            # ── Helper: standard 6-column items table ──
+            def _render_std_table(sub_name):
+                item_opts = [""] + WH_CATEGORY_ITEMS[sub_name]
                 if 'wh_items_df' not in st.session_state:
                     st.session_state['wh_items_df'] = pd.DataFrame([{
                         "Sr.no": 1, "Item Name": "",
                         "Description / Specification": "",
                         "Quantity": 1, "Unit": "Nos", "Remarks": ""
                     }])
-                df_edit = st.session_state['wh_items_df'].copy()
-                df_edit["Sr.no"] = range(1, len(df_edit) + 1)
-                df_edit["Quantity"] = pd.to_numeric(df_edit.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
+                dfe = st.session_state['wh_items_df'].copy()
+                dfe["Sr.no"] = range(1, len(dfe) + 1)
+                dfe["Quantity"] = pd.to_numeric(dfe.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
                 for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
-                    if col not in df_edit.columns: df_edit[col] = ""
-                    df_edit[col] = df_edit[col].astype(str).replace("nan", "")
-                df_edit = df_edit[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
-                edited_wh = st.data_editor(
-                    df_edit, num_rows="dynamic", use_container_width=True,
+                    if col not in dfe.columns: dfe[col] = ""
+                    dfe[col] = dfe[col].astype(str).replace("nan", "")
+                dfe = dfe[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
+                edited = st.data_editor(
+                    dfe, num_rows="dynamic", use_container_width=True,
                     column_config={
-                        "Sr.no":                        st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
-                        "Item Name":                    st.column_config.SelectboxColumn("Item Name ▼", width="medium", options=item_options),
-                        "Description / Specification":  st.column_config.TextColumn("Description / Specification", width="large"),
-                        "Quantity":                     st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
-                        "Unit":                         st.column_config.SelectboxColumn("Unit ▼", width="small", options=[""] + UNIT_OPTIONS),
-                        "Remarks":                      st.column_config.TextColumn("Remarks", width="medium"),
+                        "Sr.no":                       st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
+                        "Item Name":                   st.column_config.SelectboxColumn("Item Name ▼", width="medium", options=item_opts),
+                        "Description / Specification": st.column_config.TextColumn("Description / Specification", width="large"),
+                        "Quantity":                    st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
+                        "Unit":                        st.column_config.SelectboxColumn("Unit ▼", width="small", options=[""] + UNIT_OPTIONS),
+                        "Remarks":                     st.column_config.TextColumn("Remarks", width="medium"),
                     }, key="wh_items_editor")
-                st.session_state['wh_items_df'] = edited_wh
-                valid_wh = edited_wh[edited_wh["Item Name"].astype(str).str.strip() != ""]
-                if len(valid_wh): st.success(f"✅ {len(valid_wh)} item(s) added")
+                st.session_state['wh_items_df'] = edited
+                valid = edited[edited["Item Name"].astype(str).str.strip() != ""]
+                if len(valid):
+                    st.success(f"✅ {len(valid)} item(s) added")
 
-            # ── AUTOMATED STORAGE SYSTEM ──
+            # ════════════════════════════════════════════════
+            # STORAGE SYSTEM
+            # ════════════════════════════════════════════════
+            if wh_sub == "Storage System":
+                st.caption("Select racks, shelving, and storage system items below.")
+                _render_std_table("Storage System")
+
+            # ════════════════════════════════════════════════
+            # MATERIAL HANDLING
+            # ════════════════════════════════════════════════
+            elif wh_sub == "Material Handling":
+                st.caption("Select forklifts, trucks, conveyors, and other handling equipment.")
+                _render_std_table("Material Handling")
+
+            # ════════════════════════════════════════════════
+            # DOCK LEVELLER
+            # ════════════════════════════════════════════════
+            elif wh_sub == "Dock Leveller":
+                st.caption("Select loading dock equipment — levellers, plates, ramps.")
+                _render_std_table("Dock Leveller")
+
+            # ════════════════════════════════════════════════
+            # AUTOMATED STORAGE SYSTEM
+            # Columns: Sr.no | Item Name (dropdown) | Description | Qty | Unit | Remarks
+            # PLUS: Model Details, Key Features, Inbuilt Features, Installation Accountability
+            # ════════════════════════════════════════════════
             elif wh_sub == "Automated Storage System":
-                item_options = [""] + WH_CATEGORY_ITEMS["Automated Storage System"]
+                st.caption("Select carousel / VStore systems. Specification tables appear below.")
+
+                item_opts_auto = [""] + WH_CATEGORY_ITEMS["Automated Storage System"]
                 if 'wh_items_df' not in st.session_state:
                     st.session_state['wh_items_df'] = pd.DataFrame([{
                         "Sr.no": 1, "Item Name": "",
                         "Description / Specification": "",
                         "Quantity": 1, "Unit": "Nos", "Remarks": ""
                     }])
-                df_edit = st.session_state['wh_items_df'].copy()
-                df_edit["Sr.no"] = range(1, len(df_edit) + 1)
-                df_edit["Quantity"] = pd.to_numeric(df_edit.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
+                dfe_auto = st.session_state['wh_items_df'].copy()
+                dfe_auto["Sr.no"] = range(1, len(dfe_auto) + 1)
+                dfe_auto["Quantity"] = pd.to_numeric(dfe_auto.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
                 for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
-                    if col not in df_edit.columns: df_edit[col] = ""
-                    df_edit[col] = df_edit[col].astype(str).replace("nan", "")
-                df_edit = df_edit[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
-                edited_wh = st.data_editor(
-                    df_edit, num_rows="dynamic", use_container_width=True,
+                    if col not in dfe_auto.columns: dfe_auto[col] = ""
+                    dfe_auto[col] = dfe_auto[col].astype(str).replace("nan", "")
+                dfe_auto = dfe_auto[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
+                edited_auto = st.data_editor(
+                    dfe_auto, num_rows="dynamic", use_container_width=True,
                     column_config={
-                        "Sr.no":                        st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
-                        "Item Name":                    st.column_config.SelectboxColumn("Item Name ▼", width="medium", options=item_options),
-                        "Description / Specification":  st.column_config.TextColumn("Description / Specification", width="large"),
-                        "Quantity":                     st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
-                        "Unit":                         st.column_config.SelectboxColumn("Unit ▼", width="small", options=[""] + UNIT_OPTIONS),
-                        "Remarks":                      st.column_config.TextColumn("Remarks", width="medium"),
+                        "Sr.no":                       st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
+                        "Item Name":                   st.column_config.SelectboxColumn("Item Name ▼", width="medium", options=item_opts_auto),
+                        "Description / Specification": st.column_config.TextColumn("Description / Specification", width="large"),
+                        "Quantity":                    st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
+                        "Unit":                        st.column_config.SelectboxColumn("Unit ▼", width="small", options=[""] + UNIT_OPTIONS),
+                        "Remarks":                     st.column_config.TextColumn("Remarks", width="medium"),
                     }, key="wh_items_editor")
-                st.session_state['wh_items_df'] = edited_wh
-                auto_valid = edited_wh[edited_wh["Item Name"].astype(str).str.strip() != ""]
-                if len(auto_valid): st.success(f"✅ {len(auto_valid)} item(s) selected")
+                st.session_state['wh_items_df'] = edited_auto
+                auto_valid = edited_auto[edited_auto["Item Name"].astype(str).str.strip() != ""]
+                if len(auto_valid):
+                    st.success(f"✅ {len(auto_valid)} item(s) selected")
 
                 st.markdown("---")
-                # Model Details
                 model_detail_header = st.text_input(
                     "Model Header",
                     value="3400 (L) x 3200 (W)   -  465 kgs/tray  -  28 m Height",
@@ -1034,9 +1062,10 @@ elif rfq_type == 'Dynamic (Category-Based)':
                 )
                 st.session_state.model_detail_header = model_detail_header
 
-                with st.expander("📐 Model Details — edit Requirement column", expanded=True):
+                with st.expander("📐 Model Details (pre-filled — edit Requirement column)", expanded=True):
                     if 'carousel_model_df' not in st.session_state or st.session_state.carousel_model_df.empty:
-                        st.session_state.carousel_model_df = pd.DataFrame(copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
+                        st.session_state.carousel_model_df = pd.DataFrame(
+                            _wh_copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
                     edited_model_df = st.data_editor(
                         st.session_state.carousel_model_df, num_rows="dynamic", use_container_width=True,
                         column_config={
@@ -1048,23 +1077,23 @@ elif rfq_type == 'Dynamic (Category-Based)':
                         }, key="carousel_model_editor")
                     st.session_state.carousel_model_df = edited_model_df
 
-                with st.expander("⭐ Key Features — fill Status column", expanded=False):
+                with st.expander("⭐ Key Features (fill Status column)", expanded=False):
                     default_kf = pd.DataFrame([
-                        {"Description": "Material Tracking", "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
-                        {"Description": "Tray Details", "Status": "", "Remarks": ""},
-                        {"Description": "Inventory List", "Status": "", "Remarks": ""},
-                        {"Description": "Tray Call History", "Status": "", "Remarks": ""},
-                        {"Description": "Alarm History", "Status": "", "Remarks": ""},
-                        {"Description": "Item Code Search", "Status": "", "Remarks": ""},
-                        {"Description": "Bar Code Search", "Status": "", "Remarks": ""},
-                        {"Description": "Pick from BOM", "Status": "", "Remarks": ""},
-                        {"Description": "BOM Items List", "Status": "", "Remarks": ""},
+                        {"Description": "Material Tracking",     "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
+                        {"Description": "Tray Details",          "Status": "", "Remarks": ""},
+                        {"Description": "Inventory List",        "Status": "", "Remarks": ""},
+                        {"Description": "Tray Call History",     "Status": "", "Remarks": ""},
+                        {"Description": "Alarm History",         "Status": "", "Remarks": ""},
+                        {"Description": "Item Code Search",      "Status": "", "Remarks": ""},
+                        {"Description": "Bar Code Search",       "Status": "", "Remarks": ""},
+                        {"Description": "Pick from BOM",         "Status": "", "Remarks": ""},
+                        {"Description": "BOM Items List",        "Status": "", "Remarks": ""},
                         {"Description": "User Management, with backup and restore options", "Status": "", "Remarks": ""},
                     ])
                     if 'key_features_df' not in st.session_state or st.session_state.key_features_df.empty:
                         st.session_state.key_features_df = default_kf
-                    edited_kf = st.data_editor(st.session_state.key_features_df, num_rows="dynamic",
-                        use_container_width=True,
+                    edited_kf = st.data_editor(
+                        st.session_state.key_features_df, num_rows="dynamic", use_container_width=True,
                         column_config={
                             "Description": st.column_config.TextColumn("Description", width="large"),
                             "Status":      st.column_config.TextColumn("Status ✏️", width="small"),
@@ -1072,64 +1101,71 @@ elif rfq_type == 'Dynamic (Category-Based)':
                         }, key="kf_editor")
                     st.session_state.key_features_df = edited_kf
 
-                with st.expander("🔧 Inbuilt Features — fill Vendor Scope column", expanded=False):
+                with st.expander("🔧 Inbuilt Features (fill Vendor Scope column)", expanded=False):
                     default_ib = pd.DataFrame([
-                        {"Description": "Ergonomic tray positioning", "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
-                        {"Description": "Variable frequency drives", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Tray uneven positioning sensor", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Ergonomic tray positioning",                              "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
+                        {"Description": "Variable frequency drives",                               "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Tray uneven positioning sensor",                          "Vendor Scope (Yes/No)": "", "Remarks": ""},
                         {"Description": "Light barrier for sensing material and operator intervention", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Operator panel with IPC", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Weight management system for sensing tray overload", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Tray Block option for Multiple users", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Password authentication", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Tray guide rail @ 50 pitch", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Total machine capacity 60 tone", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Expansion at later stage is possible", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                        {"Description": "Inventory management software", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Operator panel with IPC",                                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Weight management system for sensing tray overload",      "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Tray Block option for Multiple users",                    "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Password authentication",                                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Tray guide rail @ 50 pitch",                             "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Total machine capacity 60 tone",                         "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Expansion at later stage is possible",                   "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                        {"Description": "Inventory management software",                           "Vendor Scope (Yes/No)": "", "Remarks": ""},
                     ])
                     if 'inbuilt_features_df' not in st.session_state or st.session_state.inbuilt_features_df.empty:
                         st.session_state.inbuilt_features_df = default_ib
-                    edited_ib = st.data_editor(st.session_state.inbuilt_features_df, num_rows="dynamic",
-                        use_container_width=True,
+                    edited_ib = st.data_editor(
+                        st.session_state.inbuilt_features_df, num_rows="dynamic", use_container_width=True,
                         column_config={
-                            "Description":            st.column_config.TextColumn("Description", width="large"),
-                            "Vendor Scope (Yes/No)":  st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
-                            "Remarks":                st.column_config.TextColumn("Remarks", width="large"),
+                            "Description":           st.column_config.TextColumn("Description", width="large"),
+                            "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                            "Remarks":               st.column_config.TextColumn("Remarks", width="large"),
                         }, key="ib_editor")
                     st.session_state.inbuilt_features_df = edited_ib
 
-                with st.expander("🏗️ Installation Accountability — fill Scope columns", expanded=False):
+                with st.expander("🏗️ Installation Accountability (fill Scope columns)", expanded=False):
                     default_ia = pd.DataFrame([
-                        {"Category": "Inventory Management Suite (IPC).", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Packing, Freight & Transit Insurance.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Installation & Commissioning.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Training.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Warranty Period", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Unloading of material", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Material handling during the installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Power cable cost main junction Box to Vstore", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Biometric Access, Barcode Scanner", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "MS office.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Software Customization", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Inventory Management Suite (IPC).",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Packing, Freight & Transit Insurance.",                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Installation & Commissioning.",                             "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Training.",                                                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Warranty Period",                                            "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Unloading of material",                                      "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Material handling during the installation",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Power cable cost main junction Box to Vstore",               "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Biometric Access, Barcode Scanner",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "MS office.",                                                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Software Customization",                                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                         {"Category": "Machine Integration with ERP system will extra at Actual.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "UPS and Stabilizer with accessories Installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "Equipment Movement & Installation location", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                        {"Category": "PEB Cladding and Civil Floor for outside installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "UPS and Stabilizer with accessories Installation",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "Equipment Movement & Installation location",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                        {"Category": "PEB Cladding and Civil Floor for outside installation",     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                     ])
                     if 'installation_df' not in st.session_state or st.session_state.installation_df.empty:
                         st.session_state.installation_df = default_ia
-                    edited_ia = st.data_editor(st.session_state.installation_df, num_rows="dynamic",
-                        use_container_width=True,
+                    edited_ia = st.data_editor(
+                        st.session_state.installation_df, num_rows="dynamic", use_container_width=True,
                         column_config={
-                            "Category":               st.column_config.TextColumn("Category", width="large"),
-                            "Vendor Scope (Yes/No)":  st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
-                            "Customer Scope (Yes/No)":st.column_config.SelectboxColumn("Customer Scope ✏️", width="small", options=["", "Yes", "No"]),
-                            "Remarks":                st.column_config.TextColumn("Remarks", width="medium"),
+                            "Category":                st.column_config.TextColumn("Category", width="large"),
+                            "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                            "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope ✏️", width="small", options=["", "Yes", "No"]),
+                            "Remarks":                 st.column_config.TextColumn("Remarks", width="medium"),
                         }, key="ia_editor")
                     st.session_state.installation_df = edited_ia
 
-            # ── STORAGE CONTAINER ──
+            # ════════════════════════════════════════════════
+            # STORAGE CONTAINER
+            # Columns: Sr.No | Container Type (dropdown) | Material | Outer L/W/H |
+            #          Inner L/W/H | UOM | Base Type | Colour | Weight | Load Cap |
+            #          Stackable | Cover/Open | Rate | Qty | Image | Remarks
+            # ════════════════════════════════════════════════
             elif wh_sub == "Storage Container":
+                st.caption("Select container type from the dropdown, fill all dimensions, and upload a conceptual image per row.")
+
                 container_options = [""] + STORAGE_CONTAINERS_ITEMS
                 if 'storage_containers_df' not in st.session_state:
                     st.session_state.storage_containers_df = pd.DataFrame([_empty_container_row(1)])
@@ -1172,21 +1208,23 @@ elif rfq_type == 'Dynamic (Category-Based)':
                             "Qty":                 st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
                             "Remarks":             st.column_config.TextColumn("Remarks", width="medium"),
                         }, key="sc_df_editor")
+
                 with sc_uploader_col:
                     st.write("**Conceptual Images**")
                     for i in range(len(edited_sc_df)):
                         desc = str(edited_sc_df.iloc[i].get("Description", "")).strip()
-                        label = f"Row {i+1}: {desc}" if desc else f"Row {i+1}"
-                        uploaded_file = st.file_uploader(label, type=['png', 'jpg', 'jpeg'], key=f"sc_image_uploader_{i}")
-                        if uploaded_file is not None:
-                            st.session_state.storage_containers_images[i] = uploaded_file.getvalue()
+                        lbl = f"Row {i+1}: {desc}" if desc else f"Row {i+1}"
+                        f_up = st.file_uploader(lbl, type=["png", "jpg", "jpeg"], key=f"sc_image_uploader_{i}")
+                        if f_up is not None:
+                            st.session_state.storage_containers_images[i] = f_up.getvalue()
                         if i in st.session_state.storage_containers_images:
                             st.image(st.session_state.storage_containers_images[i], width=80)
 
                 st.session_state.storage_containers_df = edited_sc_df
-                valid_sc_count = len(edited_sc_df[edited_sc_df["Description"].astype(str).str.strip() != ""])
-                if valid_sc_count > 0:
-                    st.success(f"✅ {valid_sc_count} container type(s) added")
+                valid_sc = edited_sc_df[edited_sc_df["Description"].astype(str).str.strip() != ""]
+                if len(valid_sc):
+                    st.success(f"✅ {len(valid_sc)} container type(s) defined")
+
 
         else:
             hints = CATEGORY_HINTS.get(rfq_category, [])
