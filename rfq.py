@@ -426,6 +426,8 @@ def create_advanced_rfq_pdf(data):
                     qty = str(row.get('Quantity', ''))
                     unit = str(row.get('Unit', ''))
                     remarks = str(row.get('Remarks', ''))
+                    # Use Sr.no from data if available
+                    row_sr = str(row.get('Sr.no', sr))
                     desc_lines = max(1, len(description) // 40 + 1)
                     row_h = max(8, desc_lines * 6)
                     if pdf.get_y() + row_h > pdf.page_break_trigger:
@@ -437,7 +439,7 @@ def create_advanced_rfq_pdf(data):
                     row_y = pdf.get_y()
                     pdf.rect(pdf.l_margin, row_y, col_widths[0], row_h)
                     pdf.set_xy(pdf.l_margin, row_y + (row_h - 6) / 2)
-                    pdf.cell(col_widths[0], 6, str(sr), align='C')
+                    pdf.cell(col_widths[0], 6, row_sr, align='C')
                     x = pdf.l_margin + col_widths[0]
                     pdf.rect(x, row_y, col_widths[1], row_h)
                     pdf.set_xy(x + 1, row_y + 2)
@@ -925,34 +927,39 @@ elif rfq_type == 'Dynamic (Category-Based)':
             for group_name, group_items in WAREHOUSE_GROUPS.items():
                 state_key = f'wh_group_{group_name}'
                 editor_key = f'wh_editor_{group_name}'
+                # Dropdown options: blank + all group items
+                item_options = [""] + group_items
                 if state_key not in st.session_state:
                     st.session_state[state_key] = pd.DataFrame(
-                        columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
-                    ).astype({"Quantity": "object"})
+                        columns=["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
+                    )
                 with st.expander(f"📁 {group_name}", expanded=False):
-                    st.markdown(f"*Common items: {', '.join(group_items[:5])}{'...' if len(group_items) > 5 else ''}*")
-                    btn_cols = st.columns(min(len(group_items), 4))
-                    for idx, hint in enumerate(group_items):
-                        with btn_cols[idx % 4]:
-                            if st.button(f"➕ {hint}", key=f"btn_{group_name}_{idx}"):
-                                new_row = pd.DataFrame([{"Item Name": hint, "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
-                                st.session_state[state_key] = pd.concat([st.session_state[state_key], new_row], ignore_index=True)
-                                st.rerun()
                     df_edit = st.session_state[state_key].copy()
-                    if df_edit.empty:
-                        df_edit = pd.DataFrame([{"Item Name": "", "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
-                    df_edit["Quantity"] = pd.to_numeric(df_edit.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
-                    for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
+                    # Ensure correct columns exist
+                    for col in ["Sr.no", "Item Name", "Description / Specification", "Unit", "Remarks"]:
                         if col not in df_edit.columns: df_edit[col] = ""
-                        df_edit[col] = df_edit[col].astype(str)
+                    if "Quantity" not in df_edit.columns: df_edit["Quantity"] = 1
+                    if df_edit.empty:
+                        df_edit = pd.DataFrame([{
+                            "Sr.no": 1, "Item Name": "", "Description / Specification": "",
+                            "Quantity": 1, "Unit": "Nos", "Remarks": ""
+                        }])
+                    # Auto-number Sr.no
+                    df_edit["Sr.no"] = range(1, len(df_edit) + 1)
+                    df_edit["Quantity"] = pd.to_numeric(df_edit["Quantity"], errors='coerce').fillna(1).astype(int)
+                    for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
+                        df_edit[col] = df_edit[col].astype(str).replace("nan", "")
+                    # Reorder columns to match Excel spec
+                    df_edit = df_edit[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
                     edited_group = st.data_editor(
                         df_edit, num_rows="dynamic", use_container_width=True,
                         column_config={
-                            "Item Name": st.column_config.TextColumn("Item Name", width="medium"),
-                            "Description / Specification": st.column_config.TextColumn("Description / Specification", width="large"),
-                            "Quantity": st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
-                            "Unit": st.column_config.SelectboxColumn("Unit", width="small", options=UNIT_OPTIONS),
-                            "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
+                            "Sr.no":                        st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
+                            "Item Name":                    st.column_config.SelectboxColumn("Item Name", width="medium", options=item_options),
+                            "Description / Specification":  st.column_config.TextColumn("Description / Specification", width="large"),
+                            "Quantity":                     st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
+                            "Unit":                         st.column_config.SelectboxColumn("Unit", width="small", options=UNIT_OPTIONS),
+                            "Remarks":                      st.column_config.TextColumn("Remarks", width="medium"),
                         }, key=editor_key)
                     st.session_state[state_key] = edited_group
                     valid_count = len(edited_group[edited_group["Item Name"].astype(str).str.strip() != ""])
@@ -963,8 +970,8 @@ elif rfq_type == 'Dynamic (Category-Based)':
             st.markdown("---")
             st.markdown("### 📦 Storage Containers")
             st.info(
-                "Define each container type below (same detailed format as Item RFQ). "
-                "Each row = one container type. Upload a conceptual image per row."
+                "Select container type from the dropdown, fill dimensions and details. "
+                "Upload a conceptual image per row."
             )
 
             if 'storage_containers_df' not in st.session_state:
@@ -972,46 +979,49 @@ elif rfq_type == 'Dynamic (Category-Based)':
             if 'storage_containers_images' not in st.session_state:
                 st.session_state.storage_containers_images = {}
 
-            # Quick-add buttons for common containers
-            st.markdown(f"*Common containers: {', '.join(STORAGE_CONTAINERS_ITEMS)}*")
-            btn_cols = st.columns(min(len(STORAGE_CONTAINERS_ITEMS), 4))
-            for idx, hint in enumerate(STORAGE_CONTAINERS_ITEMS):
-                with btn_cols[idx % 4]:
-                    if st.button(f"➕ {hint}", key=f"btn_container_{idx}"):
-                        next_sr = len(st.session_state.storage_containers_df) + 1
-                        new_row = pd.DataFrame([{**_empty_container_row(next_sr), "Description": hint}])
-                        st.session_state.storage_containers_df = pd.concat(
-                            [st.session_state.storage_containers_df, new_row], ignore_index=True
-                        )
-                        st.rerun()
+            # Auto-number Sr.No
+            sc_df_display = st.session_state.storage_containers_df.copy()
+            sc_df_display["Sr.No"] = range(1, len(sc_df_display) + 1)
+            for col in ["Description", "Material Type", "Length", "Width", "Height",
+                        "Inner Length", "Inner Width", "Inner Height", "Unit of Measurement",
+                        "Base Type", "Colour", "Weight Kg", "Load capacity",
+                        "Stackable", "BIn Cover/ Open", "Rate", "Remarks"]:
+                if col not in sc_df_display.columns: sc_df_display[col] = ""
+                sc_df_display[col] = sc_df_display[col].astype(str).replace("nan", "")
+            if "Qty" not in sc_df_display.columns: sc_df_display["Qty"] = 1
+            sc_df_display["Qty"] = pd.to_numeric(sc_df_display["Qty"], errors='coerce').fillna(1).astype(int)
+
+            container_options = [""] + STORAGE_CONTAINERS_ITEMS
 
             sc_editor_col, sc_uploader_col = st.columns([3, 2])
             with sc_editor_col:
                 edited_sc_df = st.data_editor(
-                    st.session_state.storage_containers_df,
+                    sc_df_display,
                     num_rows="dynamic",
                     use_container_width=True,
                     column_config={
-                        "Sr.No":               st.column_config.NumberColumn("Sr.No", width="small"),
-                        "Description":         st.column_config.TextColumn("Description", width="medium", required=True),
+                        "Sr.No":               st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
+                        "Description":         st.column_config.SelectboxColumn("Container Type", width="medium",
+                                                   options=container_options),
                         "Material Type":       st.column_config.SelectboxColumn("Material", width="small",
-                                                   options=["Plastic", "Metal", "Wood", "Corrugated", "Fibre", "Other"]),
+                                                   options=["", "Plastic", "Metal", "Wood", "Corrugated", "Fibre", "Other"]),
                         "Length":              st.column_config.TextColumn("Length (mm)", width="small"),
                         "Width":               st.column_config.TextColumn("Width (mm)", width="small"),
                         "Height":              st.column_config.TextColumn("Height (mm)", width="small"),
                         "Inner Length":        st.column_config.TextColumn("Inner L (mm)", width="small"),
                         "Inner Width":         st.column_config.TextColumn("Inner W (mm)", width="small"),
                         "Inner Height":        st.column_config.TextColumn("Inner H (mm)", width="small"),
-                        "Unit of Measurement": st.column_config.SelectboxColumn("UOM", width="small", options=UNIT_OPTIONS),
+                        "Unit of Measurement": st.column_config.SelectboxColumn("UOM", width="small",
+                                                   options=[""] + UNIT_OPTIONS),
                         "Base Type":           st.column_config.SelectboxColumn("Base Type", width="small",
-                                                   options=["Flat", "Ribbed", "Louvred", "Grid", "Other"]),
+                                                   options=["", "Flat", "Ribbed", "Louvred", "Grid", "Other"]),
                         "Colour":              st.column_config.TextColumn("Colour", width="small"),
                         "Weight Kg":           st.column_config.TextColumn("Weight (Kg)", width="small"),
                         "Load capacity":       st.column_config.TextColumn("Load Cap (Kg)", width="small"),
                         "Stackable":           st.column_config.SelectboxColumn("Stackable", width="small",
-                                                   options=["Yes", "No", "N/A"]),
+                                                   options=["", "Yes", "No", "N/A"]),
                         "BIn Cover/ Open":     st.column_config.SelectboxColumn("Cover/Open", width="small",
-                                                   options=["Open", "Covered", "Lid", "N/A"]),
+                                                   options=["", "Open", "Covered", "Lid", "N/A"]),
                         "Rate":                st.column_config.TextColumn("Rate", width="small"),
                         "Qty":                 st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
                         "Remarks":             st.column_config.TextColumn("Remarks", width="medium"),
