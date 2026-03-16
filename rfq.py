@@ -37,7 +37,6 @@ CATEGORY_HINTS = {
     ],
 }
 
-# Groups that use the standard items table (Sr, Item Name, Description, Qty, Unit, Remarks)
 WAREHOUSE_GROUPS = {
     "Storage Systems": [
         "Heavy-duty Racks", "Pallet Racking Systems", "Industrial Shelving",
@@ -59,7 +58,6 @@ WAREHOUSE_GROUPS = {
     ],
 }
 
-# Storage Containers use the Item-style landscape 20-column table (separate group)
 STORAGE_CONTAINERS_ITEMS = [
     "Plastic Bins", "Crates", "Pallets (Wood)", "Pallets (Plastic)", "Pallets (Metal)", "Storage Boxes",
 ]
@@ -102,7 +100,6 @@ CAROUSEL_SPEC_TEMPLATE = {
     ],
 }
 
-# Item RFQ — landscape table column definitions (shared between Item RFQ and Storage Containers)
 ITEM_TABLE_HEADERS = [
     "Sr.No", "Description", "Material", "Length", "Width", "Height",
     "Inner L", "Inner W", "Inner H", "UOM", "Base Type", "Colour",
@@ -117,7 +114,6 @@ ITEM_TABLE_COL_WIDTHS = [
 
 UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons", "Liters", "Boxes", "Rolls", "Pairs", "Lots"]
 
-# Default empty row for Item / Storage Container table
 def _empty_container_row(sr=1):
     return {
         "Sr.No": sr,
@@ -143,14 +139,53 @@ def _empty_container_row(sr=1):
 
 
 # ==============================================================
+# NEW: Parse uploaded Excel for Storage System / MHE / Dock spec
+# ==============================================================
+def parse_spec_excel(file_bytes):
+    """
+    Reads the uploaded specification Excel and returns a DataFrame
+    with columns: Sr.no, Item Name, Description / Specification, Quantity, Unit, Remarks.
+    Strategy: scan every sheet, collect rows that look like spec items
+    (row has a numeric Sr in col B, text in col C/D).
+    """
+    try:
+        xl = pd.ExcelFile(io.BytesIO(file_bytes))
+        rows = []
+        for sheet in xl.sheet_names:
+            df = pd.read_excel(xl, sheet_name=sheet, header=None)
+            for _, row in df.iterrows():
+                # Look for rows where col index 1 is numeric (Sr.no) and col 2 or 3 has text
+                sr_val = row.iloc[1] if len(row) > 1 else None
+                item_val = row.iloc[2] if len(row) > 2 else None
+                desc_val = row.iloc[3] if len(row) > 3 else None
+                unit_val = row.iloc[4] if len(row) > 4 else None
+                req_val  = row.iloc[5] if len(row) > 5 else None
+
+                if pd.notna(sr_val) and str(sr_val).strip().replace('.','').isdigit():
+                    item_str = str(item_val).strip() if pd.notna(item_val) else ""
+                    desc_str = str(desc_val).strip() if pd.notna(desc_val) else ""
+                    unit_str = str(unit_val).strip() if pd.notna(unit_val) else ""
+                    req_str  = str(req_val).strip()  if pd.notna(req_val)  else ""
+                    if item_str and item_str.lower() not in ("category", "nan"):
+                        rows.append({
+                            "Sr.no": int(float(str(sr_val))),
+                            "Item Name": item_str,
+                            "Description / Specification": desc_str,
+                            "Quantity": 1,
+                            "Unit": unit_str if unit_str and unit_str.lower() != "nan" else "Nos",
+                            "Remarks": req_str if req_str and req_str.lower() != "nan" else "",
+                        })
+        if rows:
+            return pd.DataFrame(rows)
+    except Exception as e:
+        st.error(f"Could not parse Excel: {e}")
+    return pd.DataFrame(columns=["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"])
+
+
+# ==============================================================
 # Shared helper: draw the 20-column landscape item table into PDF
 # ==============================================================
 def _draw_item_landscape_table(pdf, df, images_dict=None):
-    """
-    Renders the 20-column landscape table for Item / Storage Container rows.
-    df            : DataFrame with item rows (must have columns matching row_values below)
-    images_dict   : dict {row_index -> bytes} for conceptual images (optional)
-    """
     headers = ITEM_TABLE_HEADERS
     col_widths = ITEM_TABLE_COL_WIDTHS
     header_height = 10
@@ -200,7 +235,7 @@ def _draw_item_landscape_table(pdf, df, images_dict=None):
                 str(row.get("BIn Cover/ Open", "")),
                 str(row.get("Rate", "")),
                 str(row.get("Qty", "")),
-                "",   # Image — handled separately
+                "",
                 str(row.get("Remarks", ""))
             ]
 
@@ -209,7 +244,6 @@ def _draw_item_landscape_table(pdf, df, images_dict=None):
                 w = col_widths[i]
                 pdf.rect(current_x, row_y, w, row_height)
                 if headers[i] == "Conceptual Image":
-                    # Prefer image_data_bytes column; fallback to images_dict
                     image_data = row.get("image_data_bytes")
                     if not isinstance(image_data, bytes) and images_dict is not None:
                         image_data = images_dict.get(idx)
@@ -230,7 +264,6 @@ def _draw_item_landscape_table(pdf, df, images_dict=None):
                 current_x += w
             pdf.set_y(row_y + row_height)
     else:
-        # Three empty placeholder rows
         for _ in range(3):
             ry = pdf.get_y()
             cx = pdf.l_margin
@@ -318,32 +351,22 @@ def create_advanced_rfq_pdf(data):
     pdf.create_cover_page(data)
     pdf.add_page()
 
-    # REQUIREMENT BACKGROUND
     pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # TECHNICAL SPECIFICATION
     pdf.section_title('TECHNICAL SPECIFICATION')
 
     rfq_type = data.get('rfq_type', 'Dynamic')
 
-    # ================================================================
-    # ITEM RFQ — Landscape page with 20-column table
-    # ================================================================
     if rfq_type == 'Item':
         pdf.add_page(orientation='L')
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(0, 8, 'ITEM DETAILS', 0, 1, 'L')
         _draw_item_landscape_table(pdf, data.get('bin_details_df', pd.DataFrame()))
-
-        # Return to portrait for the rest of the document
         pdf.add_page(orientation='P')
 
-    # ================================================================
-    # STORAGE INFRASTRUCTURE RFQ
-    # ================================================================
     elif rfq_type == 'Storage Infrastructure':
         pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L')
         rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
@@ -397,9 +420,6 @@ def create_advanced_rfq_pdf(data):
                     except Exception: pdf.ln(5)
                 else: pdf.ln(5)
 
-    # ================================================================
-    # DYNAMIC / WAREHOUSE RFQ
-    # ================================================================
     elif rfq_type == 'Dynamic':
         rfq_category = data.get('rfq_category', 'General')
         items_df = data.get('items_df', pd.DataFrame())
@@ -426,7 +446,6 @@ def create_advanced_rfq_pdf(data):
                     qty = str(row.get('Quantity', ''))
                     unit = str(row.get('Unit', ''))
                     remarks = str(row.get('Remarks', ''))
-                    # Use Sr.no from data if available
                     row_sr = str(row.get('Sr.no', sr))
                     desc_lines = max(1, len(description) // 40 + 1)
                     row_h = max(8, desc_lines * 6)
@@ -466,7 +485,6 @@ def create_advanced_rfq_pdf(data):
                 pdf.cell(sum(col_widths), 10, "No items added.", border=1, align='C', ln=1)
 
         if is_warehouse:
-            # ---- Groups that use the standard table (Storage Systems, MHE, Automated, Loading Dock, Safety) ----
             groups_data = data.get('warehouse_groups_df', {})
             for group_name in list(WAREHOUSE_GROUPS.keys()):
                 group_df = groups_data.get(group_name, pd.DataFrame())
@@ -480,7 +498,6 @@ def create_advanced_rfq_pdf(data):
                 draw_items_table(valid)
                 pdf.ln(4)
 
-            # ---- Storage Containers — uses 20-column landscape table (same as Item RFQ) ----
             container_df = data.get('storage_containers_df', pd.DataFrame())
             container_images = data.get('storage_containers_images', {})
             if container_df is not None and not container_df.empty:
@@ -488,18 +505,14 @@ def create_advanced_rfq_pdf(data):
                     container_df["Description"].astype(str).str.strip() != ""
                 ].reset_index(drop=True)
                 if not valid_containers.empty:
-                    # Switch to landscape for this section
                     pdf.add_page(orientation='L')
                     pdf.set_font('Arial', 'B', 10)
                     pdf.set_fill_color(210, 230, 255)
                     pdf.cell(0, 8, '  Storage Containers', border=1, ln=1, fill=True)
                     pdf.ln(2)
                     _draw_item_landscape_table(pdf, valid_containers, images_dict=container_images)
-                    # Back to portrait for remaining sections
                     pdf.add_page(orientation='P')
 
-            # ---- Model Details, Key Features, Inbuilt Features, Installation Accountability ----
-            # Only render these sections if the user has items in Automated Storage Systems
             automated_df = groups_data.get('Automated Storage Systems', pd.DataFrame())
             has_automated = (
                 automated_df is not None
@@ -790,7 +803,7 @@ rfq_type = st.radio(
 st.markdown("---")
 
 # ================================================================
-# ITEM RFQ — detailed editor
+# ITEM RFQ
 # ================================================================
 if rfq_type == 'Item':
     with st.expander("Technical Specifications", expanded=True):
@@ -802,7 +815,6 @@ if rfq_type == 'Item':
 
         if 'bin_df' not in st.session_state:
             st.session_state.bin_df = pd.DataFrame([_empty_container_row(1)])
-
         if 'bin_images' not in st.session_state:
             st.session_state.bin_images = {}
 
@@ -841,7 +853,6 @@ if rfq_type == 'Item':
                 },
                 key="bin_df_editor"
             )
-
         with uploader_col:
             st.write("**Upload Conceptual Images**")
             for i in range(len(edited_bin_df)):
@@ -850,7 +861,6 @@ if rfq_type == 'Item':
                 uploaded_file = st.file_uploader(label, type=['png', 'jpg', 'jpeg'], key=f"image_uploader_{i}")
                 if uploaded_file is not None:
                     st.session_state.bin_images[i] = uploaded_file.getvalue()
-
         st.session_state.bin_df = edited_bin_df
 
 # ================================================================
@@ -914,7 +924,6 @@ elif rfq_type == 'Dynamic (Category-Based)':
                 st.session_state[f'wh_group_{g}'] = pd.DataFrame(
                     columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"])
             st.session_state.carousel_model_df = pd.DataFrame()
-            # Reset storage containers too
             st.session_state.storage_containers_df = pd.DataFrame([_empty_container_row(1)])
             st.session_state.storage_containers_images = {}
             st.session_state.last_category = rfq_category
@@ -922,7 +931,6 @@ elif rfq_type == 'Dynamic (Category-Based)':
         if is_warehouse:
             st.markdown("#### Select Warehouse Item Category")
 
-            # ── 5-option dropdown — drives everything below ──
             WH_SUB_CATEGORIES = [
                 "Storage System",
                 "Material Handling",
@@ -955,72 +963,121 @@ elif rfq_type == 'Dynamic (Category-Based)':
                 help="Fields will change based on your selection"
             )
 
-            # ── Reset state when sub-category changes ──
             if st.session_state.get('last_wh_sub') != wh_sub:
                 for k in ['wh_items_df', 'storage_containers_df', 'storage_containers_images',
-                          'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df']:
+                          'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df',
+                          'spec_excel_df']:
                     if k in st.session_state:
                         del st.session_state[k]
                 st.session_state['last_wh_sub'] = wh_sub
 
             import copy as _wh_copy
 
-            # ── Helper: standard 6-column items table ──
-            def _render_std_table(sub_name):
-                item_opts = [""] + WH_CATEGORY_ITEMS[sub_name]
+            # ================================================================
+            # SHARED EXCEL-DRIVEN TABLE RENDERER
+            # Used by: Storage System, Material Handling, Dock Leveller
+            # ================================================================
+            def _render_excel_driven_table(sub_name):
+                """
+                Renders the spec table for a given sub-category.
+                Users can upload an Excel to populate rows, or fill manually.
+                Excel columns expected (0-indexed):
+                  Col 1: Sr.no  |  Col 2: Category/Item Name  |  Col 3: Description
+                  Col 4: Unit   |  Col 5: Requirement / Remarks
+                """
+                st.markdown("---")
+                st.markdown("#### 📂 Upload Specification Excel *(optional)*")
+                st.caption(
+                    "Upload your spec Excel file to auto-populate the table below. "
+                    "The file should have: **Sr.no | Item Name | Description | Unit | Remarks** "
+                    "in columns B–F (rows with numeric Sr values are imported)."
+                )
+
+                uploaded_spec = st.file_uploader(
+                    f"Upload Spec Excel for {sub_name}",
+                    type=["xlsx", "xls"],
+                    key=f"spec_excel_uploader_{sub_name}"
+                )
+
+                # Parse Excel if freshly uploaded
+                if uploaded_spec is not None:
+                    parsed = parse_spec_excel(uploaded_spec.getvalue())
+                    if not parsed.empty:
+                        st.session_state['spec_excel_df'] = parsed
+                        st.session_state['wh_items_df'] = parsed.copy()
+                        st.success(f"✅ {len(parsed)} rows imported from Excel")
+                    else:
+                        st.warning("⚠️ Could not find valid spec rows in that Excel. Please fill the table manually.")
+
+                st.markdown("---")
+                st.markdown(f"#### 📋 {sub_name} Item List")
+                st.caption("Edit directly or upload an Excel above to auto-fill. Add/remove rows as needed.")
+
+                # Initialise empty table if nothing loaded yet
                 if 'wh_items_df' not in st.session_state:
                     st.session_state['wh_items_df'] = pd.DataFrame([{
-                        "Sr.no": 1, "Item Name": "",
+                        "Sr.no": 1,
+                        "Item Name": "",
                         "Description / Specification": "",
-                        "Quantity": 1, "Unit": "Nos", "Remarks": ""
+                        "Quantity": 1,
+                        "Unit": "Nos",
+                        "Remarks": ""
                     }])
+
                 dfe = st.session_state['wh_items_df'].copy()
                 dfe["Sr.no"] = range(1, len(dfe) + 1)
                 dfe["Quantity"] = pd.to_numeric(dfe.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
                 for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
-                    if col not in dfe.columns: dfe[col] = ""
+                    if col not in dfe.columns:
+                        dfe[col] = ""
                     dfe[col] = dfe[col].astype(str).replace("nan", "")
                 dfe = dfe[["Sr.no", "Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]]
+
                 edited = st.data_editor(
-                    dfe, num_rows="dynamic", use_container_width=True,
+                    dfe,
+                    num_rows="dynamic",
+                    use_container_width=True,
                     column_config={
                         "Sr.no":                       st.column_config.NumberColumn("Sr.no", width="small", disabled=True),
-                        "Item Name":                   st.column_config.SelectboxColumn("Item Name ▼", width="medium", options=item_opts),
+                        "Item Name":                   st.column_config.TextColumn("Item Name", width="medium"),
                         "Description / Specification": st.column_config.TextColumn("Description / Specification", width="large"),
                         "Quantity":                    st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
                         "Unit":                        st.column_config.SelectboxColumn("Unit ▼", width="small", options=[""] + UNIT_OPTIONS),
                         "Remarks":                     st.column_config.TextColumn("Remarks", width="medium"),
-                    }, key="wh_items_editor")
+                    },
+                    key=f"wh_items_editor_{sub_name}"
+                )
                 st.session_state['wh_items_df'] = edited
+
                 valid = edited[edited["Item Name"].astype(str).str.strip() != ""]
                 if len(valid):
-                    st.success(f"✅ {len(valid)} item(s) added")
+                    st.success(f"✅ {len(valid)} item(s) ready")
+                else:
+                    st.warning("⚠️ No items yet — upload an Excel or type items directly.")
 
             # ════════════════════════════════════════════════
             # STORAGE SYSTEM
             # ════════════════════════════════════════════════
             if wh_sub == "Storage System":
-                st.caption("Select racks, shelving, and storage system items below.")
-                _render_std_table("Storage System")
+                st.caption("Upload your spec Excel or fill the table manually for storage system items.")
+                _render_excel_driven_table("Storage System")
 
             # ════════════════════════════════════════════════
             # MATERIAL HANDLING
             # ════════════════════════════════════════════════
             elif wh_sub == "Material Handling":
-                st.caption("Select forklifts, trucks, conveyors, and other handling equipment.")
-                _render_std_table("Material Handling")
+                st.caption("Upload your spec Excel or fill the table manually for material handling equipment.")
+                _render_excel_driven_table("Material Handling")
 
             # ════════════════════════════════════════════════
             # DOCK LEVELLER
             # ════════════════════════════════════════════════
             elif wh_sub == "Dock Leveller":
-                st.caption("Select loading dock equipment — levellers, plates, ramps.")
-                _render_std_table("Dock Leveller")
+                st.caption("Upload your spec Excel or fill the table manually for dock leveller items.")
+                _render_excel_driven_table("Dock Leveller")
 
             # ════════════════════════════════════════════════
-            # AUTOMATED STORAGE SYSTEM
-            # Columns: Sr.no | Item Name (dropdown) | Description | Qty | Unit | Remarks
-            # PLUS: Model Details, Key Features, Inbuilt Features, Installation Accountability
+            # AUTOMATED STORAGE SYSTEM (unchanged)
             # ════════════════════════════════════════════════
             elif wh_sub == "Automated Storage System":
                 st.caption("Select carousel / VStore systems. Specification tables appear below.")
@@ -1158,10 +1215,7 @@ elif rfq_type == 'Dynamic (Category-Based)':
                     st.session_state.installation_df = edited_ia
 
             # ════════════════════════════════════════════════
-            # STORAGE CONTAINER
-            # Columns: Sr.No | Container Type (dropdown) | Material | Outer L/W/H |
-            #          Inner L/W/H | UOM | Base Type | Colour | Weight | Load Cap |
-            #          Stackable | Cover/Open | Rate | Qty | Image | Remarks
+            # STORAGE CONTAINER (unchanged)
             # ════════════════════════════════════════════════
             elif wh_sub == "Storage Container":
                 st.caption("Select container type from the dropdown, fill all dimensions, and upload a conceptual image per row.")
@@ -1224,7 +1278,6 @@ elif rfq_type == 'Dynamic (Category-Based)':
                 valid_sc = edited_sc_df[edited_sc_df["Description"].astype(str).str.strip() != ""]
                 if len(valid_sc):
                     st.success(f"✅ {len(valid_sc)} container type(s) defined")
-
 
         else:
             hints = CATEGORY_HINTS.get(rfq_category, [])
@@ -1358,7 +1411,6 @@ if submitted:
                     wh_sub = st.session_state.get('wh_sub_category', 'Storage System')
 
                     if wh_sub == 'Storage Container':
-                        # Storage Containers — landscape 20-col table in PDF
                         sc_df = st.session_state.get('storage_containers_df', pd.DataFrame())
                         sc_images = st.session_state.get('storage_containers_images', {})
                         if sc_df is not None and not sc_df.empty:
@@ -1369,11 +1421,9 @@ if submitted:
                         else:
                             common_data['storage_containers_df'] = pd.DataFrame()
                         common_data['storage_containers_images'] = sc_images
-                        # Pass empty warehouse_groups_df so PDF skips group tables
                         common_data['warehouse_groups_df'] = {}
 
                     elif wh_sub == 'Automated Storage System':
-                        # Items table as one group
                         wh_items = st.session_state.get('wh_items_df', pd.DataFrame())
                         common_data['warehouse_groups_df'] = {'Automated Storage Systems': wh_items}
                         common_data['storage_containers_df'] = pd.DataFrame()
@@ -1388,9 +1438,8 @@ if submitted:
                         common_data['installation_df']    = st.session_state.get('installation_df', pd.DataFrame())
 
                     else:
-                        # Storage System / Material Handling / Dock Leveller
+                        # Storage System / Material Handling / Dock Leveller — Excel-driven
                         wh_items = st.session_state.get('wh_items_df', pd.DataFrame())
-                        # Map to a single group keyed by sub-category name
                         group_key_map = {
                             'Storage System':   'Storage Systems',
                             'Material Handling':'Material Handling Equipment',
