@@ -14,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# --- Category suggestion hints (not forced, just placeholder hints) ---
+# --- Category suggestion hints ---
 CATEGORY_HINTS = {
     "Furniture": ["Office Desk", "Ergonomic Chair", "Conference Table", "Storage Cabinet", "Bookshelf"],
     "Electrical": ["MCB Panel", "Cable Tray", "DB Box", "Power Socket", "LED Fixture"],
@@ -37,7 +37,6 @@ CATEGORY_HINTS = {
     ],
 }
 
-# Grouped structure for Warehouse Equipment (for grouped UI display)
 WAREHOUSE_GROUPS = {
     "Storage Systems": [
         "Heavy-duty Racks", "Pallet Racking Systems", "Industrial Shelving",
@@ -62,7 +61,6 @@ WAREHOUSE_GROUPS = {
     ],
 }
 
-# Carousel / VStore Model Details spec template — pre-filled with known values
 CAROUSEL_SPEC_TEMPLATE = {
     "Model Details": [
         {"Sr": 1,  "Category": "Dimensions of VStore", "Description": "Height (mm)",                          "Unit": "mm",      "Requirement": "28000"},
@@ -101,12 +99,25 @@ CAROUSEL_SPEC_TEMPLATE = {
     ],
 }
 
-# Bin / Container spec columns
-BIN_SPEC_COLUMNS = ["Type of Bin/Container", "Outer Dimension (MM)", "Inner Dimension (MM)", "Material", "Qty", "Remarks"]
+# Item RFQ — landscape table column definitions
+ITEM_TABLE_HEADERS = [
+    "Sr.No", "Description", "Material", "Length", "Width", "Height",
+    "Inner L", "Inner W", "Inner H", "UOM", "Base Type", "Colour",
+    "Weight", "Load Cap", "Stackable", "Cover/Open", "Rate", "Qty",
+    "Conceptual Image", "Remarks"
+]
+ITEM_TABLE_COL_WIDTHS = [
+    12, 30, 22, 14, 14, 14, 14, 14, 14,
+    14, 18, 18, 16, 18, 18, 18, 14, 12,
+    28, 28
+]
 
 UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons", "Liters", "Boxes", "Rolls", "Pairs", "Lots"]
 
-# --- PDF Generation Function (Handles all RFQ types) ---
+
+# ==============================================================
+# PDF Generation
+# ==============================================================
 def create_advanced_rfq_pdf(data):
     class PDF(FPDF):
         def create_cover_page(self, data):
@@ -155,7 +166,9 @@ def create_advanced_rfq_pdf(data):
                     self.image(tmp.name, x=x_pos, y=10, w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
             self.set_y(12); self.set_font('Arial', 'B', 16); self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            self.set_font('Arial', 'I', 10); self.cell(0, 6, f"For: {data['Type_of_items']} | Category: {data.get('rfq_category', '')}", 0, 1, 'C'); self.ln(15)
+            self.set_font('Arial', 'I', 10)
+            self.cell(0, 6, f"For: {data['Type_of_items']} | Category: {data.get('rfq_category', '')}", 0, 1, 'C')
+            self.ln(15)
 
         def footer(self):
             self.set_y(-25)
@@ -165,10 +178,12 @@ def create_advanced_rfq_pdf(data):
                 if footer_name: self.set_font('Arial', 'B', 14); self.cell(0, 5, footer_name, 0, 1, 'C')
                 if footer_addr: self.set_font('Arial', '', 8); self.cell(0, 5, footer_addr, 0, 1, 'C')
                 self.set_text_color(0)
-            self.set_y(-15); self.set_font('Arial', 'I', 8); self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
+            self.set_y(-15); self.set_font('Arial', 'I', 8)
+            self.cell(0, 10, 'Page ' + str(self.page_no()) + '/{nb}', 0, 0, 'C')
 
         def section_title(self, title):
-            self.set_font('Arial', 'B', 12); self.set_fill_color(230, 230, 230); self.cell(0, 8, title, 0, 1, 'L', fill=True); self.ln(4)
+            self.set_font('Arial', 'B', 12); self.set_fill_color(230, 230, 230)
+            self.cell(0, 8, title, 0, 1, 'L', fill=True); self.ln(4)
 
     pdf = PDF('P', 'mm', 'A4')
     pdf.alias_nb_pages()
@@ -176,83 +191,119 @@ def create_advanced_rfq_pdf(data):
     pdf.create_cover_page(data)
     pdf.add_page()
 
-    # --- REQUIREMENT BACKGROUND ---
+    # REQUIREMENT BACKGROUND
     pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 10)
     pdf.multi_cell(0, 6, data['purpose'], border=0, align='L')
     pdf.ln(5)
 
-    # --- TECHNICAL SPECIFICATION ---
+    # TECHNICAL SPECIFICATION
     pdf.section_title('TECHNICAL SPECIFICATION')
 
     rfq_type = data.get('rfq_type', 'Dynamic')
 
+    # ================================================================
+    # ITEM RFQ — Landscape page with 20-column table
+    # ================================================================
     if rfq_type == 'Item':
-        pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'BIN DETAILS', 0, 1, 'L')
-        bin_headers = ["Type\nof Bin", "Bin Outer\nDimension (MM)", "Bin Inner\nDimension (MM)", "Conceptual\nImage", "Qty Bin"]
-        bin_col_widths = [36, 38, 38, 44, 34]
-        row_height = 32; header_height = 16
+        pdf.add_page(orientation='L')
         pdf.set_font('Arial', 'B', 10)
-        y_start_header = pdf.get_y(); line_height_header = 6; current_x_header = pdf.l_margin
-        for i, header in enumerate(bin_headers):
-            pdf.rect(current_x_header, y_start_header, bin_col_widths[i], header_height)
-            num_lines = header.count('\n') + 1
-            y_text_header = y_start_header + (header_height - num_lines * line_height_header) / 2
-            pdf.set_xy(current_x_header, y_text_header)
-            pdf.multi_cell(bin_col_widths[i], line_height_header, header, align='C')
-            current_x_header += bin_col_widths[i]
-        pdf.set_y(y_start_header + header_height)
-        pdf.set_font('Arial', '', 12); line_height_row = 6
-        bin_df = data['bin_details_df']
-        num_bin_rows = len(bin_df) if not bin_df.empty else 4
-        for i in range(num_bin_rows):
-            row_y_start = pdf.get_y()
-            if pdf.get_y() + row_height > pdf.page_break_trigger: pdf.add_page()
-            row_data = bin_df.iloc[i] if i < len(bin_df) else {}
-            row_contents = [str(row_data.get('Type of Bin', '')), str(row_data.get('Bin Outer Dimension (MM)', '')), str(row_data.get('Bin Inner Dimension (MM)', '')), '', str(row_data.get('Qty Bin', ''))]
-            current_x = pdf.l_margin
-            text_y = row_y_start + (row_height - line_height_row) / 2
-            for j, content in enumerate(row_contents):
-                width = bin_col_widths[j]
-                pdf.rect(current_x, row_y_start, width, row_height)
-                if j == 3:
-                    image_data = row_data.get('image_data_bytes')
-                    if isinstance(image_data, bytes):
-                        try:
-                            img = Image.open(io.BytesIO(image_data))
-                            img_w, img_h = img.size; aspect_ratio = img_w / img_h
-                            padding = 1; cell_inner_w = width - 2 * padding; cell_inner_h = row_height - 2 * padding
-                            img_display_w = cell_inner_w; img_display_h = img_display_w / aspect_ratio
-                            if img_display_h > cell_inner_h:
-                                img_display_h = cell_inner_h; img_display_w = img_display_h * aspect_ratio
-                            img_x = current_x + (width - img_display_w) / 2; img_y = row_y_start + (row_height - img_display_h) / 2
-                            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                                img.save(tmp.name, format='PNG'); pdf.image(tmp.name, x=img_x, y=img_y, w=img_display_w, h=img_display_h); os.remove(tmp.name)
-                        except Exception: pass
-                else:
-                    pdf.set_xy(current_x, text_y); pdf.multi_cell(width, line_height_row, content, align='C')
-                current_x += width
-            pdf.set_y(row_y_start + row_height)
-        pdf.ln(8)
+        pdf.cell(0, 8, 'ITEM DETAILS', 0, 1, 'L')
 
-        def add_bullet_point(key, value):
-            if value and str(value).strip() and value not in ['N/A', '']:
-                if pdf.get_y() + 12 > pdf.page_break_trigger: pdf.add_page()
-                start_y = pdf.get_y(); pdf.set_x(pdf.l_margin); pdf.set_font('Arial', '', 12); pdf.cell(5, 6, chr(127))
-                pdf.set_font('Arial', 'B', 12); pdf.cell(55, 6, f"{key}:")
-                key_end_y = pdf.get_y() + 6; value_start_x = pdf.l_margin + 60; value_width = pdf.w - pdf.r_margin - value_start_x
-                pdf.set_xy(value_start_x, start_y); pdf.set_font('Arial', '', 12); pdf.multi_cell(value_width, 6, str(value), 0, 'L')
-                value_end_y = pdf.get_y(); pdf.set_y(max(key_end_y, value_end_y)); pdf.ln(1)
+        headers = ITEM_TABLE_HEADERS
+        col_widths = ITEM_TABLE_COL_WIDTHS
+        header_height = 10
+        row_height = 28
+        FIXED_IMG_WIDTH = 22
+        FIXED_IMG_HEIGHT = 18
 
-        add_bullet_point('Color', data.get('color'))
-        add_bullet_point('Weight Carrying Capacity', f"{data.get('capacity', 0):.2f} KG" if data.get('capacity') else None)
-        add_bullet_point('Lid Required', data.get('lid'))
-        label_info = f"{data['label_space']} (Size: {data['label_size']})" if data.get('label_space') == 'Yes' else data.get('label_space')
-        add_bullet_point('Space for Label', label_info)
-        add_bullet_point('Stacking - Static', data.get('stack_static'))
-        add_bullet_point('Stacking - Dynamic', data.get('stack_dynamic'))
-        pdf.ln(5)
+        def draw_item_header():
+            pdf.set_font("Arial", "B", 7)
+            sy = pdf.get_y()
+            cx = pdf.l_margin
+            for i, h in enumerate(headers):
+                pdf.rect(cx, sy, col_widths[i], header_height)
+                pdf.set_xy(cx, sy + 2)
+                pdf.multi_cell(col_widths[i], 3, h, align="C")
+                cx += col_widths[i]
+            pdf.set_y(sy + header_height)
 
+        draw_item_header()
+        pdf.set_font("Arial", "", 7)
+
+        df = data.get('bin_details_df', pd.DataFrame())
+
+        if not df.empty:
+            for idx, row in df.iterrows():
+                row_y = pdf.get_y()
+                if row_y + row_height > pdf.page_break_trigger:
+                    pdf.add_page(orientation='L')
+                    draw_item_header()
+                    pdf.set_font("Arial", "", 7)
+                    row_y = pdf.get_y()
+
+                row_values = [
+                    str(row.get("Sr.No", idx + 1)),
+                    str(row.get("Description", "")),
+                    str(row.get("Material Type", "")),
+                    str(row.get("Length", "")),
+                    str(row.get("Width", "")),
+                    str(row.get("Height", "")),
+                    str(row.get("Inner Length", "")),
+                    str(row.get("Inner Width", "")),
+                    str(row.get("Inner Height", "")),
+                    str(row.get("Unit of Measurement", "")),
+                    str(row.get("Base Type", "")),
+                    str(row.get("Colour", "")),
+                    str(row.get("Weight Kg", "")),
+                    str(row.get("Load capacity", "")),
+                    str(row.get("Stackable", "")),
+                    str(row.get("BIn Cover/ Open", "")),
+                    str(row.get("Rate", "")),
+                    str(row.get("Qty", "")),
+                    "",   # Image — handled separately
+                    str(row.get("Remarks", ""))
+                ]
+
+                current_x = pdf.l_margin
+                for i, value in enumerate(row_values):
+                    w = col_widths[i]
+                    pdf.rect(current_x, row_y, w, row_height)
+                    if headers[i] == "Conceptual Image":
+                        image_data = row.get("image_data_bytes")
+                        if isinstance(image_data, bytes):
+                            try:
+                                img = Image.open(io.BytesIO(image_data))
+                                img_x = current_x + (w - FIXED_IMG_WIDTH) / 2
+                                img_y = row_y + (row_height - FIXED_IMG_HEIGHT) / 2
+                                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                                    img.save(tmp.name, format="PNG")
+                                    pdf.image(tmp.name, x=img_x, y=img_y, w=FIXED_IMG_WIDTH, h=FIXED_IMG_HEIGHT)
+                                os.remove(tmp.name)
+                            except Exception:
+                                pass
+                    else:
+                        pdf.set_xy(current_x, row_y + 6)
+                        pdf.multi_cell(w, 4, value, align="C")
+                    current_x += w
+                pdf.set_y(row_y + row_height)
+        else:
+            # Three empty placeholder rows
+            for _ in range(3):
+                ry = pdf.get_y()
+                cx = pdf.l_margin
+                for w in col_widths:
+                    pdf.rect(cx, ry, w, row_height)
+                    cx += w
+                pdf.set_y(ry + row_height)
+
+        pdf.ln(6)
+        # Return to portrait for the rest of the document
+        pdf.add_page(orientation='P')
+
+    # ================================================================
+    # STORAGE INFRASTRUCTURE RFQ
+    # ================================================================
     elif rfq_type == 'Storage Infrastructure':
         pdf.set_font('Arial', 'B', 11); pdf.cell(0, 8, 'RACK DETAILS', 0, 1, 'L')
         rack_headers = ["Types of \nRack", "Rack \nDimension(MM)", "Level/Rack", "Type of \nBin", "Bin \nDimension(MM)", "Level/Bin"]
@@ -300,11 +351,15 @@ def create_advanced_rfq_pdf(data):
                         if pdf.get_y() + img_display_h + 5 > pdf.page_break_trigger: pdf.add_page()
                         with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                             img.save(tmp.name, format='PNG')
-                            pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h); os.remove(tmp.name)
+                            pdf.image(tmp.name, x=pdf.l_margin, y=pdf.get_y(), w=img_display_w, h=img_display_h)
+                            os.remove(tmp.name)
                         pdf.set_y(pdf.get_y() + img_display_h + 8)
                     except Exception: pdf.ln(5)
                 else: pdf.ln(5)
 
+    # ================================================================
+    # DYNAMIC / WAREHOUSE RFQ
+    # ================================================================
     elif rfq_type == 'Dynamic':
         rfq_category = data.get('rfq_category', 'General')
         items_df = data.get('items_df', pd.DataFrame())
@@ -369,16 +424,12 @@ def create_advanced_rfq_pdf(data):
                 pdf.cell(sum(col_widths), 10, "No items added.", border=1, align='C', ln=1)
 
         if is_warehouse:
-            # --- Grouped item list by warehouse category ---
             groups_data = data.get('warehouse_groups_df', {})
-            all_groups = list(WAREHOUSE_GROUPS.keys())
-            for group_name in all_groups:
+            for group_name in list(WAREHOUSE_GROUPS.keys()):
                 group_df = groups_data.get(group_name, pd.DataFrame())
-                if group_df is None or group_df.empty:
-                    continue
+                if group_df is None or group_df.empty: continue
                 valid = group_df[group_df["Item Name"].astype(str).str.strip() != ""]
-                if valid.empty:
-                    continue
+                if valid.empty: continue
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
                 pdf.set_font('Arial', 'B', 10)
                 pdf.set_fill_color(210, 230, 255)
@@ -386,7 +437,6 @@ def create_advanced_rfq_pdf(data):
                 draw_items_table(valid)
                 pdf.ln(4)
 
-            # --- Bin / Container Table ---
             bin_df = data.get('bin_container_df', pd.DataFrame())
             if bin_df is not None and not bin_df.empty:
                 valid_bins = bin_df[bin_df["Type of Bin/Container"].astype(str).str.strip() != ""]
@@ -404,8 +454,7 @@ def create_advanced_rfq_pdf(data):
                         pdf.set_xy(cx, y_hdr + (bc_hh - nl * 5) / 2)
                         pdf.multi_cell(bc_widths[i], 5, h, align='C', border=0)
                         cx += bc_widths[i]
-                    pdf.set_y(y_hdr + bc_hh)
-                    pdf.set_font('Arial', '', 8)
+                    pdf.set_y(y_hdr + bc_hh); pdf.set_font('Arial', '', 8)
                     for bi, brow in valid_bins.iterrows():
                         if pdf.get_y() + 10 > pdf.page_break_trigger: pdf.add_page()
                         pdf.cell(bc_widths[0], 10, str(bi + 1), border=1, align='C')
@@ -417,7 +466,6 @@ def create_advanced_rfq_pdf(data):
                         pdf.cell(bc_widths[6], 10, str(brow.get("Remarks", "")), border=1, align='C', ln=1)
                     pdf.ln(6)
 
-            # --- Carousel / VStore Model Details — ALWAYS INCLUDED for Warehouse ---
             model_detail_str = data.get('model_detail_header', '').strip()
             model_df = data.get('carousel_model_df', pd.DataFrame())
             if model_df is not None and not model_df.empty:
@@ -433,8 +481,7 @@ def create_advanced_rfq_pdf(data):
                 md_hh = 10; pdf.set_font('Arial', 'B', 9)
                 for i, h in enumerate(md_headers):
                     pdf.cell(md_widths[i], md_hh, h, border=1, align='C')
-                pdf.ln()
-                pdf.set_font('Arial', '', 8)
+                pdf.ln(); pdf.set_font('Arial', '', 8)
                 for _, mrow in model_df.iterrows():
                     if pdf.get_y() + 8 > pdf.page_break_trigger:
                         pdf.add_page()
@@ -449,7 +496,6 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(md_widths[4], 8, str(mrow.get("Requirement", "")), border=1, align='C', ln=1)
                 pdf.ln(6)
 
-            # --- Key Features — ALWAYS INCLUDED ---
             kf_df = data.get('key_features_df', pd.DataFrame())
             if kf_df is None or (isinstance(kf_df, pd.DataFrame) and kf_df.empty):
                 kf_df = pd.DataFrame([
@@ -482,7 +528,6 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(kf_widths[3], 8, str(krow.get("Remarks", "")), border=1, align='L', ln=1)
                 pdf.ln(6)
 
-            # --- Inbuilt Features — ALWAYS INCLUDED ---
             ib_df = data.get('inbuilt_features_df', pd.DataFrame())
             if ib_df is None or (isinstance(ib_df, pd.DataFrame) and ib_df.empty):
                 ib_df = pd.DataFrame([
@@ -522,7 +567,6 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(ib_widths[3], 8, str(irow.get("Remarks", "")), border=1, align='L', ln=1)
                 pdf.ln(6)
 
-            # --- Installation Accountability — ALWAYS INCLUDED ---
             ia_df = data.get('installation_df', pd.DataFrame())
             if ia_df is None or (isinstance(ia_df, pd.DataFrame) and ia_df.empty):
                 ia_df = pd.DataFrame([
@@ -565,12 +609,11 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(ia_widths[3], 8, str(iarow.get("Customer Scope (Yes/No)", "")), border=1, align='C')
                     pdf.cell(ia_widths[4], 8, str(iarow.get("Remarks", "")), border=1, align='L', ln=1)
                 pdf.ln(6)
-
         else:
             draw_items_table(items_df)
             pdf.ln(8)
 
-    # --- TIMELINES ---
+    # TIMELINES
     timeline_data = [
         ("Date of RFQ Release", data['date_release']),
         ("Query Resolution Deadline", data['date_query']),
@@ -589,11 +632,13 @@ def create_advanced_rfq_pdf(data):
     for item, date_val in timeline_data:
         if date_val and pd.notna(date_val):
             if pdf.get_y() + 8 > pdf.page_break_trigger:
-                pdf.add_page(); pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C'); pdf.set_font('Arial', '', 10)
+                pdf.add_page(); pdf.set_font('Arial', 'B', 10)
+                pdf.cell(80, 8, 'Milestone', 1, 0, 'C'); pdf.cell(110, 8, 'Date', 1, 1, 'C')
+                pdf.set_font('Arial', '', 10)
             pdf.cell(80, 8, item, 1, 0, 'L'); pdf.cell(110, 8, date_val.strftime('%B %d, %Y'), 1, 1, 'L')
     pdf.ln(5)
 
-    # --- SPOC ---
+    # SPOC
     if pdf.get_y() + 40 > pdf.page_break_trigger: pdf.add_page()
     pdf.section_title('SINGLE POINT OF CONTACT')
     def draw_contact_column(title, name, designation, phone, email):
@@ -601,9 +646,12 @@ def create_advanced_rfq_pdf(data):
         def draw_kv_row(key, value):
             key_str = str(key).encode('latin-1', 'replace').decode('latin-1')
             value_str = str(value).encode('latin-1', 'replace').decode('latin-1')
-            row_start_y = pdf.get_y(); pdf.set_x(col_start_x); pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, key_str, 0, 0, 'L')
-            pdf.set_xy(col_start_x + 25, row_start_y); pdf.set_font('Arial', '', 10); pdf.multi_cell(65, 6, value_str, 0, 'L')
-        draw_kv_row("Name:", name); draw_kv_row("Designation:", designation); draw_kv_row("Phone No:", phone); draw_kv_row("Email ID:", email)
+            row_start_y = pdf.get_y(); pdf.set_x(col_start_x)
+            pdf.set_font('Arial', 'B', 10); pdf.cell(25, 6, key_str, 0, 0, 'L')
+            pdf.set_xy(col_start_x + 25, row_start_y)
+            pdf.set_font('Arial', '', 10); pdf.multi_cell(65, 6, value_str, 0, 'L')
+        draw_kv_row("Name:", name); draw_kv_row("Designation:", designation)
+        draw_kv_row("Phone No:", phone); draw_kv_row("Email ID:", email)
     start_y = pdf.get_y(); pdf.set_xy(pdf.l_margin, start_y)
     draw_contact_column('Primary Contact', data['spoc1_name'], data['spoc1_designation'], data['spoc1_phone'], data['spoc1_email'])
     end_y1 = pdf.get_y()
@@ -614,49 +662,59 @@ def create_advanced_rfq_pdf(data):
     else: pdf.set_y(end_y1)
     pdf.ln(5)
 
-    # --- COMMERCIAL ---
+    # COMMERCIAL
     if pdf.get_y() + 40 > pdf.page_break_trigger: pdf.add_page()
     pdf.section_title('COMMERCIAL REQUIREMENTS')
-    pdf.set_font('Arial', '', 10); pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L'); pdf.ln(4)
-    pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
+    pdf.set_font('Arial', '', 10)
+    pdf.multi_cell(0, 6, "Please provide a detailed cost breakup in the format below. All costs should be inclusive of taxes and duties as applicable.", 0, 'L')
+    pdf.ln(4)
+    pdf.set_font('Arial', 'B', 10)
+    pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
     pdf.set_font('Arial', '', 10)
     for index, row in data['commercial_df'].iterrows():
         if pdf.get_y() + 8 > pdf.page_break_trigger:
-            pdf.add_page(); pdf.set_font('Arial', 'B', 10); pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C'); pdf.set_font('Arial', '', 10)
+            pdf.add_page(); pdf.set_font('Arial', 'B', 10)
+            pdf.cell(80, 8, 'Cost Component', 1, 0, 'C'); pdf.cell(40, 8, 'Amount', 1, 0, 'C'); pdf.cell(70, 8, 'Remarks', 1, 1, 'C')
+            pdf.set_font('Arial', '', 10)
         component = str(row['Cost Component']).encode('latin-1', 'replace').decode('latin-1')
         remarks = str(row['Remarks']).encode('latin-1', 'replace').decode('latin-1')
         pdf.cell(80, 8, component, 1, 0, 'L'); pdf.cell(40, 8, '', 1, 0); pdf.cell(70, 8, remarks, 1, 1, 'L')
     pdf.ln(10)
 
-    # --- SUBMISSION & DELIVERY ---
+    # SUBMISSION & DELIVERY
     if pdf.get_y() + 90 > pdf.page_break_trigger: pdf.add_page()
     if data.get('submit_to_name'):
         pdf.set_font('Arial', 'B', 12); pdf.cell(5, 8, chr(149)); pdf.cell(0, 8, 'Quotation to be Submit to:', 0, 1); pdf.ln(5)
         pdf.set_x(pdf.l_margin + 15); pdf.set_font('Arial', '', 12)
-        hex_color = data.get('submit_to_color', '#DC3232').lstrip('#'); r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
-        pdf.set_text_color(r, g, b); pdf.multi_cell(0, 7, data.get('submit_to_name', '')); pdf.set_text_color(0, 0, 0); pdf.ln(1)
+        hex_color = data.get('submit_to_color', '#DC3232').lstrip('#')
+        r, g, b = tuple(int(hex_color[i:i+2], 16) for i in (0, 2, 4))
+        pdf.set_text_color(r, g, b); pdf.multi_cell(0, 7, data.get('submit_to_name', ''))
+        pdf.set_text_color(0, 0, 0); pdf.ln(1)
         if data.get('submit_to_registered_office'):
             pdf.set_x(pdf.l_margin + 15); pdf.set_font('Arial', '', 10); pdf.set_text_color(128, 128, 128)
-            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L'); pdf.set_text_color(0, 0, 0)
+            pdf.multi_cell(0, 6, data.get('submit_to_registered_office', ''), 0, 'L')
+            pdf.set_text_color(0, 0, 0)
     pdf.ln(5)
     if data.get('delivery_location'):
         pdf.set_font('Arial', 'B', 12); pdf.cell(5, 8, chr(149)); pdf.cell(0, 8, 'Delivery Location:', 0, 1); pdf.ln(2)
-        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5); pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
+        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5)
+        pdf.multi_cell(0, 6, data.get('delivery_location'), 0, 'L')
     pdf.ln(10)
     if data.get('annexures'):
         pdf.set_font('Arial', 'B', 14); pdf.cell(0, 8, 'ANNEXURES', 0, 1); pdf.ln(2)
-        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5); pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
+        pdf.set_font('Arial', '', 11); pdf.set_x(pdf.l_margin + 5)
+        pdf.multi_cell(0, 6, data.get('annexures'), 0, 'L')
 
     return bytes(pdf.output())
 
 
-# ============================================================
-# --- STREAMLIT APP ---
-# ============================================================
+# ==============================================================
+# STREAMLIT APP
+# ==============================================================
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
-# Step 1
+# Step 1 — Logos
 with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
@@ -668,23 +726,20 @@ with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", exp
         logo2_w = st.number_input("Logo 2 Width (mm)", 5, 50, 30, 1)
         logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
 
-# Step 2
+# Step 2 — Cover page
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     Type_of_items = st.text_input("Type of Items*", help="e.g., Plastic Blue Bins OR Line Side Racks")
     Storage = st.text_input("Storage Type*", help="e.g., Material Storage")
     company_name = st.text_input("Requester Company Name*", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd")
     company_address = st.text_input("Requester Company Address*", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
-# Step 3
+# Step 3 — Footer
 with st.expander("Step 3: Add Footer Details (Optional)", expanded=True):
     footer_company_name = st.text_input("Footer Company Name", help="e.g., Your Company Private Ltd")
     footer_company_address = st.text_input("Footer Company Address", help="e.g., Registered Office: 123 Business Rd, Commerce City")
 
-# ============================================================
-# Step 4 — Dynamic RFQ Builder
-# ============================================================
+# Step 4 — RFQ type & technical specs
 st.subheader("Step 4: Fill Core RFQ Details")
-
 rfq_type = st.radio(
     "Select RFQ Type:",
     ('Item', 'Storage Infrastructure', 'Dynamic (Category-Based)'),
@@ -693,53 +748,102 @@ rfq_type = st.radio(
 )
 st.markdown("---")
 
-# ---- ITEM RFQ ----
+# ================================================================
+# ITEM RFQ — new detailed editor
+# ================================================================
 if rfq_type == 'Item':
     with st.expander("Technical Specifications", expanded=True):
-        st.info("Define the items for the vendor. Add or remove rows in the table; the image uploaders will update automatically.")
-        st.markdown("##### Bin Details")
+        st.info(
+            "Define each item type in the table below. Each row = one item type. "
+            "Upload a conceptual image per row using the uploaders on the right."
+        )
+        st.markdown("##### Item Details")
+
         if 'bin_df' not in st.session_state:
-            st.session_state.bin_df = pd.DataFrame([{"Type of Bin": "TOTE", "Bin Outer Dimension (MM)": "600x400x300", "Bin Inner Dimension (MM)": "580x380x280", "Conceptual Image": None, "Qty Bin": 150}])
-        st.markdown("###### Edit Bin Details and Upload Images per Row")
-        st.info("ℹ️ Double-click a cell to edit. Use the `+` button at the bottom of the table to add more bin types.")
+            st.session_state.bin_df = pd.DataFrame([{
+                "Sr.No": 1,
+                "Description": "TOTE",
+                "Material Type": "Plastic",
+                "Length": "600",
+                "Width": "400",
+                "Height": "300",
+                "Inner Length": "580",
+                "Inner Width": "380",
+                "Inner Height": "280",
+                "Unit of Measurement": "Nos",
+                "Base Type": "Flat",
+                "Colour": "Blue",
+                "Weight Kg": "",
+                "Load capacity": "",
+                "Stackable": "Yes",
+                "BIn Cover/ Open": "Open",
+                "Rate": "",
+                "Qty": 150,
+                "Remarks": ""
+            }])
+
+        if 'bin_images' not in st.session_state:
+            st.session_state.bin_images = {}
+
+        st.info("ℹ️ Double-click a cell to edit. Use the `+` button at the bottom to add more rows.")
+
         editor_col, uploader_col = st.columns([3, 2])
         with editor_col:
             edited_bin_df = st.data_editor(
-                st.session_state.bin_df, num_rows="dynamic", use_container_width=True,
+                st.session_state.bin_df,
+                num_rows="dynamic",
+                use_container_width=True,
                 column_config={
-                    "Type of Bin": st.column_config.TextColumn(required=True),
-                    "Bin Outer Dimension (MM)": st.column_config.TextColumn(),
-                    "Bin Inner Dimension (MM)": st.column_config.TextColumn(),
-                    "Qty Bin": st.column_config.NumberColumn(),
-                    "Conceptual Image": st.column_config.ImageColumn("Image Preview")
-                }, key="bin_df_editor")
+                    "Sr.No":               st.column_config.NumberColumn("Sr.No", width="small"),
+                    "Description":         st.column_config.TextColumn("Description", width="medium", required=True),
+                    "Material Type":       st.column_config.SelectboxColumn("Material", width="small",
+                                               options=["Plastic", "Metal", "Wood", "Corrugated", "Fibre", "Other"]),
+                    "Length":              st.column_config.TextColumn("Length (mm)", width="small"),
+                    "Width":               st.column_config.TextColumn("Width (mm)", width="small"),
+                    "Height":              st.column_config.TextColumn("Height (mm)", width="small"),
+                    "Inner Length":        st.column_config.TextColumn("Inner L (mm)", width="small"),
+                    "Inner Width":         st.column_config.TextColumn("Inner W (mm)", width="small"),
+                    "Inner Height":        st.column_config.TextColumn("Inner H (mm)", width="small"),
+                    "Unit of Measurement": st.column_config.SelectboxColumn("UOM", width="small", options=UNIT_OPTIONS),
+                    "Base Type":           st.column_config.SelectboxColumn("Base Type", width="small",
+                                               options=["Flat", "Ribbed", "Louvred", "Grid", "Other"]),
+                    "Colour":              st.column_config.TextColumn("Colour", width="small"),
+                    "Weight Kg":           st.column_config.TextColumn("Weight (Kg)", width="small"),
+                    "Load capacity":       st.column_config.TextColumn("Load Cap (Kg)", width="small"),
+                    "Stackable":           st.column_config.SelectboxColumn("Stackable", width="small",
+                                               options=["Yes", "No", "N/A"]),
+                    "BIn Cover/ Open":     st.column_config.SelectboxColumn("Cover/Open", width="small",
+                                               options=["Open", "Covered", "Lid", "N/A"]),
+                    "Rate":                st.column_config.TextColumn("Rate", width="small"),
+                    "Qty":                 st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
+                    "Remarks":             st.column_config.TextColumn("Remarks", width="medium"),
+                },
+                key="bin_df_editor"
+            )
+
         with uploader_col:
-            st.write("**Upload Images**")
+            st.write("**Upload Conceptual Images**")
             for i in range(len(edited_bin_df)):
-                bin_type = edited_bin_df.iloc[i]["Type of Bin"]
-                label = f"Upload for '{bin_type}'" if bin_type else f"Upload for row {i+1}"
+                desc = str(edited_bin_df.iloc[i].get("Description", "")).strip()
+                label = f"Image for '{desc}'" if desc else f"Image for row {i+1}"
                 uploaded_file = st.file_uploader(label, type=['png', 'jpg', 'jpeg'], key=f"image_uploader_{i}")
                 if uploaded_file is not None:
-                    edited_bin_df.at[i, 'Conceptual Image'] = uploaded_file.getvalue()
-        st.session_state.bin_df = edited_bin_df
-        st.markdown("---"); st.markdown("##### General Specifications"); c1, c2 = st.columns(2)
-        with c1:
-            color = st.text_input("Color"); capacity = st.number_input("Weight Carrying Capacity (KG)", 0.0, 1000.0, 0.0, format="%.2f")
-            lid = st.radio("Lid Required?", ["Yes", "No", "N/A"], index=2, horizontal=True)
-        with c2:
-            label_space = st.radio("Space for Label?", ["Yes", "No", "N/A"], index=2, horizontal=True); label_size = "N/A"
-            if label_space == "Yes": label_size = st.text_input("Label Size (e.g., 80*50)", "")
-        st.markdown("###### Stacking Requirements (if applicable)"); c1, c2 = st.columns(2)
-        stack_static = c1.text_input("Static (e.g., 1+3)"); stack_dynamic = c2.text_input("Dynamic (e.g., 1+1)")
+                    st.session_state.bin_images[i] = uploaded_file.getvalue()
 
-# ---- STORAGE INFRASTRUCTURE RFQ ----
+        st.session_state.bin_df = edited_bin_df
+
+# ================================================================
+# STORAGE INFRASTRUCTURE RFQ
+# ================================================================
 elif rfq_type == 'Storage Infrastructure':
     with st.expander("Technical Specifications", expanded=True):
         st.markdown("##### Rack Details")
         if 'rack_df' not in st.session_state or st.session_state.rack_df.empty:
-            rack_data = {"Types of Rack": [""], "Rack Dimension (MM)": [""], "Level/Rack": [""], "Type of Bin": [""], "Bin Dimension (MM)": [""], "Level/Bin": [""]}
-            st.session_state.rack_df = pd.DataFrame(rack_data).astype(str)
-        st.info("ℹ️ Double-click any cell to edit. Use the `+` button at the bottom of the table to add more rack types.")
+            st.session_state.rack_df = pd.DataFrame({
+                "Types of Rack": [""], "Rack Dimension (MM)": [""], "Level/Rack": [""],
+                "Type of Bin": [""], "Bin Dimension (MM)": [""], "Level/Bin": [""]
+            }).astype(str)
+        st.info("ℹ️ Double-click any cell to edit. Use the `+` button to add more rack types.")
         edited_rack_df = st.data_editor(
             st.session_state.rack_df, num_rows="dynamic", use_container_width=True,
             column_config={
@@ -751,10 +855,11 @@ elif rfq_type == 'Storage Infrastructure':
                 "Level/Bin": st.column_config.TextColumn()
             }, key="rack_df_editor")
         st.session_state.rack_df = edited_rack_df
+
         st.markdown("---"); st.markdown("##### Key Inputs")
         if 'key_inputs_df' not in st.session_state or st.session_state.key_inputs_df.empty:
             st.session_state.key_inputs_df = pd.DataFrame([{"Input Text": "", "Upload Image?": False, "Image Data": None}])
-        st.info("ℹ️ Describe each key requirement below. Check the box to enable the image uploader for that row.")
+        st.info("ℹ️ Describe each key requirement. Check the box to enable an image uploader for that row.")
         edited_key_inputs_df = st.data_editor(
             st.session_state.key_inputs_df, num_rows="dynamic", use_container_width=True,
             column_config={
@@ -764,92 +869,58 @@ elif rfq_type == 'Storage Infrastructure':
             }, key="key_inputs_editor")
         for i, row in edited_key_inputs_df.iterrows():
             if row["Upload Image?"]:
-                input_text = row["Input Text"]
-                label = f"Upload for '{input_text}'" if input_text else f"Upload for key input #{i+1}"
+                label = f"Upload for '{row['Input Text']}'" if row['Input Text'] else f"Upload for key input #{i+1}"
                 uploaded_file = st.file_uploader(label, type=['png', 'jpg', 'jpeg'], key=f"key_input_uploader_{i}")
                 if uploaded_file is not None:
                     edited_key_inputs_df.at[i, 'Image Data'] = uploaded_file.getvalue()
         st.session_state.key_inputs_df = edited_key_inputs_df
 
-# ---- DYNAMIC CATEGORY-BASED RFQ ----
+# ================================================================
+# DYNAMIC / WAREHOUSE RFQ
+# ================================================================
 elif rfq_type == 'Dynamic (Category-Based)':
     with st.expander("📦 Technical Specifications — Dynamic Item List", expanded=True):
-
-        # Category selector
         category_list = list(CATEGORY_HINTS.keys())
-        rfq_category = st.selectbox(
-            "Select RFQ Category*",
-            options=category_list,
-            index=0,
-            help="Choose the procurement category for this RFQ"
-        )
+        rfq_category = st.selectbox("Select RFQ Category*", options=category_list, index=0)
         is_warehouse = (rfq_category == "Warehouse Equipment")
 
-        # Reset items when category changes
         if 'last_category' not in st.session_state:
             st.session_state.last_category = rfq_category
         if st.session_state.last_category != rfq_category:
             st.session_state.dynamic_items_df = pd.DataFrame(
-                columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
-            )
+                columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"])
             for g in WAREHOUSE_GROUPS:
                 st.session_state[f'wh_group_{g}'] = pd.DataFrame(
-                    columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
-                )
-            # Reset model details when switching away from warehouse
+                    columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"])
             st.session_state.carousel_model_df = pd.DataFrame()
             st.session_state.last_category = rfq_category
 
-        # ---- WAREHOUSE EQUIPMENT: grouped UI ----
         if is_warehouse:
-            st.info(
-                "**Warehouse RFQ** — Used for warehouse infrastructure, storage systems, and material handling equipment. "
-                "Select items group-by-group below. Each group is independent — add only what you need."
-            )
-
+            st.info("**Warehouse RFQ** — Select items group-by-group below.")
             st.markdown("---")
-
-            # --- Grouped item tables ---
             for group_name, group_items in WAREHOUSE_GROUPS.items():
                 state_key = f'wh_group_{group_name}'
                 editor_key = f'wh_editor_{group_name}'
-
                 if state_key not in st.session_state:
                     st.session_state[state_key] = pd.DataFrame(
                         columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
                     ).astype({"Quantity": "object"})
-
                 with st.expander(f"📁 {group_name}", expanded=False):
                     st.markdown(f"*Common items: {', '.join(group_items[:5])}{'...' if len(group_items) > 5 else ''}*")
-
                     btn_cols = st.columns(min(len(group_items), 4))
                     for idx, hint in enumerate(group_items):
                         with btn_cols[idx % 4]:
                             if st.button(f"➕ {hint}", key=f"btn_{group_name}_{idx}"):
-                                new_row = pd.DataFrame([{
-                                    "Item Name": hint,
-                                    "Description / Specification": "",
-                                    "Quantity": 1,
-                                    "Unit": "Nos",
-                                    "Remarks": ""
-                                }])
-                                st.session_state[state_key] = pd.concat(
-                                    [st.session_state[state_key], new_row], ignore_index=True
-                                )
+                                new_row = pd.DataFrame([{"Item Name": hint, "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
+                                st.session_state[state_key] = pd.concat([st.session_state[state_key], new_row], ignore_index=True)
                                 st.rerun()
-
                     df_edit = st.session_state[state_key].copy()
                     if df_edit.empty:
-                        df_edit = pd.DataFrame([{
-                            "Item Name": "", "Description / Specification": "",
-                            "Quantity": 1, "Unit": "Nos", "Remarks": ""
-                        }])
-
+                        df_edit = pd.DataFrame([{"Item Name": "", "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
                     df_edit["Quantity"] = pd.to_numeric(df_edit.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
                     for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
                         if col not in df_edit.columns: df_edit[col] = ""
                         df_edit[col] = df_edit[col].astype(str)
-
                     edited_group = st.data_editor(
                         df_edit, num_rows="dynamic", use_container_width=True,
                         column_config={
@@ -858,34 +929,25 @@ elif rfq_type == 'Dynamic (Category-Based)':
                             "Quantity": st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
                             "Unit": st.column_config.SelectboxColumn("Unit", width="small", options=UNIT_OPTIONS),
                             "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
-                        },
-                        key=editor_key
-                    )
+                        }, key=editor_key)
                     st.session_state[state_key] = edited_group
-
                     valid_count = len(edited_group[edited_group["Item Name"].astype(str).str.strip() != ""])
                     if valid_count > 0:
                         st.success(f"✅ {valid_count} item(s) in this group")
 
             st.markdown("---")
-
-            # --- Bin / Container Details ---
             st.markdown("### 📦 Bin / Container Details")
-            st.info("Add details for storage bins, crates, pallets, or containers required in this RFQ.")
-
             bin_state_key = 'warehouse_bin_container_df'
             if bin_state_key not in st.session_state:
                 st.session_state[bin_state_key] = pd.DataFrame([{
                     "Type of Bin/Container": "", "Outer Dimension (MM)": "",
                     "Inner Dimension (MM)": "", "Material": "", "Qty": 1, "Remarks": ""
                 }])
-
             df_bins = st.session_state[bin_state_key].copy()
             df_bins["Qty"] = pd.to_numeric(df_bins.get("Qty", 1), errors='coerce').fillna(1).astype(int)
             for col in ["Type of Bin/Container", "Outer Dimension (MM)", "Inner Dimension (MM)", "Material", "Remarks"]:
                 if col not in df_bins.columns: df_bins[col] = ""
                 df_bins[col] = df_bins[col].astype(str)
-
             edited_bins = st.data_editor(
                 df_bins, num_rows="dynamic", use_container_width=True,
                 column_config={
@@ -896,36 +958,20 @@ elif rfq_type == 'Dynamic (Category-Based)':
                         options=["Plastic", "Metal", "Wood", "Corrugated", "Fibre", "Other"]),
                     "Qty": st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
                     "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
-                },
-                key="bin_container_editor"
-            )
+                }, key="bin_container_editor")
             st.session_state[bin_state_key] = edited_bins
 
             st.markdown("---")
-
-            # ================================================================
-            # --- Carousel / VStore Model Details — COMPULSORY FOR WAREHOUSE ---
-            # ================================================================
             st.markdown("### 🎠 Carousel / VStore — Model Details *(Compulsory)*")
-            st.info(
-                "ℹ️ This table is **mandatory** for all Warehouse Equipment RFQs. "
-                "Pre-filled values are based on the standard spec (3400L × 3200W, 465 kg/tray, 28 m height). "
-                "Edit the **Requirement** column to update or add vendor-specific values."
-            )
-
-            model_detail_header = st.text_input(
-                "Model Header (e.g., dimensions / capacity / height)",
+            st.info("Pre-filled with standard spec. Edit the **Requirement** column as needed.")
+            model_detail_header = st.text_input("Model Header",
                 value="3400 (L) x 3200 (W)   -  465 kgs/tray  -  28 m Height",
-                key="model_detail_header_input"
-            )
-
+                key="model_detail_header_input")
             import copy
-            default_model_rows = copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"])
             if 'carousel_model_df' not in st.session_state or st.session_state.get('carousel_model_df') is None or (
                 isinstance(st.session_state.get('carousel_model_df'), pd.DataFrame) and st.session_state.carousel_model_df.empty
             ):
-                st.session_state.carousel_model_df = pd.DataFrame(default_model_rows)
-
+                st.session_state.carousel_model_df = pd.DataFrame(copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
             edited_model_df = st.data_editor(
                 st.session_state.carousel_model_df, num_rows="dynamic", use_container_width=True,
                 column_config={
@@ -934,17 +980,12 @@ elif rfq_type == 'Dynamic (Category-Based)':
                     "Description": st.column_config.TextColumn("Description", width="large"),
                     "Unit": st.column_config.TextColumn("Unit", width="small"),
                     "Requirement": st.column_config.TextColumn("Requirement", width="medium"),
-                },
-                key="carousel_model_editor"
-            )
+                }, key="carousel_model_editor")
             st.session_state.carousel_model_df = edited_model_df
             st.session_state.model_detail_header = model_detail_header
 
             st.markdown("---")
-
-            # --- Key Features — COMPULSORY ---
             st.markdown("### ⭐ Key Features *(Compulsory)*")
-            st.info("ℹ️ Pre-filled from the specification template. Edit the **Status** and **Remarks** columns as needed.")
             default_kf = pd.DataFrame([
                 {"Description": "Material Tracking", "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
                 {"Description": "Tray Details", "Status": "", "Remarks": ""},
@@ -959,19 +1000,15 @@ elif rfq_type == 'Dynamic (Category-Based)':
             ])
             if 'key_features_df' not in st.session_state or st.session_state.key_features_df.empty:
                 st.session_state.key_features_df = default_kf
-            edited_kf = st.data_editor(
-                st.session_state.key_features_df, num_rows="dynamic", use_container_width=True,
+            edited_kf = st.data_editor(st.session_state.key_features_df, num_rows="dynamic", use_container_width=True,
                 column_config={
                     "Description": st.column_config.TextColumn("Description", width="large"),
                     "Status": st.column_config.TextColumn("Status", width="small"),
                     "Remarks": st.column_config.TextColumn("Remarks", width="large"),
-                }, key="kf_editor"
-            )
+                }, key="kf_editor")
             st.session_state.key_features_df = edited_kf
 
-            # --- Inbuilt Features — COMPULSORY ---
             st.markdown("### 🔧 Inbuilt Features *(Compulsory)*")
-            st.info("ℹ️ Pre-filled from the specification template. Edit the **Vendor Scope** and **Remarks** columns as needed.")
             default_ib = pd.DataFrame([
                 {"Description": "Ergonomic tray positioning", "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
                 {"Description": "Variable frequency drives", "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -988,19 +1025,15 @@ elif rfq_type == 'Dynamic (Category-Based)':
             ])
             if 'inbuilt_features_df' not in st.session_state or st.session_state.inbuilt_features_df.empty:
                 st.session_state.inbuilt_features_df = default_ib
-            edited_ib = st.data_editor(
-                st.session_state.inbuilt_features_df, num_rows="dynamic", use_container_width=True,
+            edited_ib = st.data_editor(st.session_state.inbuilt_features_df, num_rows="dynamic", use_container_width=True,
                 column_config={
                     "Description": st.column_config.TextColumn("Description", width="large"),
                     "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
                     "Remarks": st.column_config.TextColumn("Remarks", width="large"),
-                }, key="ib_editor"
-            )
+                }, key="ib_editor")
             st.session_state.inbuilt_features_df = edited_ib
 
-            # --- Installation Accountability — COMPULSORY ---
             st.markdown("### 🏗️ Installation Accountability *(Compulsory)*")
-            st.info("ℹ️ Pre-filled from the specification template. Fill in **Vendor Scope**, **Customer Scope**, and **Remarks** columns.")
             default_ia = pd.DataFrame([
                 {"Category": "Inventory Management Suite (IPC).", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                 {"Category": "Packing, Freight & Transit Insurance.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
@@ -1020,61 +1053,39 @@ elif rfq_type == 'Dynamic (Category-Based)':
             ])
             if 'installation_df' not in st.session_state or st.session_state.installation_df.empty:
                 st.session_state.installation_df = default_ia
-            edited_ia = st.data_editor(
-                st.session_state.installation_df, num_rows="dynamic", use_container_width=True,
+            edited_ia = st.data_editor(st.session_state.installation_df, num_rows="dynamic", use_container_width=True,
                 column_config={
                     "Category": st.column_config.TextColumn("Category", width="large"),
                     "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
                     "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope", width="small", options=["Yes", "No", ""]),
                     "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
-                }, key="ia_editor"
-            )
+                }, key="ia_editor")
             st.session_state.installation_df = edited_ia
 
-        # ---- NON-WAREHOUSE: flat dynamic item list ----
         else:
             hints = CATEGORY_HINTS.get(rfq_category, [])
             if hints:
-                st.markdown(f"**💡 Common items in *{rfq_category}*** *(click to auto-fill)*")
-
+                st.markdown(f"**💡 Common items in *{rfq_category}***")
             if 'dynamic_items_df' not in st.session_state:
                 st.session_state.dynamic_items_df = pd.DataFrame(
-                    columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"]
-                )
-
+                    columns=["Item Name", "Description / Specification", "Quantity", "Unit", "Remarks"])
             if hints:
                 btn_cols = st.columns(min(len(hints), 4))
                 for idx, hint in enumerate(hints):
                     with btn_cols[idx % 4]:
                         if st.button(f"➕ {hint}", key=f"hint_btn_{idx}_{rfq_category}"):
-                            new_row = pd.DataFrame([{
-                                "Item Name": hint,
-                                "Description / Specification": "",
-                                "Quantity": 1,
-                                "Unit": "Nos",
-                                "Remarks": ""
-                            }])
-                            st.session_state.dynamic_items_df = pd.concat(
-                                [st.session_state.dynamic_items_df, new_row], ignore_index=True
-                            )
+                            new_row = pd.DataFrame([{"Item Name": hint, "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
+                            st.session_state.dynamic_items_df = pd.concat([st.session_state.dynamic_items_df, new_row], ignore_index=True)
                             st.rerun()
-
             st.markdown("---")
             st.markdown("##### 📋 Item List")
-            st.info("ℹ️ Add items you need to procure. Double-click any cell to edit. Use `+` at the bottom to add a new blank row.")
-
             df_to_edit = st.session_state.dynamic_items_df.copy()
             if df_to_edit.empty:
-                df_to_edit = pd.DataFrame([{
-                    "Item Name": "", "Description / Specification": "",
-                    "Quantity": 1, "Unit": "Nos", "Remarks": ""
-                }])
-
+                df_to_edit = pd.DataFrame([{"Item Name": "", "Description / Specification": "", "Quantity": 1, "Unit": "Nos", "Remarks": ""}])
             df_to_edit["Quantity"] = pd.to_numeric(df_to_edit.get("Quantity", 1), errors='coerce').fillna(1).astype(int)
             for col in ["Item Name", "Description / Specification", "Unit", "Remarks"]:
                 if col not in df_to_edit.columns: df_to_edit[col] = ""
                 df_to_edit[col] = df_to_edit[col].astype(str)
-
             edited_dynamic_df = st.data_editor(
                 df_to_edit, num_rows="dynamic", use_container_width=True,
                 column_config={
@@ -1083,20 +1094,17 @@ elif rfq_type == 'Dynamic (Category-Based)':
                     "Quantity": st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1, format="%d"),
                     "Unit": st.column_config.SelectboxColumn("Unit", width="small", options=UNIT_OPTIONS, required=True),
                     "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
-                },
-                key="dynamic_items_editor"
-            )
+                }, key="dynamic_items_editor")
             st.session_state.dynamic_items_df = edited_dynamic_df
-
             total_items = len(edited_dynamic_df[edited_dynamic_df["Item Name"].astype(str).str.strip() != ""])
             if total_items > 0:
                 st.success(f"✅ {total_items} item(s) added to this RFQ")
             else:
                 st.warning("⚠️ Add at least one item to generate the RFQ.")
 
-# ============================================================
-# Rest of the form (Steps 5+)
-# ============================================================
+# ================================================================
+# REST OF FORM (Steps 5+)
+# ================================================================
 with st.form(key="advanced_rfq_form"):
     purpose = st.text_area("Purpose of Requirement*", max_chars=500, height=100)
     with st.expander("Timelines"):
@@ -1124,55 +1132,44 @@ with st.form(key="advanced_rfq_form"):
                 {"Cost Component": "Freight", "Remarks": "Specify if included or extra."},
                 {"Cost Component": "Any other Handling Cost", "Remarks": ""},
                 {"Cost Component": "Total Basic Cost (Per Unit)", "Remarks": ""}
-            ]), num_rows="dynamic", use_container_width=True
-        )
+            ]), num_rows="dynamic", use_container_width=True)
     with st.expander("Submission, Delivery & Annexures"):
         st.markdown("##### Quotation Submission Details*")
         submit_to_name = st.text_input("Submit To (Company Name)*", "Agilomatrix Pvt. Ltd.")
         submit_to_color = st.color_picker("Company Name Color", "#DC3232")
-        submit_to_registered_office = st.text_input("Submit To (Registered Office Address)", "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
+        submit_to_registered_office = st.text_input("Submit To (Registered Office Address)",
+            "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
         st.markdown("---"); st.markdown("##### Delivery & Annexures*")
         delivery_location = st.text_area("Delivery Location Address*", height=100)
         annexures = st.text_area("Annexures (one item per line)", height=100)
 
     submitted = st.form_submit_button("Generate RFQ Document", use_container_width=True, type="primary")
 
-# ---- PDF Generation on Submit ----
+# ================================================================
+# PDF GENERATION ON SUBMIT
+# ================================================================
 if submitted:
-    required_fields = [purpose, spoc1_name, spoc1_phone, spoc1_email, company_name, company_address, Type_of_items, Storage, submit_to_name, delivery_location]
+    required_fields = [purpose, spoc1_name, spoc1_phone, spoc1_email, company_name,
+                       company_address, Type_of_items, Storage, submit_to_name, delivery_location]
     if not all(required_fields):
         st.error("⚠️ Please fill in all mandatory (*) fields.")
     elif rfq_type == 'Dynamic (Category-Based)':
         current_category = st.session_state.get('last_category', 'General')
         is_warehouse_submit = (current_category == "Warehouse Equipment")
+        has_items = True  # Model Details always present for warehouse; validated below for non-warehouse
 
-        has_items = False
-        if is_warehouse_submit:
-            for g in WAREHOUSE_GROUPS:
-                gdf = st.session_state.get(f'wh_group_{g}', pd.DataFrame())
-                if not gdf.empty:
-                    valid = gdf[gdf["Item Name"].astype(str).str.strip() != ""]
-                    if not valid.empty:
-                        has_items = True
-                        break
-            # For warehouse, Model Details is always present — no need to validate it separately
-            if not has_items:
-                # Still allow generation if only model details are filled (no group items)
-                has_items = True  # Model Details table is always included
-        else:
+        if not is_warehouse_submit:
             items_check = st.session_state.get('dynamic_items_df', pd.DataFrame())
-            if not items_check.empty:
-                valid_items = items_check[items_check["Item Name"].astype(str).str.strip() != ""]
-                if not valid_items.empty:
-                    has_items = True
+            has_items = not items_check.empty and not items_check[
+                items_check["Item Name"].astype(str).str.strip() != ""
+            ].empty
 
         if not has_items:
             st.error("⚠️ Please add at least one item to the item list in Step 4.")
         else:
             with st.spinner("Generating PDF..."):
                 common_data = {
-                    'rfq_type': 'Dynamic',
-                    'rfq_category': current_category,
+                    'rfq_type': 'Dynamic', 'rfq_category': current_category,
                     'Type_of_items': Type_of_items, 'Storage': Storage,
                     'company_name': company_name, 'company_address': company_address,
                     'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
@@ -1193,39 +1190,29 @@ if submitted:
                     'submit_to_registered_office': submit_to_registered_office,
                     'delivery_location': delivery_location, 'annexures': annexures,
                 }
-
                 if is_warehouse_submit:
-                    groups_data = {}
-                    for g in WAREHOUSE_GROUPS:
-                        gdf = st.session_state.get(f'wh_group_{g}', pd.DataFrame())
-                        groups_data[g] = gdf
+                    groups_data = {g: st.session_state.get(f'wh_group_{g}', pd.DataFrame()) for g in WAREHOUSE_GROUPS}
                     common_data['warehouse_groups_df'] = groups_data
-
-                    bdf = st.session_state.get('warehouse_bin_container_df', pd.DataFrame())
-                    common_data['bin_container_df'] = bdf
-
-                    # Always include Model Details for warehouse
+                    common_data['bin_container_df'] = st.session_state.get('warehouse_bin_container_df', pd.DataFrame())
                     model_df = st.session_state.get('carousel_model_df', pd.DataFrame())
                     if model_df is None or model_df.empty:
                         import copy
                         model_df = pd.DataFrame(copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
                     common_data['carousel_model_df'] = model_df
                     common_data['model_detail_header'] = st.session_state.get('model_detail_header', '3400 (L) x 3200 (W)   -  465 kgs/tray  -  28 m Height')
-
                     common_data['key_features_df'] = st.session_state.get('key_features_df', pd.DataFrame())
                     common_data['inbuilt_features_df'] = st.session_state.get('inbuilt_features_df', pd.DataFrame())
                     common_data['installation_df'] = st.session_state.get('installation_df', pd.DataFrame())
-
                 else:
                     items_check = st.session_state.get('dynamic_items_df', pd.DataFrame())
                     valid_items = items_check[items_check["Item Name"].astype(str).str.strip() != ""].reset_index(drop=True)
                     common_data['items_df'] = valid_items
-
                 pdf_data = create_advanced_rfq_pdf(common_data)
 
             st.success("✅ RFQ PDF Generated Successfully!")
             file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-            st.download_button(label="📥 Download RFQ Document", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
+            st.download_button("📥 Download RFQ Document", data=pdf_data, file_name=file_name,
+                               mime="application/pdf", use_container_width=True, type="primary")
     else:
         with st.spinner("Generating PDF..."):
             rfq_data = {
@@ -1251,12 +1238,15 @@ if submitted:
                 'delivery_location': delivery_location, 'annexures': annexures,
             }
             if rfq_type == 'Item':
-                df_to_process = st.session_state.bin_df.dropna(subset=["Type of Bin"]).copy()
-                df_to_process = df_to_process[df_to_process["Type of Bin"].str.strip() != ""]
-                rfq_data['bin_details_df'] = df_to_process.rename(columns={"Conceptual Image": "image_data_bytes"})
-                rfq_data.update({'color': color, 'capacity': capacity, 'lid': lid,
-                                 'label_space': label_space, 'label_size': label_size,
-                                 'stack_static': stack_static, 'stack_dynamic': stack_dynamic})
+                df_to_process = st.session_state.bin_df.copy()
+                df_to_process = df_to_process[
+                    df_to_process["Description"].astype(str).str.strip() != ""
+                ].reset_index(drop=True)
+                # Attach images
+                bin_images = st.session_state.get('bin_images', {})
+                df_to_process['image_data_bytes'] = [bin_images.get(i) for i in range(len(df_to_process))]
+                rfq_data['bin_details_df'] = df_to_process
+
             elif rfq_type == 'Storage Infrastructure':
                 df_rack = st.session_state.rack_df.dropna(subset=["Types of Rack"]).copy()
                 rfq_data['rack_details_df'] = df_rack[df_rack["Types of Rack"].str.strip() != ""]
@@ -1267,4 +1257,5 @@ if submitted:
 
         st.success("✅ RFQ PDF Generated Successfully!")
         file_name = f"RFQ_{Type_of_items.replace(' ', '_')}_{date.today().strftime('%Y%m%d')}.pdf"
-        st.download_button(label="📥 Download RFQ Document", data=pdf_data, file_name=file_name, mime="application/pdf", use_container_width=True, type="primary")
+        st.download_button("📥 Download RFQ Document", data=pdf_data, file_name=file_name,
+                           mime="application/pdf", use_container_width=True, type="primary")
