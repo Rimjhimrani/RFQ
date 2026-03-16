@@ -497,9 +497,17 @@ def create_advanced_rfq_pdf(data):
                     pdf.add_page(orientation='P')
 
             # ---- Model Details, Key Features, Inbuilt Features, Installation Accountability ----
+            # Only render these sections if the user has items in Automated Storage Systems
+            automated_df = groups_data.get('Automated Storage Systems', pd.DataFrame())
+            has_automated = (
+                automated_df is not None
+                and not automated_df.empty
+                and not automated_df[automated_df["Item Name"].astype(str).str.strip() != ""].empty
+            )
+
             model_detail_str = data.get('model_detail_header', '').strip()
             model_df = data.get('carousel_model_df', pd.DataFrame())
-            if model_df is not None and not model_df.empty:
+            if has_automated and model_df is not None and not model_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
                 pdf.set_font('Arial', 'B', 11)
                 pdf.cell(0, 8, 'MODEL DETAILS', 0, 1, 'L')
@@ -527,8 +535,8 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(md_widths[4], 8, str(mrow.get("Requirement", "")), border=1, align='C', ln=1)
                 pdf.ln(6)
 
-            kf_df = data.get('key_features_df', pd.DataFrame())
-            if kf_df is None or (isinstance(kf_df, pd.DataFrame) and kf_df.empty):
+            kf_df = data.get('key_features_df', pd.DataFrame()) if has_automated else pd.DataFrame()
+            if has_automated and (kf_df is None or (isinstance(kf_df, pd.DataFrame) and kf_df.empty)):
                 kf_df = pd.DataFrame([
                     {"Description": "Material Tracking", "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
                     {"Description": "Tray Details", "Status": "", "Remarks": ""},
@@ -541,7 +549,7 @@ def create_advanced_rfq_pdf(data):
                     {"Description": "BOM Items List", "Status": "", "Remarks": ""},
                     {"Description": "User Management, with backup and restore options", "Status": "", "Remarks": ""},
                 ])
-            if kf_df is not None and not kf_df.empty:
+            if has_automated and kf_df is not None and not kf_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
                 pdf.set_font('Arial', 'B', 11)
                 pdf.cell(0, 8, 'KEY FEATURES', 0, 1, 'L'); pdf.ln(2)
@@ -559,8 +567,8 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(kf_widths[3], 8, str(krow.get("Remarks", "")), border=1, align='L', ln=1)
                 pdf.ln(6)
 
-            ib_df = data.get('inbuilt_features_df', pd.DataFrame())
-            if ib_df is None or (isinstance(ib_df, pd.DataFrame) and ib_df.empty):
+            ib_df = data.get('inbuilt_features_df', pd.DataFrame()) if has_automated else pd.DataFrame()
+            if has_automated and (ib_df is None or (isinstance(ib_df, pd.DataFrame) and ib_df.empty)):
                 ib_df = pd.DataFrame([
                     {"Description": "Ergonomic tray positioning", "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
                     {"Description": "Variable frequency drives", "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -575,7 +583,7 @@ def create_advanced_rfq_pdf(data):
                     {"Description": "Expansion at later stage is possible", "Vendor Scope (Yes/No)": "", "Remarks": ""},
                     {"Description": "Inventory management software", "Vendor Scope (Yes/No)": "", "Remarks": ""},
                 ])
-            if ib_df is not None and not ib_df.empty:
+            if has_automated and ib_df is not None and not ib_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
                 pdf.set_font('Arial', 'B', 11)
                 pdf.cell(0, 8, 'INBUILT FEATURES', 0, 1, 'L'); pdf.ln(2)
@@ -598,8 +606,8 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(ib_widths[3], 8, str(irow.get("Remarks", "")), border=1, align='L', ln=1)
                 pdf.ln(6)
 
-            ia_df = data.get('installation_df', pd.DataFrame())
-            if ia_df is None or (isinstance(ia_df, pd.DataFrame) and ia_df.empty):
+            ia_df = data.get('installation_df', pd.DataFrame()) if has_automated else pd.DataFrame()
+            if has_automated and (ia_df is None or (isinstance(ia_df, pd.DataFrame) and ia_df.empty)):
                 ia_df = pd.DataFrame([
                     {"Category": "Inventory Management Suite (IPC).", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                     {"Category": "Packing, Freight & Transit Insurance.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
@@ -617,7 +625,7 @@ def create_advanced_rfq_pdf(data):
                     {"Category": "Equipment Movement & Installation location", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                     {"Category": "PEB Cladding and Civil Floor for outside installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
                 ])
-            if ia_df is not None and not ia_df.empty:
+            if has_automated and ia_df is not None and not ia_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
                 pdf.set_font('Arial', 'B', 11)
                 pdf.cell(0, 8, 'INSTALLATION ACCOUNTABILITY', 0, 1, 'L'); pdf.ln(2)
@@ -1024,106 +1032,118 @@ elif rfq_type == 'Dynamic (Category-Based)':
             if valid_sc_count > 0:
                 st.success(f"✅ {valid_sc_count} container type(s) added")
 
-            st.markdown("---")
-            st.markdown("### 🎠 Carousel / VStore — Model Details *(Compulsory)*")
-            st.info("Pre-filled with standard spec. Edit the **Requirement** column as needed.")
-            model_detail_header = st.text_input("Model Header",
-                value="3400 (L) x 3200 (W)   -  465 kgs/tray  -  28 m Height",
-                key="model_detail_header_input")
-            import copy
-            if 'carousel_model_df' not in st.session_state or st.session_state.get('carousel_model_df') is None or (
-                isinstance(st.session_state.get('carousel_model_df'), pd.DataFrame) and st.session_state.carousel_model_df.empty
-            ):
-                st.session_state.carousel_model_df = pd.DataFrame(copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
-            edited_model_df = st.data_editor(
-                st.session_state.carousel_model_df, num_rows="dynamic", use_container_width=True,
-                column_config={
-                    "Sr": st.column_config.TextColumn("Sr.", width="small"),
-                    "Category": st.column_config.TextColumn("Category", width="medium"),
-                    "Description": st.column_config.TextColumn("Description", width="large"),
-                    "Unit": st.column_config.TextColumn("Unit", width="small"),
-                    "Requirement": st.column_config.TextColumn("Requirement", width="medium"),
-                }, key="carousel_model_editor")
-            st.session_state.carousel_model_df = edited_model_df
-            st.session_state.model_detail_header = model_detail_header
+            # ---- Carousel sections: only shown if Automated Storage Systems has items ----
+            automated_state_key = 'wh_group_Automated Storage Systems'
+            _auto_df = st.session_state.get(automated_state_key, pd.DataFrame())
+            _has_automated_ui = (
+                _auto_df is not None
+                and not _auto_df.empty
+                and not _auto_df[_auto_df["Item Name"].astype(str).str.strip() != ""].empty
+            )
 
-            st.markdown("---")
-            st.markdown("### ⭐ Key Features *(Compulsory)*")
-            default_kf = pd.DataFrame([
-                {"Description": "Material Tracking", "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
-                {"Description": "Tray Details", "Status": "", "Remarks": ""},
-                {"Description": "Inventory List", "Status": "", "Remarks": ""},
-                {"Description": "Tray Call History", "Status": "", "Remarks": ""},
-                {"Description": "Alarm History", "Status": "", "Remarks": ""},
-                {"Description": "Item Code Search", "Status": "", "Remarks": ""},
-                {"Description": "Bar Code Search", "Status": "", "Remarks": ""},
-                {"Description": "Pick from BOM", "Status": "", "Remarks": ""},
-                {"Description": "BOM Items List", "Status": "", "Remarks": ""},
-                {"Description": "User Management, with backup and restore options", "Status": "", "Remarks": ""},
-            ])
-            if 'key_features_df' not in st.session_state or st.session_state.key_features_df.empty:
-                st.session_state.key_features_df = default_kf
-            edited_kf = st.data_editor(st.session_state.key_features_df, num_rows="dynamic", use_container_width=True,
-                column_config={
-                    "Description": st.column_config.TextColumn("Description", width="large"),
-                    "Status": st.column_config.TextColumn("Status", width="small"),
-                    "Remarks": st.column_config.TextColumn("Remarks", width="large"),
-                }, key="kf_editor")
-            st.session_state.key_features_df = edited_kf
+            if _has_automated_ui:
+                import copy
+                st.markdown("---")
+                st.markdown("### 🎠 Carousel / VStore — Model Details")
+                st.info("Pre-filled with standard spec. Edit the **Requirement** column as needed.")
+                model_detail_header = st.text_input("Model Header",
+                    value="3400 (L) x 3200 (W)   -  465 kgs/tray  -  28 m Height",
+                    key="model_detail_header_input")
+                if 'carousel_model_df' not in st.session_state or st.session_state.get('carousel_model_df') is None or (
+                    isinstance(st.session_state.get('carousel_model_df'), pd.DataFrame) and st.session_state.carousel_model_df.empty
+                ):
+                    st.session_state.carousel_model_df = pd.DataFrame(copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Model Details"]))
+                edited_model_df = st.data_editor(
+                    st.session_state.carousel_model_df, num_rows="dynamic", use_container_width=True,
+                    column_config={
+                        "Sr": st.column_config.TextColumn("Sr.", width="small"),
+                        "Category": st.column_config.TextColumn("Category", width="medium"),
+                        "Description": st.column_config.TextColumn("Description", width="large"),
+                        "Unit": st.column_config.TextColumn("Unit", width="small"),
+                        "Requirement": st.column_config.TextColumn("Requirement", width="medium"),
+                    }, key="carousel_model_editor")
+                st.session_state.carousel_model_df = edited_model_df
+                st.session_state.model_detail_header = model_detail_header
 
-            st.markdown("### 🔧 Inbuilt Features *(Compulsory)*")
-            default_ib = pd.DataFrame([
-                {"Description": "Ergonomic tray positioning", "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
-                {"Description": "Variable frequency drives", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Tray uneven positioning sensor", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Light barrier for sensing material and operator intervention", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Operator panel with IPC", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Weight management system for sensing tray overload", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Tray Block option for Multiple users", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Password authentication", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Tray guide rail @ 50 pitch", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Total machine capacity 60 tone", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Expansion at later stage is possible", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-                {"Description": "Inventory management software", "Vendor Scope (Yes/No)": "", "Remarks": ""},
-            ])
-            if 'inbuilt_features_df' not in st.session_state or st.session_state.inbuilt_features_df.empty:
-                st.session_state.inbuilt_features_df = default_ib
-            edited_ib = st.data_editor(st.session_state.inbuilt_features_df, num_rows="dynamic", use_container_width=True,
-                column_config={
-                    "Description": st.column_config.TextColumn("Description", width="large"),
-                    "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
-                    "Remarks": st.column_config.TextColumn("Remarks", width="large"),
-                }, key="ib_editor")
-            st.session_state.inbuilt_features_df = edited_ib
+                st.markdown("---")
+                st.markdown("### ⭐ Key Features")
+                default_kf = pd.DataFrame([
+                    {"Description": "Material Tracking", "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
+                    {"Description": "Tray Details", "Status": "", "Remarks": ""},
+                    {"Description": "Inventory List", "Status": "", "Remarks": ""},
+                    {"Description": "Tray Call History", "Status": "", "Remarks": ""},
+                    {"Description": "Alarm History", "Status": "", "Remarks": ""},
+                    {"Description": "Item Code Search", "Status": "", "Remarks": ""},
+                    {"Description": "Bar Code Search", "Status": "", "Remarks": ""},
+                    {"Description": "Pick from BOM", "Status": "", "Remarks": ""},
+                    {"Description": "BOM Items List", "Status": "", "Remarks": ""},
+                    {"Description": "User Management, with backup and restore options", "Status": "", "Remarks": ""},
+                ])
+                if 'key_features_df' not in st.session_state or st.session_state.key_features_df.empty:
+                    st.session_state.key_features_df = default_kf
+                edited_kf = st.data_editor(st.session_state.key_features_df, num_rows="dynamic", use_container_width=True,
+                    column_config={
+                        "Description": st.column_config.TextColumn("Description", width="large"),
+                        "Status": st.column_config.TextColumn("Status", width="small"),
+                        "Remarks": st.column_config.TextColumn("Remarks", width="large"),
+                    }, key="kf_editor")
+                st.session_state.key_features_df = edited_kf
 
-            st.markdown("### 🏗️ Installation Accountability *(Compulsory)*")
-            default_ia = pd.DataFrame([
-                {"Category": "Inventory Management Suite (IPC).", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Packing, Freight & Transit Insurance.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Installation & Commissioning.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Training.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Warranty Period", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Unloading of material", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Material handling during the installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Power cable cost main junction Box to Vstore", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Biometric Access, Barcode Scanner", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "MS office.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Software Customization", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Machine Integration with ERP system will extra at Actual.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "UPS and Stabilizer with accessories Installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "Equipment Movement & Installation location", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-                {"Category": "PEB Cladding and Civil Floor for outside installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-            ])
-            if 'installation_df' not in st.session_state or st.session_state.installation_df.empty:
-                st.session_state.installation_df = default_ia
-            edited_ia = st.data_editor(st.session_state.installation_df, num_rows="dynamic", use_container_width=True,
-                column_config={
-                    "Category": st.column_config.TextColumn("Category", width="large"),
-                    "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
-                    "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope", width="small", options=["Yes", "No", ""]),
-                    "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
-                }, key="ia_editor")
-            st.session_state.installation_df = edited_ia
+                st.markdown("### 🔧 Inbuilt Features")
+                default_ib = pd.DataFrame([
+                    {"Description": "Ergonomic tray positioning", "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
+                    {"Description": "Variable frequency drives", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Tray uneven positioning sensor", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Light barrier for sensing material and operator intervention", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Operator panel with IPC", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Weight management system for sensing tray overload", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Tray Block option for Multiple users", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Password authentication", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Tray guide rail @ 50 pitch", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Total machine capacity 60 tone", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Expansion at later stage is possible", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                    {"Description": "Inventory management software", "Vendor Scope (Yes/No)": "", "Remarks": ""},
+                ])
+                if 'inbuilt_features_df' not in st.session_state or st.session_state.inbuilt_features_df.empty:
+                    st.session_state.inbuilt_features_df = default_ib
+                edited_ib = st.data_editor(st.session_state.inbuilt_features_df, num_rows="dynamic", use_container_width=True,
+                    column_config={
+                        "Description": st.column_config.TextColumn("Description", width="large"),
+                        "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
+                        "Remarks": st.column_config.TextColumn("Remarks", width="large"),
+                    }, key="ib_editor")
+                st.session_state.inbuilt_features_df = edited_ib
+
+                st.markdown("### 🏗️ Installation Accountability")
+                default_ia = pd.DataFrame([
+                    {"Category": "Inventory Management Suite (IPC).", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Packing, Freight & Transit Insurance.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Installation & Commissioning.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Training.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Warranty Period", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Unloading of material", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Material handling during the installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Power cable cost main junction Box to Vstore", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Biometric Access, Barcode Scanner", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "MS office.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Software Customization", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Machine Integration with ERP system will extra at Actual.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "UPS and Stabilizer with accessories Installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "Equipment Movement & Installation location", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                    {"Category": "PEB Cladding and Civil Floor for outside installation", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+                ])
+                if 'installation_df' not in st.session_state or st.session_state.installation_df.empty:
+                    st.session_state.installation_df = default_ia
+                edited_ia = st.data_editor(st.session_state.installation_df, num_rows="dynamic", use_container_width=True,
+                    column_config={
+                        "Category": st.column_config.TextColumn("Category", width="large"),
+                        "Vendor Scope (Yes/No)": st.column_config.SelectboxColumn("Vendor Scope", width="small", options=["Yes", "No", ""]),
+                        "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope", width="small", options=["Yes", "No", ""]),
+                        "Remarks": st.column_config.TextColumn("Remarks", width="medium"),
+                    }, key="ia_editor")
+                st.session_state.installation_df = edited_ia
+            else:
+                st.info("💡 Add items to **Automated Storage Systems** above to unlock Carousel / VStore specification tables.")
 
         else:
             hints = CATEGORY_HINTS.get(rfq_category, [])
