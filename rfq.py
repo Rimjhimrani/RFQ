@@ -683,16 +683,25 @@ def create_advanced_rfq_pdf(data):
             if model_df is not None and not model_df.empty:
                 if pdf.get_y() + 30 > pdf.page_break_trigger: pdf.add_page()
 
-                # ── Exact Excel layout ──────────────────────────────────────
+                def _clean(v):
+                    """Convert any value to clean string — nan/None → empty string, 1.0 → '1'"""
+                    if v is None: return ""
+                    s = str(v).strip()
+                    if s.lower() in ("nan", "none", ""): return ""
+                    # convert float-looking integers like "1.0" → "1"
+                    try:
+                        f = float(s)
+                        if f == int(f): return str(int(f))
+                    except Exception: pass
+                    return s
+
                 # Col widths: Sr.no | Category | Description | UNIT | Requirement
                 md_cw = [12, 45, 73, 20, 40]
                 total_w = sum(md_cw)
-                hh = 8   # header row height
-                dh = 7   # data row height
+                hh = 8; dh = 7
 
-                # Row 1 — "Model Details" merged across all cols, bold, centered, no fill
-                pdf.set_font('Arial', 'B', 11)
-                pdf.set_text_color(0, 0, 0)
+                # Row 1 — "Model Details" merged, bold, centered
+                pdf.set_font('Arial', 'B', 11); pdf.set_text_color(0, 0, 0)
                 pdf.cell(total_w, hh, 'Model Details', border=1, ln=1, align='C')
 
                 # Row 2 — subtitle merged, italic, centered
@@ -701,94 +710,76 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(total_w, hh, model_detail_str, border=1, ln=1, align='C')
 
                 # Row 3 — column headers, bold, light blue fill
-                pdf.set_font('Arial', 'B', 8)
-                pdf.set_fill_color(220, 230, 241)
+                pdf.set_font('Arial', 'B', 8); pdf.set_fill_color(220, 230, 241)
                 hdr_labels = ["Sr.no", "Category", "Description", "UNIT", "Requirement"]
                 for i, h in enumerate(hdr_labels):
                     pdf.cell(md_cw[i], hh, h, border=1, align='C', fill=True)
                 pdf.ln()
 
-                # ── Data rows with vertical merging for Sr.no & Category ──
-                # Pre-compute groups: consecutive rows sharing the same Sr.no group
+                # Build rows with clean values
                 rows_list = []
                 for _, r in model_df.iterrows():
                     rows_list.append({
-                        "sr":   str(r.get("Sr.no", "")).strip(),
-                        "cat":  str(r.get("Category", "")).strip(),
-                        "desc": str(r.get("Description", "")).strip(),
-                        "unit": str(r.get("UNIT", r.get("Unit", ""))).strip(),
-                        "req":  str(r.get("Requirement", "")).strip(),
+                        "sr":   _clean(r.get("Sr.no",   r.get("sr",   ""))),
+                        "cat":  _clean(r.get("Category", r.get("cat",  ""))),
+                        "desc": _clean(r.get("Description", r.get("desc", ""))),
+                        "unit": _clean(r.get("UNIT", r.get("Unit", r.get("unit", "")))),
+                        "req":  _clean(r.get("Requirement", r.get("req", ""))),
                     })
 
-                # Build merge groups: group consecutive rows that share the same Sr.no+Category
-                groups = []
-                i = 0
-                while i < len(rows_list):
-                    row = rows_list[i]
+                # Build merge groups: rows with empty sr+cat attach to the previous group
+                groups = []; gi = 0
+                while gi < len(rows_list):
+                    row = rows_list[gi]
                     if row["sr"] != "" or row["cat"] != "":
-                        # start of a new group — count how many following rows have empty sr+cat
-                        j = i + 1
-                        while j < len(rows_list) and rows_list[j]["sr"] == "" and rows_list[j]["cat"] == "":
-                            j += 1
-                        groups.append(rows_list[i:j])
-                        i = j
+                        gj = gi + 1
+                        while gj < len(rows_list) and rows_list[gj]["sr"] == "" and rows_list[gj]["cat"] == "":
+                            gj += 1
+                        groups.append(rows_list[gi:gj]); gi = gj
                     else:
-                        groups.append([row])
-                        i += 1
+                        groups.append([row]); gi += 1
+
+                def _print_md_headers():
+                    pdf.set_font('Arial', 'B', 11)
+                    pdf.cell(total_w, hh, 'Model Details', border=1, ln=1, align='C')
+                    if model_detail_str:
+                        pdf.set_font('Arial', 'I', 9)
+                        pdf.cell(total_w, hh, model_detail_str, border=1, ln=1, align='C')
+                    pdf.set_font('Arial', 'B', 8); pdf.set_fill_color(220, 230, 241)
+                    for i2, h2 in enumerate(hdr_labels):
+                        pdf.cell(md_cw[i2], hh, h2, border=1, align='C', fill=True)
+                    pdf.ln()
 
                 pdf.set_font('Arial', '', 8)
                 for grp in groups:
                     group_h = dh * len(grp)
-
-                    # Page break check
                     if pdf.get_y() + group_h > pdf.page_break_trigger:
-                        pdf.add_page()
-                        # Reprint header on new page
-                        pdf.set_font('Arial', 'B', 11)
-                        pdf.cell(total_w, hh, 'Model Details', border=1, ln=1, align='C')
-                        if model_detail_str:
-                            pdf.set_font('Arial', 'I', 9)
-                            pdf.cell(total_w, hh, model_detail_str, border=1, ln=1, align='C')
-                        pdf.set_font('Arial', 'B', 8)
-                        pdf.set_fill_color(220, 230, 241)
-                        for i2, h2 in enumerate(hdr_labels):
-                            pdf.cell(md_cw[i2], hh, h2, border=1, align='C', fill=True)
-                        pdf.ln()
-                        pdf.set_font('Arial', '', 8)
+                        pdf.add_page(); _print_md_headers(); pdf.set_font('Arial', '', 8)
 
-                    gy = pdf.get_y()
-                    cx = pdf.l_margin
-
-                    # Sr.no — merged vertically over entire group
+                    gy = pdf.get_y(); cx = pdf.l_margin
+                    # Sr.no — vertically merged
                     pdf.rect(cx, gy, md_cw[0], group_h)
                     pdf.set_xy(cx, gy + (group_h - 5) / 2)
                     pdf.cell(md_cw[0], 5, grp[0]["sr"], align='C')
                     cx += md_cw[0]
-
-                    # Category — merged vertically over entire group
+                    # Category — vertically merged
                     pdf.rect(cx, gy, md_cw[1], group_h)
                     pdf.set_xy(cx + 1, gy + (group_h - 5) / 2)
                     pdf.multi_cell(md_cw[1] - 2, 5, grp[0]["cat"], align='L', border=0)
                     cx += md_cw[1]
-
-                    # Description, UNIT, Requirement — one row per entry in group
+                    # Description / UNIT / Requirement — one row per entry
                     for ri, grow in enumerate(grp):
                         ry = gy + ri * dh
-                        # Description
                         pdf.rect(cx, ry, md_cw[2], dh)
                         pdf.set_xy(cx + 1, ry + 1)
                         pdf.multi_cell(md_cw[2] - 2, 4, grow["desc"], align='L', border=0)
-                        # UNIT
                         pdf.rect(cx + md_cw[2], ry, md_cw[3], dh)
                         pdf.set_xy(cx + md_cw[2], ry + (dh - 4) / 2)
                         pdf.cell(md_cw[3], 4, grow["unit"], align='C')
-                        # Requirement
                         pdf.rect(cx + md_cw[2] + md_cw[3], ry, md_cw[4], dh)
                         pdf.set_xy(cx + md_cw[2] + md_cw[3], ry + (dh - 4) / 2)
                         pdf.cell(md_cw[4], 4, grow["req"], align='C')
-
                     pdf.set_y(gy + group_h)
-
                 pdf.ln(5)
 
             kf_df = data.get('key_features_df', pd.DataFrame())
@@ -918,10 +909,22 @@ def create_advanced_rfq_pdf(data):
                     for i, c in enumerate(cols):
                         pdf.cell(col_widths[i], hh, c, border=1, align='C', fill=True)
                     pdf.ln()
-                    # Build merge groups
-                    rows_list = [{"sr": str(r.get("Sr.no","")).strip(), "cat": str(r.get("Category","")).strip(),
-                                  "desc": str(r.get("Description","")).strip(), "unit": str(r.get("UNIT", r.get("Unit",""))).strip(),
-                                  "req": str(r.get("Requirement","")).strip()} for _, r in df.iterrows()]
+
+                    def _cv(v):
+                        """Clean cell value: nan/None → '', 1.0 → '1'"""
+                        if v is None: return ""
+                        s = str(v).strip()
+                        if s.lower() in ("nan", "none", ""): return ""
+                        try:
+                            f = float(s)
+                            if f == int(f): return str(int(f))
+                        except Exception: pass
+                        return s
+
+                    # Build merge groups — using _cv to handle nan/float properly
+                    rows_list = [{"sr":  _cv(r.get("Sr.no","")),  "cat": _cv(r.get("Category","")),
+                                  "desc":_cv(r.get("Description","")), "unit":_cv(r.get("UNIT", r.get("Unit",""))),
+                                  "req": _cv(r.get("Requirement",""))} for _, r in df.iterrows()]
                     groups = []; gi = 0
                     while gi < len(rows_list):
                         row = rows_list[gi]
