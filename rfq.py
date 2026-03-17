@@ -69,25 +69,25 @@ STORAGE_CONTAINERS_ITEMS = [
 # ── STORAGE SYSTEM ────────────────────────────────────────────────────────────
 STORAGE_SYSTEM_SPEC = {
     "Model Details": [
-        {"Sr.no": 1,  "Category": "Rack Type",        "Description": "Type of Rack",                       "Unit": "",       "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Number of Racks",                    "Unit": "Nos",    "Requirement": ""},
-        {"Sr.no": 2,  "Category": "Rack Dimensions",  "Description": "Height (mm)",                        "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Width / Bay (mm)",                   "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                         "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                    "Unit": "m2",     "Requirement": ""},
-        {"Sr.no": 3,  "Category": "Load Capacity",    "Description": "UDL per Level (Kg)",                 "Unit": "Kg",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Total Rack Capacity (Kg)",           "Unit": "Kg",     "Requirement": ""},
-        {"Sr.no": 4,  "Category": "Levels",            "Description": "Number of Storage Levels",           "Unit": "Nos",    "Requirement": ""},
-        {"Sr.no": 5,  "Category": "Material",          "Description": "Frame Material",                     "Unit": "",       "Requirement": "MS Steel"},
-        {"Sr.no": "",  "Category": "",                  "Description": "Surface Finish",                     "Unit": "",       "Requirement": "Powder Coated"},
-        {"Sr.no": 6,  "Category": "Accessories",       "Description": "Beam Type",                          "Unit": "",       "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Footplates",                         "Unit": "",       "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Row Spacers",                        "Unit": "",       "Requirement": ""},
-        {"Sr.no": 7,  "Category": "Floor Fixing",      "Description": "Anchor Bolts Required",              "Unit": "Yes/No", "Requirement": ""},
-        {"Sr.no": 8,  "Category": "Standards",         "Description": "Design Standard",                    "Unit": "",       "Requirement": ""},
-        {"Sr.no": 9,  "Category": "Quantity",          "Description": "Total Quantity Required",            "Unit": "Nos",    "Requirement": ""},
-        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",         "Unit": "Weeks",  "Requirement": ""},
-        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",        "Unit": "",       "Requirement": ""},
+        {"Sr.no": 1,  "Category": "Rack Type",        "Description": "Type of Rack",                       "UNIT": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Number of Racks",                    "UNIT": "Nos",    "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Rack Dimensions",  "Description": "Height (mm)",                        "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Width / Bay (mm)",                   "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                         "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                    "UNIT": "m2",     "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Load Capacity",    "Description": "UDL per Level (Kg)",                 "UNIT": "Kg",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Total Rack Capacity (Kg)",           "UNIT": "Kg",     "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Levels",            "Description": "Number of Storage Levels",           "UNIT": "Nos",    "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Material",          "Description": "Frame Material",                     "UNIT": "",       "Requirement": "MS Steel"},
+        {"Sr.no": "",  "Category": "",                  "Description": "Surface Finish",                     "UNIT": "",       "Requirement": "Powder Coated"},
+        {"Sr.no": 6,  "Category": "Accessories",       "Description": "Beam Type",                          "UNIT": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Footplates",                         "UNIT": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Row Spacers",                        "UNIT": "",       "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Floor Fixing",      "Description": "Anchor Bolts Required",              "UNIT": "Yes/No", "Requirement": ""},
+        {"Sr.no": 8,  "Category": "Standards",         "Description": "Design Standard",                    "UNIT": "",       "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Quantity",          "Description": "Total Quantity Required",            "UNIT": "Nos",    "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",         "UNIT": "Weeks",  "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",        "UNIT": "",       "Requirement": ""},
     ],
     "Key Features": [
         {"Sr.no": 1,  "Description": "Adjustable beam levels",                   "Status": "", "Remarks": "All key features to be confirmed by vendor."},
@@ -101,7 +101,7 @@ STORAGE_SYSTEM_SPEC = {
         {"Sr.no": 9,  "Description": "Load capacity signage per bay",            "Status": "", "Remarks": ""},
         {"Sr.no": 10, "Description": "Compliance with FEM / IS standards",       "Status": "", "Remarks": ""},
     ],
-    "Inbuilt Features": [
+    "Inbuilt features": [
         {"Sr.no": 1,  "Description": "Heavy duty uprights (min 2 mm thickness)",           "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
         {"Sr.no": 2,  "Description": "Step beams with safety locks",                       "Vendor Scope (Yes/No)": "", "Remarks": ""},
         {"Sr.no": 3,  "Description": "Base plates with anchor bolt holes",                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -114,40 +114,40 @@ STORAGE_SYSTEM_SPEC = {
         {"Sr.no": 10, "Description": "Load capacity plate / signage per bay level",        "Vendor Scope (Yes/No)": "", "Remarks": ""},
     ],
     "Installation Accountability": [
-        {"Sr.no": 1,  "Category": "Supply of all rack components",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 3,  "Category": "Unloading of material at site",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 4,  "Category": "Installation & Commissioning",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 5,  "Category": "Civil / floor preparation & anchor bolt fixing","Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 6,  "Category": "Training",                                      "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 7,  "Category": "Warranty Period",                               "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 8,  "Category": "Post-installation load testing",                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 9,  "Category": "Rack inspection report / certification",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 10, "Category": "Safety signage and load placard installation",  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 1,  "Category": "Supply of all rack components",                 "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",          "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Unloading of material at site",                 "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Installation & Commissioning",                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Civil / floor preparation & anchor bolt fixing","Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Training",                                      "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Warranty Period",                               "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Post-installation load testing",                "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Rack inspection report / certification",        "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Safety signage and load placard installation",  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
     ],
 }
 
 # ── MATERIAL HANDLING ─────────────────────────────────────────────────────────
 MATERIAL_HANDLING_SPEC = {
     "Model Details": [
-        {"Sr.no": 1,  "Category": "Equipment Type",   "Description": "Type of Equipment",                          "Unit": "",       "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Number of Units",                            "Unit": "Nos",    "Requirement": ""},
-        {"Sr.no": 2,  "Category": "Capacity",          "Description": "Rated Load Capacity (Kg)",                   "Unit": "Kg",     "Requirement": ""},
-        {"Sr.no": 3,  "Category": "Dimensions",        "Description": "Overall Length (mm)",                        "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Overall Width (mm)",                         "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Lift Height (mm)",                           "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Floor area required (m2)",                   "Unit": "m2",     "Requirement": ""},
-        {"Sr.no": 4,  "Category": "Power",             "Description": "Drive Type (Electric / Manual / LPG)",       "Unit": "",       "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Battery Voltage (V)",                        "Unit": "V",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Battery Capacity (Ah)",                      "Unit": "Ah",     "Requirement": ""},
-        {"Sr.no": 5,  "Category": "Speed",             "Description": "Travel Speed (km/h)",                        "Unit": "km/h",   "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                  "Description": "Lift Speed (mm/s)",                          "Unit": "mm/s",   "Requirement": ""},
-        {"Sr.no": 6,  "Category": "Turning Radius",    "Description": "Minimum Turning Radius (mm)",                "Unit": "mm",     "Requirement": ""},
-        {"Sr.no": 7,  "Category": "Mast",              "Description": "Mast Type (Simplex / Duplex / Triplex)",     "Unit": "",       "Requirement": ""},
-        {"Sr.no": 8,  "Category": "Tyres",             "Description": "Tyre Type",                                  "Unit": "",       "Requirement": ""},
-        {"Sr.no": 9,  "Category": "Standards",         "Description": "Compliance Standard",                        "Unit": "",       "Requirement": ""},
-        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",                 "Unit": "Weeks",  "Requirement": ""},
-        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",                "Unit": "",       "Requirement": ""},
+        {"Sr.no": 1,  "Category": "Equipment Type",   "Description": "Type of Equipment",                          "UNIT": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Number of Units",                            "UNIT": "Nos",    "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Capacity",          "Description": "Rated Load Capacity (Kg)",                   "UNIT": "Kg",     "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Dimensions",        "Description": "Overall Length (mm)",                        "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Overall Width (mm)",                         "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Lift Height (mm)",                           "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Floor area required (m2)",                   "UNIT": "m2",     "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Power",             "Description": "Drive Type (Electric / Manual / LPG)",       "UNIT": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Battery Voltage (V)",                        "UNIT": "V",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Battery Capacity (Ah)",                      "UNIT": "Ah",     "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Speed",             "Description": "Travel Speed (km/h)",                        "UNIT": "km/h",   "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Lift Speed (mm/s)",                          "UNIT": "mm/s",   "Requirement": ""},
+        {"Sr.no": 6,  "Category": "Turning Radius",    "Description": "Minimum Turning Radius (mm)",                "UNIT": "mm",     "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Mast",              "Description": "Mast Type (Simplex / Duplex / Triplex)",     "UNIT": "",       "Requirement": ""},
+        {"Sr.no": 8,  "Category": "Tyres",             "Description": "Tyre Type",                                  "UNIT": "",       "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Standards",         "Description": "Compliance Standard",                        "UNIT": "",       "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",                 "UNIT": "Weeks",  "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",                "UNIT": "",       "Requirement": ""},
     ],
     "Key Features": [
         {"Sr.no": 1,  "Description": "Ergonomic operator controls",                       "Status": "", "Remarks": "All key features to be confirmed by vendor."},
@@ -161,7 +161,7 @@ MATERIAL_HANDLING_SPEC = {
         {"Sr.no": 9,  "Description": "Integrated charger / off-board charger",            "Status": "", "Remarks": ""},
         {"Sr.no": 10, "Description": "Compliance with IS / CE safety standards",          "Status": "", "Remarks": ""},
     ],
-    "Inbuilt Features": [
+    "Inbuilt features": [
         {"Sr.no": 1,  "Description": "Hydraulic lifting mechanism",              "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
         {"Sr.no": 2,  "Description": "AC / DC drive motor",                      "Vendor Scope (Yes/No)": "", "Remarks": ""},
         {"Sr.no": 3,  "Description": "Regenerative braking system",              "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -174,40 +174,40 @@ MATERIAL_HANDLING_SPEC = {
         {"Sr.no": 10, "Description": "Maintenance-free / lithium battery option","Vendor Scope (Yes/No)": "", "Remarks": ""},
     ],
     "Installation Accountability": [
-        {"Sr.no": 1,  "Category": "Supply of equipment with accessories",              "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",             "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 3,  "Category": "Unloading of equipment at site",                   "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 4,  "Category": "Pre-delivery inspection (PDI)",                    "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 5,  "Category": "Commissioning & handover",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 6,  "Category": "Operator training",                                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 7,  "Category": "Warranty Period",                                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 8,  "Category": "Battery charger & charging station setup",         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 9,  "Category": "Annual Maintenance Contract (AMC) scope",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 10, "Category": "Spare parts kit (first year)",                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 11, "Category": "Safety audit / compliance certification",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 1,  "Category": "Supply of equipment with accessories",              "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",             "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Unloading of equipment at site",                   "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Pre-delivery inspection (PDI)",                    "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Commissioning & handover",                         "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Operator training",                                "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Warranty Period",                                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Battery charger & charging station setup",         "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Annual Maintenance Contract (AMC) scope",          "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Spare parts kit (first year)",                     "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 11, "Category": "Safety audit / compliance certification",          "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
     ],
 }
 
 # ── DOCK LEVELLER ─────────────────────────────────────────────────────────────
 DOCK_LEVELLER_SPEC = {
     "Model Details": [
-        {"Sr.no": 1,  "Category": "Equipment Type",       "Description": "Type (Dock Leveller / Dock Plate / Ramp)", "Unit": "",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Number of Units",                          "Unit": "Nos",   "Requirement": ""},
-        {"Sr.no": 2,  "Category": "Capacity",              "Description": "Rated Load Capacity (Kg)",                 "Unit": "Kg",    "Requirement": ""},
-        {"Sr.no": 3,  "Category": "Platform Dimensions",   "Description": "Platform Width (mm)",                      "Unit": "mm",    "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Platform Depth (mm)",                      "Unit": "mm",    "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Floor area required (m2)",                 "Unit": "m2",    "Requirement": ""},
-        {"Sr.no": 4,  "Category": "Height Range",          "Description": "Minimum Pit Depth (mm)",                   "Unit": "mm",    "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Adjustment Range (mm)",                    "Unit": "mm",    "Requirement": ""},
-        {"Sr.no": 5,  "Category": "Operation",             "Description": "Operation Type (Hydraulic / Mechanical)",  "Unit": "",      "Requirement": ""},
-        {"Sr.no": 6,  "Category": "Lip",                   "Description": "Lip Length (mm)",                          "Unit": "mm",    "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Lip Type (Powered / Manual)",              "Unit": "",      "Requirement": ""},
-        {"Sr.no": 7,  "Category": "Material",              "Description": "Frame Material",                           "Unit": "",      "Requirement": "MS Steel"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Surface Finish",                           "Unit": "",      "Requirement": "Hot Dip Galvanized"},
-        {"Sr.no": 8,  "Category": "Installation",          "Description": "Pit / Surface Mount",                      "Unit": "",      "Requirement": ""},
-        {"Sr.no": 9,  "Category": "Standards",             "Description": "Compliance Standard",                      "Unit": "",      "Requirement": ""},
-        {"Sr.no": 10, "Category": "Delivery",              "Description": "Expected Delivery Timeline",               "Unit": "Weeks", "Requirement": ""},
-        {"Sr.no": 11, "Category": "Remarks",               "Description": "Any Additional Requirements",              "Unit": "",      "Requirement": ""},
+        {"Sr.no": 1,  "Category": "Equipment Type",       "Description": "Type (Dock Leveller / Dock Plate / Ramp)", "UNIT": "",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Number of Units",                          "UNIT": "Nos",   "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Capacity",              "Description": "Rated Load Capacity (Kg)",                 "UNIT": "Kg",    "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Platform Dimensions",   "Description": "Platform Width (mm)",                      "UNIT": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Platform Depth (mm)",                      "UNIT": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Floor area required (m2)",                 "UNIT": "m2",    "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Height Range",          "Description": "Minimum Pit Depth (mm)",                   "UNIT": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Adjustment Range (mm)",                    "UNIT": "mm",    "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Operation",             "Description": "Operation Type (Hydraulic / Mechanical)",  "UNIT": "",      "Requirement": ""},
+        {"Sr.no": 6,  "Category": "Lip",                   "Description": "Lip Length (mm)",                          "UNIT": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Lip Type (Powered / Manual)",              "UNIT": "",      "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Material",              "Description": "Frame Material",                           "UNIT": "",      "Requirement": "MS Steel"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Surface Finish",                           "UNIT": "",      "Requirement": "Hot Dip Galvanized"},
+        {"Sr.no": 8,  "Category": "Installation",          "Description": "Pit / Surface Mount",                      "UNIT": "",      "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Standards",             "Description": "Compliance Standard",                      "UNIT": "",      "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",              "Description": "Expected Delivery Timeline",               "UNIT": "Weeks", "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",               "Description": "Any Additional Requirements",              "UNIT": "",      "Requirement": ""},
     ],
     "Key Features": [
         {"Sr.no": 1,  "Description": "Powered lip extension",                         "Status": "", "Remarks": "All key features to be confirmed by vendor."},
@@ -221,7 +221,7 @@ DOCK_LEVELLER_SPEC = {
         {"Sr.no": 9,  "Description": "Galvanized / painted finish",                   "Status": "", "Remarks": ""},
         {"Sr.no": 10, "Description": "Compliance with IS / EN standards",             "Status": "", "Remarks": ""},
     ],
-    "Inbuilt Features": [
+    "Inbuilt features": [
         {"Sr.no": 1,  "Description": "Hydraulic power unit with reservoir",      "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
         {"Sr.no": 2,  "Description": "Manual release valve for safety",          "Vendor Scope (Yes/No)": "", "Remarks": ""},
         {"Sr.no": 3,  "Description": "Steel checker-plate platform surface",     "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -234,56 +234,56 @@ DOCK_LEVELLER_SPEC = {
         {"Sr.no": 10, "Description": "Corrosion protection / galvanized frame",  "Vendor Scope (Yes/No)": "", "Remarks": ""},
     ],
     "Installation Accountability": [
-        {"Sr.no": 1,  "Category": "Supply of dock leveller & accessories",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 3,  "Category": "Pit preparation & civil works",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 4,  "Category": "Unloading of material at site",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 5,  "Category": "Installation & Commissioning",                   "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 6,  "Category": "Electrical power supply to control panel",       "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 7,  "Category": "Training",                                       "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 8,  "Category": "Warranty Period",                                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 9,  "Category": "Dock shelter / seals supply & fixing",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 10, "Category": "Vehicle restraint supply & installation",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 11, "Category": "Safety signage & load capacity markings",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 1,  "Category": "Supply of dock leveller & accessories",          "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",           "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Pit preparation & civil works",                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Unloading of material at site",                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Installation & Commissioning",                   "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Electrical power supply to control panel",       "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Training",                                       "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Warranty Period",                                "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Dock shelter / seals supply & fixing",           "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Vehicle restraint supply & installation",        "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 11, "Category": "Safety signage & load capacity markings",        "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
     ],
 }
 
 # Automated Storage System (VStore / Carousel) — exactly matches Excel
 CAROUSEL_SPEC_TEMPLATE = {
     "Model Details": [
-        {"Sr.no": 1,  "Category": "Dimensions of VStore", "Description": "Height (mm)",                          "Unit": "mm",      "Requirement": "28000"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Width (mm)",                           "Unit": "mm",      "Requirement": "3200"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Depth (mm)",                           "Unit": "mm",      "Requirement": "3400"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Floor area (m2)",                      "Unit": "m2",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "1st Access Point Height (mm)",         "Unit": "mm",      "Requirement": "836"},
-        {"Sr.no": "",  "Category": "",                      "Description": "2nd Access Point Height (mm)",         "Unit": "mm",      "Requirement": "5836"},
-        {"Sr.no": "",  "Category": "",                      "Description": "3rd Access Point Height (mm)",         "Unit": "mm",      "Requirement": "8836"},
-        {"Sr.no": "",  "Category": "",                      "Description": "4th Access Point Height (mm)",         "Unit": "mm",      "Requirement": "11836"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Dead weight of Machine (Kg)",          "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Total Weight of Tray (Kg)",            "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Total Weight of Machine (Kg)",         "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Storage capacity (Kg)",                "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Total Machine carrying capacity",      "Unit": "",        "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Total full weight (Kg)",               "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": 2,  "Category": "Floor load",            "Description": "Total (Kgs/sqm)",                      "Unit": "Kgs/sqm", "Requirement": ""},
-        {"Sr.no": 3,  "Category": "Tray Details",          "Description": "Usable width (mm)",                    "Unit": "mm",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Usable depth (mm)",                    "Unit": "mm",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Empty Tray weight",                    "Unit": "Kg",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Area of each Trays (mm)",              "Unit": "mm",      "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Maximum load capacity (Kg)",           "Unit": "Kg",      "Requirement": "465"},
-        {"Sr.no": "",  "Category": "",                      "Description": "Number of Trays (Nos.)",               "Unit": "Nos",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Total area of all Trays (m2)",         "Unit": "m2",      "Requirement": ""},
-        {"Sr.no": 4,  "Category": "Access time",           "Description": "Maximum (Sec.)",                       "Unit": "Sec",     "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Average (Sec.)",                       "Unit": "Sec",     "Requirement": ""},
-        {"Sr.no": 5,  "Category": "No Trays can Fetch",    "Description": "No trays / Hour",                      "Unit": "Nos/Hr",  "Requirement": ""},
-        {"Sr.no": 6,  "Category": "Power supply",          "Description": "",                                     "Unit": "",        "Requirement": ""},
-        {"Sr.no": 7,  "Category": "Maximum Power rating",  "Description": "",                                     "Unit": "",        "Requirement": ""},
-        {"Sr.no": 8,  "Category": "Control Panel",         "Description": "VStore standard control panel",        "Unit": "",        "Requirement": ""},
-        {"Sr.no": 9,  "Category": "Height optimisation",   "Description": "Provided for storage",                 "Unit": "",        "Requirement": ""},
-        {"Sr.no": 10, "Category": "Operator panel",        "Description": "",                                     "Unit": "",        "Requirement": ""},
-        {"Sr.no": 11, "Category": "Accessories",           "Description": "Emergency stop",                       "Unit": "",        "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Accident protection light curtains",   "Unit": "",        "Requirement": ""},
-        {"Sr.no": "",  "Category": "",                      "Description": "Lighting in the accessing area",       "Unit": "",        "Requirement": ""},
+        {"Sr.no": 1,  "Category": "Dimensions of VStore", "Description": "Height (mm)",                          "UNIT": "mm",      "Requirement": "28000"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Width (mm)",                           "UNIT": "mm",      "Requirement": "3200"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Depth (mm)",                           "UNIT": "mm",      "Requirement": "3400"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Floor area (m2)",                      "UNIT": "m2",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "1st Access Point Height (mm)",         "UNIT": "mm",      "Requirement": "836"},
+        {"Sr.no": "",  "Category": "",                      "Description": "2nd Access Point Height (mm)",         "UNIT": "mm",      "Requirement": "5836"},
+        {"Sr.no": "",  "Category": "",                      "Description": "3rd Access Point Height (mm)",         "UNIT": "mm",      "Requirement": "8836"},
+        {"Sr.no": "",  "Category": "",                      "Description": "4th Access Point Height (mm)",         "UNIT": "mm",      "Requirement": "11836"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Dead weight of Machine (Kg)",          "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Total Weight of Tray (Kg)",            "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Total Weight of Machine (Kg)",         "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Storage capacity (Kg)",                "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Total Machine carrying capacity",      "UNIT": "",        "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Total full weight (Kg)",               "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Floor load",            "Description": "Total (Kgs/sqm)",                      "UNIT": "Kgs/sqm", "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Tray Details",          "Description": "Usable width (mm)",                    "UNIT": "mm",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Usable depth (mm)",                    "UNIT": "mm",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Empty Tray weight",                    "UNIT": "Kg",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Area of each Trays (mm)",              "UNIT": "mm",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Maximum load capacity (Kg)",           "UNIT": "Kg",      "Requirement": "465"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Number of Trays (Nos.)",               "UNIT": "Nos",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Total area of all Trays (m2)",         "UNIT": "m2",      "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Access time",           "Description": "Maximum (Sec.)",                       "UNIT": "Sec",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Average (Sec.)",                       "UNIT": "Sec",     "Requirement": ""},
+        {"Sr.no": 5,  "Category": "No Trays can Fetch",    "Description": "No trays / Hour",                      "UNIT": "Nos/Hr",  "Requirement": ""},
+        {"Sr.no": 6,  "Category": "Power supply",          "Description": "",                                     "UNIT": "",        "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Maximum Power rating",  "Description": "",                                     "UNIT": "",        "Requirement": ""},
+        {"Sr.no": 8,  "Category": "Control Panel",         "Description": "VStore standard control panel",        "UNIT": "",        "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Height optimisation",   "Description": "Provided for storage",                 "UNIT": "",        "Requirement": ""},
+        {"Sr.no": 10, "Category": "Operator panel",        "Description": "",                                     "UNIT": "",        "Requirement": ""},
+        {"Sr.no": 11, "Category": "Accessories",           "Description": "Emergency stop",                       "UNIT": "",        "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Accident protection light curtains",   "UNIT": "",        "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Lighting in the accessing area",       "UNIT": "",        "Requirement": ""},
     ],
     "Key Features": [
         {"Sr.no": 1,  "Description": "Material Tracking",                            "Status": "", "Remarks": "All these key features including in Vendor Dashboard."},
@@ -297,7 +297,7 @@ CAROUSEL_SPEC_TEMPLATE = {
         {"Sr.no": 9,  "Description": "BOM Items List",                               "Status": "", "Remarks": ""},
         {"Sr.no": 10, "Description": "User Management, with backup and restore options", "Status": "", "Remarks": ""},
     ],
-    "Inbuilt Features": [
+    "Inbuilt features": [
         {"Sr.no": 1,  "Description": "Ergonomic tray positioning",                                          "Vendor Scope (Yes/No)": "", "Remarks": "All these key features including at Vendor Side."},
         {"Sr.no": 2,  "Description": "Variable frequency drives",                                            "Vendor Scope (Yes/No)": "", "Remarks": ""},
         {"Sr.no": 3,  "Description": "Tray uneven positioning sensor",                                      "Vendor Scope (Yes/No)": "", "Remarks": ""},
@@ -312,21 +312,21 @@ CAROUSEL_SPEC_TEMPLATE = {
         {"Sr.no": 12, "Description": "Inventory management software",                                       "Vendor Scope (Yes/No)": "", "Remarks": ""},
     ],
     "Installation Accountability": [
-        {"Sr.no": 1,  "Category": "Inventory Management Suite (IPC).",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance.",                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 3,  "Category": "Installation & Commissioning.",                             "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 4,  "Category": "Training.",                                                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 5,  "Category": "Warranty Period",                                            "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 6,  "Category": "Unloading of material",                                      "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 7,  "Category": "Material handling during the installation",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 8,  "Category": "Power cable cost main junction Box to Vstore",               "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 9,  "Category": "Biometric Access, Barcode Scanner",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 10, "Category": "MS office.",                                                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 11, "Category": "Software Customization",                                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 12, "Category": "Machine Integration with ERP system will extra at Actual.", "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 13, "Category": "UPS and Stabilizer with accessories Installation",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 14, "Category": "Equipment Movement & Installation location",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
-        {"Sr.no": 15, "Category": "PEB Cladding and Civil Floor for outside installation",     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 1,  "Category": "Inventory Management Suite (IPC).",                         "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance.",                     "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Installation & Commissioning.",                             "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Training.",                                                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Warranty Period",                                            "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Unloading of material",                                      "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Material handling during the installation",                  "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Power cable cost main junction Box to Vstore",               "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Biometric Access, Barcode Scanner",                         "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "MS office.",                                                 "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 11, "Category": "Software Customization",                                     "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 12, "Category": "Machine Integration with ERP system will extra at Actual.", "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 13, "Category": "UPS and Stabilizer with accessories Installation",           "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 14, "Category": "Equipment Movement & Installation location",                 "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 15, "Category": "PEB Cladding and Civil Floor for outside installation",     "Vendor Scope (Yes/No)": "", "Customer Scope\n(Yes/No)": "", "Remarks": ""},
     ],
 }
 
@@ -608,7 +608,7 @@ def create_advanced_rfq_pdf(data):
             pdf.cell(sum(col_widths), 10, "No items added.", border=1, align='C', ln=1)
 
     def draw_spec_table(spec_df, header_label="SPECIFICATION DETAILS"):
-        """Draws the 5-col spec table: Sr.no | Category | Description | Unit | Requirement"""
+        """Draws the 5-col spec table: Sr.no | Category | Description | UNIT | Requirement"""
         if spec_df is None or spec_df.empty:
             return
         if pdf.get_y() + 20 > pdf.page_break_trigger:
@@ -616,7 +616,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', 'B', 10)
         pdf.cell(0, 8, header_label, 0, 1, 'L')
         col_widths = [12, 45, 72, 20, 41]
-        hdr_labels = ["Sr.no", "Category", "Description", "Unit", "Requirement"]
+        hdr_labels = ["Sr.no", "Category", "Description", "UNIT", "Requirement"]
         hh = 10
         pdf.set_font('Arial', 'B', 9)
         for i, h in enumerate(hdr_labels):
@@ -693,13 +693,17 @@ def create_advanced_rfq_pdf(data):
             kf_df = data.get('key_features_df', pd.DataFrame())
             if kf_df is not None and not kf_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
-                pdf.set_font('Arial', 'B', 11)
-                pdf.cell(0, 8, 'KEY FEATURES', 0, 1, 'L'); pdf.ln(2)
-                kf_widths = [10, 100, 50, 30]
-                kf_headers = ["Sr.", "Description", "Status", "Remarks"]
-                kf_hh = 10; pdf.set_font('Arial', 'B', 9)
+                # Dark navy title bar — exact Excel section name
+                pdf.set_fill_color(26, 58, 92); pdf.set_text_color(255, 255, 255)
+                pdf.set_font('Arial', 'B', 10)
+                pdf.cell(0, 8, '  Key Features', 0, 1, 'L', fill=True)
+                pdf.set_text_color(0, 0, 0); pdf.ln(1)
+                kf_widths = [10, 110, 30, 40]
+                kf_headers = ["Sr.no", "Description", "Status", "Remarks"]
+                kf_hh = 9; pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(220, 230, 241)
                 for i, h in enumerate(kf_headers):
-                    pdf.cell(kf_widths[i], kf_hh, h, border=1, align='C')
+                    pdf.cell(kf_widths[i], kf_hh, h, border=1, align='C', fill=True)
                 pdf.ln(); pdf.set_font('Arial', '', 8)
                 for ki, krow in kf_df.iterrows():
                     if pdf.get_y() + 8 > pdf.page_break_trigger: pdf.add_page()
@@ -707,43 +711,48 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(kf_widths[1], 8, str(krow.get("Description", "")), border=1, align='L')
                     pdf.cell(kf_widths[2], 8, str(krow.get("Status", "")), border=1, align='C')
                     pdf.cell(kf_widths[3], 8, str(krow.get("Remarks", "")), border=1, align='L', ln=1)
-                pdf.ln(6)
+                pdf.ln(4)
 
             ib_df = data.get('inbuilt_features_df', pd.DataFrame())
             if ib_df is not None and not ib_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
-                pdf.set_font('Arial', 'B', 11)
-                pdf.cell(0, 8, 'INBUILT FEATURES', 0, 1, 'L'); pdf.ln(2)
-                ib_widths = [10, 100, 45, 35]
-                ib_headers = ["Sr.", "Description", "Vendor Scope\n(Yes/No)", "Remarks"]
-                ib_hh = 14; pdf.set_font('Arial', 'B', 9)
-                y_hdr = pdf.get_y(); cx = pdf.l_margin
+                # Dark navy title bar — exact Excel section name "Inbuilt features"
+                pdf.set_fill_color(26, 58, 92); pdf.set_text_color(255, 255, 255)
+                pdf.set_font('Arial', 'B', 10)
+                pdf.cell(0, 8, '  Inbuilt features', 0, 1, 'L', fill=True)
+                pdf.set_text_color(0, 0, 0); pdf.ln(1)
+                ib_widths = [10, 110, 30, 40]
+                ib_headers = ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"]
+                ib_hh = 9; pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(220, 230, 241)
                 for i, h in enumerate(ib_headers):
-                    pdf.rect(cx, y_hdr, ib_widths[i], ib_hh)
-                    nl = h.count('\n') + 1
-                    pdf.set_xy(cx, y_hdr + (ib_hh - nl * 5) / 2)
-                    pdf.multi_cell(ib_widths[i], 5, h, align='C', border=0)
-                    cx += ib_widths[i]
-                pdf.set_y(y_hdr + ib_hh); pdf.set_font('Arial', '', 8)
+                    pdf.cell(ib_widths[i], ib_hh, h, border=1, align='C', fill=True)
+                pdf.ln(); pdf.set_font('Arial', '', 8)
                 for ii, irow in ib_df.iterrows():
                     if pdf.get_y() + 8 > pdf.page_break_trigger: pdf.add_page()
                     pdf.cell(ib_widths[0], 8, str(irow.get("Sr.no", ii+1)), border=1, align='C')
                     pdf.cell(ib_widths[1], 8, str(irow.get("Description", "")), border=1, align='L')
                     pdf.cell(ib_widths[2], 8, str(irow.get("Vendor Scope (Yes/No)", "")), border=1, align='C')
                     pdf.cell(ib_widths[3], 8, str(irow.get("Remarks", "")), border=1, align='L', ln=1)
-                pdf.ln(6)
+                pdf.ln(4)
 
             ia_df = data.get('installation_df', pd.DataFrame())
             if ia_df is not None and not ia_df.empty:
                 if pdf.get_y() + 20 > pdf.page_break_trigger: pdf.add_page()
-                pdf.set_font('Arial', 'B', 11)
-                pdf.cell(0, 8, 'INSTALLATION ACCOUNTABILITY', 0, 1, 'L'); pdf.ln(2)
-                ia_widths = [10, 75, 30, 30, 45]
-                ia_headers = ["Sr.", "Category", "Vendor Scope\n(Yes/No)", "Customer Scope\n(Yes/No)", "Remarks"]
-                ia_hh = 14; pdf.set_font('Arial', 'B', 9)
+                # Dark navy title bar — exact Excel section name
+                pdf.set_fill_color(26, 58, 92); pdf.set_text_color(255, 255, 255)
+                pdf.set_font('Arial', 'B', 10)
+                pdf.cell(0, 8, '  Installation Accountability', 0, 1, 'L', fill=True)
+                pdf.set_text_color(0, 0, 0); pdf.ln(1)
+                ia_widths = [10, 75, 28, 28, 49]
+                ia_hh = 14; pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(220, 230, 241)
                 y_hdr = pdf.get_y(); cx = pdf.l_margin
-                for i, h in enumerate(ia_headers):
+                ia_hdr_labels = ["Sr.no", "Category", "Vendor Scope\n(Yes/No)", "Customer Scope\n(Yes/No)", "Remarks"]
+                for i, h in enumerate(ia_hdr_labels):
                     pdf.rect(cx, y_hdr, ia_widths[i], ia_hh)
+                    pdf.set_fill_color(220, 230, 241)
+                    pdf.rect(cx, y_hdr, ia_widths[i], ia_hh, 'F')
                     nl = h.count('\n') + 1
                     pdf.set_xy(cx, y_hdr + (ia_hh - nl * 5) / 2)
                     pdf.multi_cell(ia_widths[i], 5, h, align='C', border=0)
@@ -754,9 +763,9 @@ def create_advanced_rfq_pdf(data):
                     pdf.cell(ia_widths[0], 8, str(iarow.get("Sr.no", iai+1)), border=1, align='C')
                     pdf.cell(ia_widths[1], 8, str(iarow.get("Category", "")), border=1, align='L')
                     pdf.cell(ia_widths[2], 8, str(iarow.get("Vendor Scope (Yes/No)", "")), border=1, align='C')
-                    pdf.cell(ia_widths[3], 8, str(iarow.get("Customer Scope (Yes/No)", "")), border=1, align='C')
+                    pdf.cell(ia_widths[3], 8, str(iarow.get("Customer Scope\n(Yes/No)", "")), border=1, align='C')
                     pdf.cell(ia_widths[4], 8, str(iarow.get("Remarks", "")), border=1, align='L', ln=1)
-                pdf.ln(6)
+                pdf.ln(4)
 
         else:
             # Storage System / Material Handling / Dock Leveller — multi-section format
@@ -773,11 +782,12 @@ def create_advanced_rfq_pdf(data):
             prefix  = prefix_map.get(wh_sub, 'ss')
             tmpl    = template_map.get(wh_sub, STORAGE_SYSTEM_SPEC)
 
+            # Exact column headers from Excel
             section_col_map = {
-                "Model Details":             ["Sr.no", "Category", "Description", "Unit", "Requirement"],
-                "Key Features":              ["Sr.no", "Description", "Status", "Remarks"],
-                "Inbuilt Features":          ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"],
-                "Installation Accountability":["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
+                "Model Details":                ["Sr.no", "Category", "Description", "UNIT", "Requirement"],
+                "Key Features":                 ["Sr.no", "Description", "Status", "Remarks"],
+                "Inbuilt features":             ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"],
+                "Installation Accountability":  ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope\n(Yes/No)", "Remarks"],
             }
 
             def _pdf_render_section(section_name, df):
@@ -801,7 +811,7 @@ def create_advanced_rfq_pdf(data):
                 width_map = {
                     "Model Details":              [12, 45, 72, 20, 41],
                     "Key Features":               [10, 110, 30, 40],
-                    "Inbuilt Features":           [10, 110, 30, 40],
+                    "Inbuilt features":           [10, 110, 30, 40],
                     "Installation Accountability":[10, 75, 28, 28, 49],
                 }
                 col_widths = width_map.get(section_name, [12, 45, 72, 20, 41])
@@ -1039,13 +1049,13 @@ with st.expander("📦 Technical Specifications", expanded=True):
             )
             section_cfg = {
                 "Model Details": {
-                    "cols": ["Sr.no", "Category", "Description", "Unit", "Requirement"],
+                    "cols": ["Sr.no", "Category", "Description", "UNIT", "Requirement"],
                     "edit_col": "Requirement",
                     "column_config": {
                         "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
                         "Category":     st.column_config.TextColumn("Category", width="medium"),
                         "Description":  st.column_config.TextColumn("Description", width="large"),
-                        "Unit":         st.column_config.TextColumn("Unit", width="small"),
+                        "UNIT":         st.column_config.TextColumn("UNIT", width="small"),
                         "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
                     },
                 },
@@ -1059,25 +1069,25 @@ with st.expander("📦 Technical Specifications", expanded=True):
                         "Remarks":     st.column_config.TextColumn("Remarks", width="large"),
                     },
                 },
-                "Inbuilt Features": {
+                "Inbuilt features": {
                     "cols": ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"],
                     "edit_col": "Vendor Scope (Yes/No)",
                     "column_config": {
                         "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
                         "Description":             st.column_config.TextColumn("Description", width="large"),
-                        "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                        "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
                         "Remarks":                 st.column_config.TextColumn("Remarks", width="large"),
                     },
                 },
                 "Installation Accountability": {
-                    "cols": ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
+                    "cols": ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope\n(Yes/No)", "Remarks"],
                     "edit_col": "Vendor Scope (Yes/No)",
                     "column_config": {
-                        "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
-                        "Category":                st.column_config.TextColumn("Category", width="large"),
-                        "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
-                        "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope ✏️", width="small", options=["", "Yes", "No"]),
-                        "Remarks":                 st.column_config.TextColumn("Remarks", width="medium"),
+                        "Sr.no":                    st.column_config.TextColumn("Sr.no", width="small"),
+                        "Category":                 st.column_config.TextColumn("Category", width="large"),
+                        "Vendor Scope (Yes/No)":    st.column_config.SelectboxColumn("Vendor Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
+                        "Customer Scope\n(Yes/No)": st.column_config.SelectboxColumn("Customer Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
+                        "Remarks":                  st.column_config.TextColumn("Remarks", width="medium"),
                     },
                 },
             }
@@ -1191,7 +1201,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
                     "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
                     "Category":     st.column_config.TextColumn("Category", width="medium"),
                     "Description":  st.column_config.TextColumn("Description", width="large"),
-                    "Unit":         st.column_config.TextColumn("Unit", width="small"),
+                    "UNIT":         st.column_config.TextColumn("UNIT", width="small"),
                     "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
                 }, key="carousel_model_editor")
             st.session_state['carousel_model_df'] = edited_model_df
@@ -1214,10 +1224,10 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 }, key="kf_editor")
             st.session_state['key_features_df'] = edited_kf
 
-            st.markdown("#### 🔧 Inbuilt Features")
-            st.caption("Fill in the **Vendor Scope** column.")
+            st.markdown("#### 🔧 Inbuilt features")
+            st.caption("Fill in the **Vendor Scope (Yes/No)** column.")
             if 'inbuilt_features_df' not in st.session_state or st.session_state.inbuilt_features_df.empty:
-                st.session_state['inbuilt_features_df'] = pd.DataFrame(_copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Inbuilt Features"]))
+                st.session_state['inbuilt_features_df'] = pd.DataFrame(_copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Inbuilt features"]))
             df_ib = st.session_state['inbuilt_features_df'].copy()
             for col in ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"]:
                 if col not in df_ib.columns: df_ib[col] = ""
@@ -1227,27 +1237,27 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 column_config={
                     "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
                     "Description":             st.column_config.TextColumn("Description", width="large"),
-                    "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                    "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
                     "Remarks":                 st.column_config.TextColumn("Remarks", width="large"),
                 }, key="ib_editor")
             st.session_state['inbuilt_features_df'] = edited_ib
 
             st.markdown("#### 🏗️ Installation Accountability")
-            st.caption("Fill in **Vendor Scope** and **Customer Scope** columns.")
+            st.caption("Fill in **Vendor Scope (Yes/No)** and **Customer Scope (Yes/No)** columns.")
             if 'installation_df' not in st.session_state or st.session_state.installation_df.empty:
                 st.session_state['installation_df'] = pd.DataFrame(_copy.deepcopy(CAROUSEL_SPEC_TEMPLATE["Installation Accountability"]))
             df_ia = st.session_state['installation_df'].copy()
-            for col in ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"]:
+            for col in ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope\n(Yes/No)", "Remarks"]:
                 if col not in df_ia.columns: df_ia[col] = ""
                 df_ia[col] = df_ia[col].astype(str).replace("nan", "")
             edited_ia = st.data_editor(
                 df_ia, num_rows="dynamic", use_container_width=True,
                 column_config={
-                    "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
-                    "Category":                st.column_config.TextColumn("Category", width="large"),
-                    "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
-                    "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope ✏️", width="small", options=["", "Yes", "No"]),
-                    "Remarks":                 st.column_config.TextColumn("Remarks", width="medium"),
+                    "Sr.no":                    st.column_config.TextColumn("Sr.no", width="small"),
+                    "Category":                 st.column_config.TextColumn("Category", width="large"),
+                    "Vendor Scope (Yes/No)":    st.column_config.SelectboxColumn("Vendor Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
+                    "Customer Scope\n(Yes/No)": st.column_config.SelectboxColumn("Customer Scope (Yes/No) ✏️", width="small", options=["", "Yes", "No"]),
+                    "Remarks":                  st.column_config.TextColumn("Remarks", width="medium"),
                 }, key="ia_editor")
             st.session_state['installation_df'] = edited_ia
 
