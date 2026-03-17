@@ -60,76 +60,193 @@ STORAGE_CONTAINERS_ITEMS = [
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SPEC TABLE DATA  (matches the Excel structure exactly)
-# Columns: Sr.no | Category | Description | Unit | Requirement
+# SPEC TABLE DATA — multi-section format matching Excel exactly
+# Every type uses the same structure:
+#   dict keyed by section title → list of row dicts
+# Each section renders as: bold title header row  +  5-col table beneath it
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Storage System default rows (generic rack spec)
-STORAGE_SYSTEM_SPEC = [
-    {"Sr.no": 1,  "Category": "Rack Type",          "Description": "Type of Rack",                          "Unit": "",        "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Number of Racks",                       "Unit": "Nos",     "Requirement": ""},
-    {"Sr.no": 2,  "Category": "Rack Dimensions",    "Description": "Height (mm)",                           "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Width / Bay (mm)",                      "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Depth (mm)",                            "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": 3,  "Category": "Load Capacity",      "Description": "UDL per Level (Kg)",                    "Unit": "Kg",      "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Total Rack Capacity (Kg)",              "Unit": "Kg",      "Requirement": ""},
-    {"Sr.no": 4,  "Category": "Levels",              "Description": "Number of Storage Levels",              "Unit": "Nos",     "Requirement": ""},
-    {"Sr.no": 5,  "Category": "Material",            "Description": "Frame Material",                        "Unit": "",        "Requirement": "MS Steel"},
-    {"Sr.no": "",  "Category": "",                    "Description": "Surface Finish",                        "Unit": "",        "Requirement": "Powder Coated"},
-    {"Sr.no": 6,  "Category": "Accessories",         "Description": "Beam Type",                             "Unit": "",        "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Footplates",                            "Unit": "",        "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Row Spacers",                           "Unit": "",        "Requirement": ""},
-    {"Sr.no": 7,  "Category": "Floor Fixing",        "Description": "Anchor Bolts Required",                 "Unit": "Yes/No",  "Requirement": ""},
-    {"Sr.no": 8,  "Category": "Standards",           "Description": "Design Standard",                       "Unit": "",        "Requirement": ""},
-    {"Sr.no": 9,  "Category": "Quantity",            "Description": "Total Quantity Required",               "Unit": "Nos",     "Requirement": ""},
-    {"Sr.no": 10, "Category": "Delivery",            "Description": "Expected Delivery Timeline",            "Unit": "Weeks",   "Requirement": ""},
-    {"Sr.no": 11, "Category": "Remarks",             "Description": "Any Additional Requirements",           "Unit": "",        "Requirement": ""},
-]
+# ── STORAGE SYSTEM ────────────────────────────────────────────────────────────
+STORAGE_SYSTEM_SPEC = {
+    "Model Details": [
+        {"Sr.no": 1,  "Category": "Rack Type",        "Description": "Type of Rack",                       "Unit": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Number of Racks",                    "Unit": "Nos",    "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Rack Dimensions",  "Description": "Height (mm)",                        "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Width / Bay (mm)",                   "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                         "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                    "Unit": "m2",     "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Load Capacity",    "Description": "UDL per Level (Kg)",                 "Unit": "Kg",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Total Rack Capacity (Kg)",           "Unit": "Kg",     "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Levels",            "Description": "Number of Storage Levels",           "Unit": "Nos",    "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Material",          "Description": "Frame Material",                     "Unit": "",       "Requirement": "MS Steel"},
+        {"Sr.no": "",  "Category": "",                  "Description": "Surface Finish",                     "Unit": "",       "Requirement": "Powder Coated"},
+        {"Sr.no": 6,  "Category": "Accessories",       "Description": "Beam Type",                          "Unit": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Footplates",                         "Unit": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Row Spacers",                        "Unit": "",       "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Floor Fixing",      "Description": "Anchor Bolts Required",              "Unit": "Yes/No", "Requirement": ""},
+        {"Sr.no": 8,  "Category": "Standards",         "Description": "Design Standard",                    "Unit": "",       "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Quantity",          "Description": "Total Quantity Required",            "Unit": "Nos",    "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",         "Unit": "Weeks",  "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",        "Unit": "",       "Requirement": ""},
+    ],
+    "Key Features": [
+        {"Sr.no": 1,  "Description": "Adjustable beam levels",                   "Status": "", "Remarks": "All key features to be confirmed by vendor."},
+        {"Sr.no": 2,  "Description": "Hot-dip galvanized / powder coated finish","Status": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Seismic / wind load design",               "Status": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Column protectors",                        "Status": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Safety pins on beams",                     "Status": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Row end barriers",                         "Status": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "Mesh decking / pallet support bars",       "Status": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Rack labelling system",                    "Status": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Load capacity signage per bay",            "Status": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Compliance with FEM / IS standards",       "Status": "", "Remarks": ""},
+    ],
+    "Inbuilt Features": [
+        {"Sr.no": 1,  "Description": "Heavy duty uprights (min 2 mm thickness)",           "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
+        {"Sr.no": 2,  "Description": "Step beams with safety locks",                       "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Base plates with anchor bolt holes",                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Top tie / top bracing",                              "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Horizontal and diagonal bracing",                    "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Spine / back bracing (double entry racks)",          "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "Powder coated / hot-dip galvanized finish",          "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Rack safety net / wire mesh back panels",            "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Forklift entry beam protectors",                     "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Load capacity plate / signage per bay level",        "Vendor Scope (Yes/No)": "", "Remarks": ""},
+    ],
+    "Installation Accountability": [
+        {"Sr.no": 1,  "Category": "Supply of all rack components",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Unloading of material at site",                 "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Installation & Commissioning",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Civil / floor preparation & anchor bolt fixing","Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Training",                                      "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Warranty Period",                               "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Post-installation load testing",                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Rack inspection report / certification",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Safety signage and load placard installation",  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+    ],
+}
 
-# Material Handling default rows
-MATERIAL_HANDLING_SPEC = [
-    {"Sr.no": 1,  "Category": "Equipment Type",     "Description": "Type of Equipment",                     "Unit": "",        "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Number of Units",                       "Unit": "Nos",     "Requirement": ""},
-    {"Sr.no": 2,  "Category": "Capacity",            "Description": "Rated Load Capacity (Kg)",              "Unit": "Kg",      "Requirement": ""},
-    {"Sr.no": 3,  "Category": "Dimensions",         "Description": "Overall Length (mm)",                   "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Overall Width (mm)",                    "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Lift Height (mm)",                      "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": 4,  "Category": "Power",               "Description": "Drive Type (Electric / Manual / LPG)", "Unit": "",        "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Battery Voltage (V)",                   "Unit": "V",       "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Battery Capacity (Ah)",                 "Unit": "Ah",      "Requirement": ""},
-    {"Sr.no": 5,  "Category": "Speed",               "Description": "Travel Speed (km/h)",                   "Unit": "km/h",    "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Lift Speed (mm/s)",                     "Unit": "mm/s",    "Requirement": ""},
-    {"Sr.no": 6,  "Category": "Turning Radius",      "Description": "Minimum Turning Radius (mm)",           "Unit": "mm",      "Requirement": ""},
-    {"Sr.no": 7,  "Category": "Mast",                "Description": "Mast Type (Simplex / Duplex / Triplex)","Unit": "",        "Requirement": ""},
-    {"Sr.no": 8,  "Category": "Tyres",               "Description": "Tyre Type",                             "Unit": "",        "Requirement": ""},
-    {"Sr.no": 9,  "Category": "Safety",              "Description": "Safety Features",                       "Unit": "",        "Requirement": ""},
-    {"Sr.no": 10, "Category": "Standards",           "Description": "Compliance Standard",                   "Unit": "",        "Requirement": ""},
-    {"Sr.no": 11, "Category": "Warranty",            "Description": "Warranty Period",                       "Unit": "Years",   "Requirement": ""},
-    {"Sr.no": 12, "Category": "Delivery",            "Description": "Expected Delivery Timeline",            "Unit": "Weeks",   "Requirement": ""},
-    {"Sr.no": 13, "Category": "Remarks",             "Description": "Any Additional Requirements",           "Unit": "",        "Requirement": ""},
-]
+# ── MATERIAL HANDLING ─────────────────────────────────────────────────────────
+MATERIAL_HANDLING_SPEC = {
+    "Model Details": [
+        {"Sr.no": 1,  "Category": "Equipment Type",   "Description": "Type of Equipment",                          "Unit": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Number of Units",                            "Unit": "Nos",    "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Capacity",          "Description": "Rated Load Capacity (Kg)",                   "Unit": "Kg",     "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Dimensions",        "Description": "Overall Length (mm)",                        "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Overall Width (mm)",                         "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Lift Height (mm)",                           "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Floor area required (m2)",                   "Unit": "m2",     "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Power",             "Description": "Drive Type (Electric / Manual / LPG)",       "Unit": "",       "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Battery Voltage (V)",                        "Unit": "V",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Battery Capacity (Ah)",                      "Unit": "Ah",     "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Speed",             "Description": "Travel Speed (km/h)",                        "Unit": "km/h",   "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                  "Description": "Lift Speed (mm/s)",                          "Unit": "mm/s",   "Requirement": ""},
+        {"Sr.no": 6,  "Category": "Turning Radius",    "Description": "Minimum Turning Radius (mm)",                "Unit": "mm",     "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Mast",              "Description": "Mast Type (Simplex / Duplex / Triplex)",     "Unit": "",       "Requirement": ""},
+        {"Sr.no": 8,  "Category": "Tyres",             "Description": "Tyre Type",                                  "Unit": "",       "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Standards",         "Description": "Compliance Standard",                        "Unit": "",       "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",          "Description": "Expected Delivery Timeline",                 "Unit": "Weeks",  "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",           "Description": "Any Additional Requirements",                "Unit": "",       "Requirement": ""},
+    ],
+    "Key Features": [
+        {"Sr.no": 1,  "Description": "Ergonomic operator controls",                       "Status": "", "Remarks": "All key features to be confirmed by vendor."},
+        {"Sr.no": 2,  "Description": "Overload protection / load sensor",                 "Status": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Emergency lowering valve",                          "Status": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Anti-roll back / parking brake",                    "Status": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Battery discharge indicator",                       "Status": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Hour meter",                                        "Status": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "Side-shift attachment (if applicable)",             "Status": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Fork positioner (if applicable)",                   "Status": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Integrated charger / off-board charger",            "Status": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Compliance with IS / CE safety standards",          "Status": "", "Remarks": ""},
+    ],
+    "Inbuilt Features": [
+        {"Sr.no": 1,  "Description": "Hydraulic lifting mechanism",              "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
+        {"Sr.no": 2,  "Description": "AC / DC drive motor",                      "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Regenerative braking system",              "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Operator presence sensor",                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Tilt cylinder with lock valve",            "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Cushioned overhead guard",                 "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "LED working lights",                       "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Warning horn / reverse alarm",             "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Battery management system (BMS)",          "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Maintenance-free / lithium battery option","Vendor Scope (Yes/No)": "", "Remarks": ""},
+    ],
+    "Installation Accountability": [
+        {"Sr.no": 1,  "Category": "Supply of equipment with accessories",              "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",             "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Unloading of equipment at site",                   "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Pre-delivery inspection (PDI)",                    "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Commissioning & handover",                         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Operator training",                                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Warranty Period",                                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Battery charger & charging station setup",         "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Annual Maintenance Contract (AMC) scope",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Spare parts kit (first year)",                     "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 11, "Category": "Safety audit / compliance certification",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+    ],
+}
 
-# Dock Leveller default rows
-DOCK_LEVELLER_SPEC = [
-    {"Sr.no": 1,  "Category": "Equipment Type",     "Description": "Type (Dock Leveller / Dock Plate / Ramp)", "Unit": "",     "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Number of Units",                        "Unit": "Nos",  "Requirement": ""},
-    {"Sr.no": 2,  "Category": "Capacity",            "Description": "Rated Load Capacity (Kg)",               "Unit": "Kg",   "Requirement": ""},
-    {"Sr.no": 3,  "Category": "Platform Dimensions", "Description": "Platform Width (mm)",                    "Unit": "mm",   "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Platform Depth (mm)",                    "Unit": "mm",   "Requirement": ""},
-    {"Sr.no": 4,  "Category": "Height Range",        "Description": "Minimum Pit Depth (mm)",                 "Unit": "mm",   "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Adjustment Range (mm)",                  "Unit": "mm",   "Requirement": ""},
-    {"Sr.no": 5,  "Category": "Operation",           "Description": "Operation Type (Hydraulic / Mechanical / Air)", "Unit": "", "Requirement": ""},
-    {"Sr.no": 6,  "Category": "Lip",                 "Description": "Lip Length (mm)",                        "Unit": "mm",   "Requirement": ""},
-    {"Sr.no": "",  "Category": "",                    "Description": "Lip Type (Powered / Manual)",            "Unit": "",     "Requirement": ""},
-    {"Sr.no": 7,  "Category": "Safety",              "Description": "Safety Features",                        "Unit": "",     "Requirement": ""},
-    {"Sr.no": 8,  "Category": "Material",            "Description": "Frame Material",                         "Unit": "",     "Requirement": "MS Steel"},
-    {"Sr.no": "",  "Category": "",                    "Description": "Surface Finish",                         "Unit": "",     "Requirement": "Hot Dip Galvanized"},
-    {"Sr.no": 9,  "Category": "Installation",        "Description": "Pit / Surface Mount",                    "Unit": "",     "Requirement": ""},
-    {"Sr.no": 10, "Category": "Standards",           "Description": "Compliance Standard",                    "Unit": "",     "Requirement": ""},
-    {"Sr.no": 11, "Category": "Warranty",            "Description": "Warranty Period",                        "Unit": "Years", "Requirement": ""},
-    {"Sr.no": 12, "Category": "Delivery",            "Description": "Expected Delivery Timeline",             "Unit": "Weeks", "Requirement": ""},
-    {"Sr.no": 13, "Category": "Remarks",             "Description": "Any Additional Requirements",            "Unit": "",     "Requirement": ""},
-]
+# ── DOCK LEVELLER ─────────────────────────────────────────────────────────────
+DOCK_LEVELLER_SPEC = {
+    "Model Details": [
+        {"Sr.no": 1,  "Category": "Equipment Type",       "Description": "Type (Dock Leveller / Dock Plate / Ramp)", "Unit": "",      "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Number of Units",                          "Unit": "Nos",   "Requirement": ""},
+        {"Sr.no": 2,  "Category": "Capacity",              "Description": "Rated Load Capacity (Kg)",                 "Unit": "Kg",    "Requirement": ""},
+        {"Sr.no": 3,  "Category": "Platform Dimensions",   "Description": "Platform Width (mm)",                      "Unit": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Platform Depth (mm)",                      "Unit": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Floor area required (m2)",                 "Unit": "m2",    "Requirement": ""},
+        {"Sr.no": 4,  "Category": "Height Range",          "Description": "Minimum Pit Depth (mm)",                   "Unit": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Adjustment Range (mm)",                    "Unit": "mm",    "Requirement": ""},
+        {"Sr.no": 5,  "Category": "Operation",             "Description": "Operation Type (Hydraulic / Mechanical)",  "Unit": "",      "Requirement": ""},
+        {"Sr.no": 6,  "Category": "Lip",                   "Description": "Lip Length (mm)",                          "Unit": "mm",    "Requirement": ""},
+        {"Sr.no": "",  "Category": "",                      "Description": "Lip Type (Powered / Manual)",              "Unit": "",      "Requirement": ""},
+        {"Sr.no": 7,  "Category": "Material",              "Description": "Frame Material",                           "Unit": "",      "Requirement": "MS Steel"},
+        {"Sr.no": "",  "Category": "",                      "Description": "Surface Finish",                           "Unit": "",      "Requirement": "Hot Dip Galvanized"},
+        {"Sr.no": 8,  "Category": "Installation",          "Description": "Pit / Surface Mount",                      "Unit": "",      "Requirement": ""},
+        {"Sr.no": 9,  "Category": "Standards",             "Description": "Compliance Standard",                      "Unit": "",      "Requirement": ""},
+        {"Sr.no": 10, "Category": "Delivery",              "Description": "Expected Delivery Timeline",               "Unit": "Weeks", "Requirement": ""},
+        {"Sr.no": 11, "Category": "Remarks",               "Description": "Any Additional Requirements",              "Unit": "",      "Requirement": ""},
+    ],
+    "Key Features": [
+        {"Sr.no": 1,  "Description": "Powered lip extension",                         "Status": "", "Remarks": "All key features to be confirmed by vendor."},
+        {"Sr.no": 2,  "Description": "Velocity fuse / anti-drop safety valve",        "Status": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Toe guard / maintenance strut",                 "Status": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Push-button / remote operation",                "Status": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Traffic light / dock light integration",        "Status": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Vehicle restraint system compatibility",        "Status": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "Weather seal / dock shelter compatibility",     "Status": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Edge-of-dock (EOD) leveller option",           "Status": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Galvanized / painted finish",                   "Status": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Compliance with IS / EN standards",             "Status": "", "Remarks": ""},
+    ],
+    "Inbuilt Features": [
+        {"Sr.no": 1,  "Description": "Hydraulic power unit with reservoir",      "Vendor Scope (Yes/No)": "", "Remarks": "All features to be included at vendor side."},
+        {"Sr.no": 2,  "Description": "Manual release valve for safety",          "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Description": "Steel checker-plate platform surface",     "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Description": "Recessed pit frame / bumper curbs",        "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Description": "Side seal / draft curtain",                "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Description": "Safety leg / maintenance prop",            "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Description": "Control box with push-button pendant",     "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Description": "Bumpers (dock bumpers / truck bumpers)",   "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Description": "Overload / pressure relief valve",         "Vendor Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Description": "Corrosion protection / galvanized frame",  "Vendor Scope (Yes/No)": "", "Remarks": ""},
+    ],
+    "Installation Accountability": [
+        {"Sr.no": 1,  "Category": "Supply of dock leveller & accessories",          "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 2,  "Category": "Packing, Freight & Transit Insurance",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 3,  "Category": "Pit preparation & civil works",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 4,  "Category": "Unloading of material at site",                  "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 5,  "Category": "Installation & Commissioning",                   "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 6,  "Category": "Electrical power supply to control panel",       "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 7,  "Category": "Training",                                       "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 8,  "Category": "Warranty Period",                                "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 9,  "Category": "Dock shelter / seals supply & fixing",           "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 10, "Category": "Vehicle restraint supply & installation",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+        {"Sr.no": 11, "Category": "Safety signage & load capacity markings",        "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
+    ],
+}
 
 # Automated Storage System (VStore / Carousel) — exactly matches Excel
 CAROUSEL_SPEC_TEMPLATE = {
@@ -642,15 +759,92 @@ def create_advanced_rfq_pdf(data):
                 pdf.ln(6)
 
         else:
-            # Storage System / Material Handling / Dock Leveller
-            spec_df = data.get('spec_df', pd.DataFrame())
-            label_map = {
-                'Storage System':   'STORAGE SYSTEM SPECIFICATION',
-                'Material Handling':'MATERIAL HANDLING EQUIPMENT SPECIFICATION',
-                'Dock Leveller':    'DOCK LEVELLER / DOCK EQUIPMENT SPECIFICATION',
+            # Storage System / Material Handling / Dock Leveller — multi-section format
+            prefix_map = {
+                'Storage System':   'ss',
+                'Material Handling':'mh',
+                'Dock Leveller':    'dl',
             }
-            label = label_map.get(wh_sub, 'SPECIFICATION DETAILS')
-            draw_spec_table(spec_df, label)
+            template_map = {
+                'Storage System':   STORAGE_SYSTEM_SPEC,
+                'Material Handling':MATERIAL_HANDLING_SPEC,
+                'Dock Leveller':    DOCK_LEVELLER_SPEC,
+            }
+            prefix  = prefix_map.get(wh_sub, 'ss')
+            tmpl    = template_map.get(wh_sub, STORAGE_SYSTEM_SPEC)
+
+            section_col_map = {
+                "Model Details":             ["Sr.no", "Category", "Description", "Unit", "Requirement"],
+                "Key Features":              ["Sr.no", "Description", "Status", "Remarks"],
+                "Inbuilt Features":          ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"],
+                "Installation Accountability":["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
+            }
+
+            def _pdf_render_section(section_name, df):
+                """Render one Excel-style section: bold title bar + table rows"""
+                if df is None or df.empty:
+                    return
+                if pdf.get_y() + 20 > pdf.page_break_trigger:
+                    pdf.add_page()
+
+                # Bold dark section title bar (mimics Excel bold header row)
+                pdf.set_fill_color(26, 58, 92)   # dark navy
+                pdf.set_text_color(255, 255, 255)
+                pdf.set_font('Arial', 'B', 10)
+                pdf.cell(0, 8, f'  {section_name}', 0, 1, 'L', fill=True)
+                pdf.set_text_color(0, 0, 0)
+                pdf.ln(1)
+
+                cols = section_col_map.get(section_name, ["Sr.no", "Category", "Description", "Unit", "Requirement"])
+
+                # Column widths by section
+                width_map = {
+                    "Model Details":              [12, 45, 72, 20, 41],
+                    "Key Features":               [10, 110, 30, 40],
+                    "Inbuilt Features":           [10, 110, 30, 40],
+                    "Installation Accountability":[10, 75, 28, 28, 49],
+                }
+                col_widths = width_map.get(section_name, [12, 45, 72, 20, 41])
+                hh = 9
+
+                # Header row
+                pdf.set_font('Arial', 'B', 8)
+                pdf.set_fill_color(220, 230, 241)
+                for i, c in enumerate(cols):
+                    pdf.cell(col_widths[i], hh, c, border=1, align='C', fill=True)
+                pdf.ln()
+                pdf.set_font('Arial', '', 8)
+
+                for _, row in df.iterrows():
+                    row_vals = [str(row.get(c, "")).strip() for c in cols]
+                    # compute row height from longest cell
+                    max_lines = max(max(1, len(v) // (max(col_widths[i]-2, 1) // 4 + 1)) for i, v in enumerate(row_vals))
+                    rh = max(8, max_lines * 5)
+                    if pdf.get_y() + rh > pdf.page_break_trigger:
+                        pdf.add_page()
+                        pdf.set_font('Arial', 'B', 8)
+                        pdf.set_fill_color(220, 230, 241)
+                        for i, c in enumerate(cols):
+                            pdf.cell(col_widths[i], hh, c, border=1, align='C', fill=True)
+                        pdf.ln()
+                        pdf.set_font('Arial', '', 8)
+                    row_y = pdf.get_y()
+                    cx = pdf.l_margin
+                    for i, val in enumerate(row_vals):
+                        w = col_widths[i]
+                        pdf.rect(cx, row_y, w, rh)
+                        pdf.set_xy(cx + 1, row_y + 2)
+                        pdf.multi_cell(w - 2, 4, val, align='L', border=0)
+                        cx += w
+                    pdf.set_y(row_y + rh)
+                pdf.ln(4)
+
+            for section_name in tmpl.keys():
+                sk = f"{prefix}_{section_name}"
+                sec_df = data.get(f'spec_{prefix}_{section_name}', pd.DataFrame())
+                if sec_df is None or sec_df.empty:
+                    sec_df = pd.DataFrame(_copy.deepcopy(tmpl[section_name]))
+                _pdf_render_section(section_name, sec_df)
 
     else:
         valid_items = items_df[items_df["Item Name"].astype(str).str.strip() != ""].reset_index(drop=True) if not items_df.empty else items_df
@@ -826,122 +1020,123 @@ with st.expander("📦 Technical Specifications", expanded=True):
             st.session_state['last_wh_sub'] = wh_sub
 
         # ────────────────────────────────────────────────────────────
-        # STORAGE SYSTEM — direct editable spec table (Excel format)
+        # SHARED helper: render one multi-section spec template in UI
+        # ────────────────────────────────────────────────────────────
+        def _render_multisection_spec(template_dict, state_key_prefix, sub_label):
+            """
+            Renders the Excel-style multi-section layout in Streamlit.
+            Each section = bold title + editable 5-col or 4-col table.
+            template_dict keys determine column layout:
+              'Model Details'            → Sr.no | Category | Description | Unit | Requirement
+              'Key Features'             → Sr.no | Description | Status | Remarks
+              'Inbuilt Features'         → Sr.no | Description | Vendor Scope (Yes/No) | Remarks
+              'Installation Accountability' → Sr.no | Category | Vendor Scope | Customer Scope | Remarks
+            """
+            st.caption(
+                "All sections are pre-filled as per standard template. "
+                "Fill in the highlighted columns and edit any field as needed. "
+                "Use ➕ at the bottom of each table to add rows."
+            )
+            section_cfg = {
+                "Model Details": {
+                    "cols": ["Sr.no", "Category", "Description", "Unit", "Requirement"],
+                    "edit_col": "Requirement",
+                    "column_config": {
+                        "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
+                        "Category":     st.column_config.TextColumn("Category", width="medium"),
+                        "Description":  st.column_config.TextColumn("Description", width="large"),
+                        "Unit":         st.column_config.TextColumn("Unit", width="small"),
+                        "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
+                    },
+                },
+                "Key Features": {
+                    "cols": ["Sr.no", "Description", "Status", "Remarks"],
+                    "edit_col": "Status",
+                    "column_config": {
+                        "Sr.no":       st.column_config.TextColumn("Sr.no", width="small"),
+                        "Description": st.column_config.TextColumn("Description", width="large"),
+                        "Status":      st.column_config.TextColumn("Status ✏️", width="small"),
+                        "Remarks":     st.column_config.TextColumn("Remarks", width="large"),
+                    },
+                },
+                "Inbuilt Features": {
+                    "cols": ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"],
+                    "edit_col": "Vendor Scope (Yes/No)",
+                    "column_config": {
+                        "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
+                        "Description":             st.column_config.TextColumn("Description", width="large"),
+                        "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                        "Remarks":                 st.column_config.TextColumn("Remarks", width="large"),
+                    },
+                },
+                "Installation Accountability": {
+                    "cols": ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
+                    "edit_col": "Vendor Scope (Yes/No)",
+                    "column_config": {
+                        "Sr.no":                   st.column_config.TextColumn("Sr.no", width="small"),
+                        "Category":                st.column_config.TextColumn("Category", width="large"),
+                        "Vendor Scope (Yes/No)":   st.column_config.SelectboxColumn("Vendor Scope ✏️", width="small", options=["", "Yes", "No"]),
+                        "Customer Scope (Yes/No)": st.column_config.SelectboxColumn("Customer Scope ✏️", width="small", options=["", "Yes", "No"]),
+                        "Remarks":                 st.column_config.TextColumn("Remarks", width="medium"),
+                    },
+                },
+            }
+
+            for section_name, rows in template_dict.items():
+                sk = f"{state_key_prefix}_{section_name}"
+                cfg = section_cfg.get(section_name, section_cfg["Model Details"])
+
+                # Bold section title exactly like Excel
+                st.markdown(
+                    f"<div style='background:#1a3a5c;color:white;font-weight:bold;"
+                    f"padding:6px 10px;margin-top:14px;margin-bottom:2px;"
+                    f"font-size:14px;border-radius:3px;'>{section_name}</div>",
+                    unsafe_allow_html=True
+                )
+
+                # Init state
+                if sk not in st.session_state:
+                    st.session_state[sk] = pd.DataFrame(_copy.deepcopy(rows))
+
+                df = st.session_state[sk].copy()
+                for col in cfg["cols"]:
+                    if col not in df.columns:
+                        df[col] = ""
+                    df[col] = df[col].astype(str).replace("nan", "")
+                df = df[cfg["cols"]]
+
+                edited = st.data_editor(
+                    df,
+                    num_rows="dynamic",
+                    use_container_width=True,
+                    column_config=cfg["column_config"],
+                    key=f"editor_{sk}"
+                )
+                st.session_state[sk] = edited
+
+        # ────────────────────────────────────────────────────────────
+        # STORAGE SYSTEM
         # ────────────────────────────────────────────────────────────
         if wh_sub == "Storage System":
             st.markdown("#### 📋 Storage System Specification")
-            st.caption(
-                "Fill in the **Requirement** column (and any other fields) directly. "
-                "Sr.no, Category, Description and Unit are pre-filled as per standard template — edit if needed. "
-                "Use ➕ at the bottom to add extra rows."
-            )
-            if 'spec_df' not in st.session_state:
-                st.session_state['spec_df'] = pd.DataFrame(_copy.deepcopy(STORAGE_SYSTEM_SPEC))
-
-            df_ss = st.session_state['spec_df'].copy()
-            for col in ["Sr.no", "Category", "Description", "Unit", "Requirement"]:
-                if col not in df_ss.columns:
-                    df_ss[col] = ""
-                df_ss[col] = df_ss[col].astype(str).replace("nan", "")
-
-            edited_ss = st.data_editor(
-                df_ss,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
-                    "Category":     st.column_config.TextColumn("Category", width="medium"),
-                    "Description":  st.column_config.TextColumn("Description", width="large"),
-                    "Unit":         st.column_config.TextColumn("Unit", width="small"),
-                    "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
-                },
-                key="spec_editor_storage_system"
-            )
-            st.session_state['spec_df'] = edited_ss
-            filled = edited_ss[edited_ss["Requirement"].astype(str).str.strip() != ""]
-            if len(filled):
-                st.success(f"✅ {len(filled)} row(s) with requirements filled")
-            else:
-                st.warning("⚠️ Fill in the Requirement column to complete the specification.")
+            _render_multisection_spec(STORAGE_SYSTEM_SPEC, "ss", "Storage System")
 
         # ────────────────────────────────────────────────────────────
-        # MATERIAL HANDLING — direct editable spec table
+        # MATERIAL HANDLING
         # ────────────────────────────────────────────────────────────
         elif wh_sub == "Material Handling":
             st.markdown("#### 📋 Material Handling Equipment Specification")
-            st.caption(
-                "Fill in the **Requirement** column directly. "
-                "All other fields are pre-filled — edit as needed. Add rows with ➕."
-            )
-            if 'spec_df' not in st.session_state:
-                st.session_state['spec_df'] = pd.DataFrame(_copy.deepcopy(MATERIAL_HANDLING_SPEC))
-
-            df_mh = st.session_state['spec_df'].copy()
-            for col in ["Sr.no", "Category", "Description", "Unit", "Requirement"]:
-                if col not in df_mh.columns:
-                    df_mh[col] = ""
-                df_mh[col] = df_mh[col].astype(str).replace("nan", "")
-
-            edited_mh = st.data_editor(
-                df_mh,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
-                    "Category":     st.column_config.TextColumn("Category", width="medium"),
-                    "Description":  st.column_config.TextColumn("Description", width="large"),
-                    "Unit":         st.column_config.TextColumn("Unit", width="small"),
-                    "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
-                },
-                key="spec_editor_material_handling"
-            )
-            st.session_state['spec_df'] = edited_mh
-            filled = edited_mh[edited_mh["Requirement"].astype(str).str.strip() != ""]
-            if len(filled):
-                st.success(f"✅ {len(filled)} row(s) with requirements filled")
-            else:
-                st.warning("⚠️ Fill in the Requirement column to complete the specification.")
+            _render_multisection_spec(MATERIAL_HANDLING_SPEC, "mh", "Material Handling")
 
         # ────────────────────────────────────────────────────────────
-        # DOCK LEVELLER — direct editable spec table
+        # DOCK LEVELLER
         # ────────────────────────────────────────────────────────────
         elif wh_sub == "Dock Leveller":
             st.markdown("#### 📋 Dock Leveller / Dock Equipment Specification")
-            st.caption(
-                "Fill in the **Requirement** column directly. "
-                "All other fields are pre-filled — edit as needed. Add rows with ➕."
-            )
-            if 'spec_df' not in st.session_state:
-                st.session_state['spec_df'] = pd.DataFrame(_copy.deepcopy(DOCK_LEVELLER_SPEC))
-
-            df_dl = st.session_state['spec_df'].copy()
-            for col in ["Sr.no", "Category", "Description", "Unit", "Requirement"]:
-                if col not in df_dl.columns:
-                    df_dl[col] = ""
-                df_dl[col] = df_dl[col].astype(str).replace("nan", "")
-
-            edited_dl = st.data_editor(
-                df_dl,
-                num_rows="dynamic",
-                use_container_width=True,
-                column_config={
-                    "Sr.no":        st.column_config.TextColumn("Sr.no", width="small"),
-                    "Category":     st.column_config.TextColumn("Category", width="medium"),
-                    "Description":  st.column_config.TextColumn("Description", width="large"),
-                    "Unit":         st.column_config.TextColumn("Unit", width="small"),
-                    "Requirement":  st.column_config.TextColumn("Requirement ✏️", width="medium"),
-                },
-                key="spec_editor_dock_leveller"
-            )
-            st.session_state['spec_df'] = edited_dl
-            filled = edited_dl[edited_dl["Requirement"].astype(str).str.strip() != ""]
-            if len(filled):
-                st.success(f"✅ {len(filled)} row(s) with requirements filled")
-            else:
-                st.warning("⚠️ Fill in the Requirement column to complete the specification.")
+            _render_multisection_spec(DOCK_LEVELLER_SPEC, "dl", "Dock Leveller")
 
         # ────────────────────────────────────────────────────────────
-        # AUTOMATED STORAGE SYSTEM — VStore / Carousel (unchanged logic, same table format)
+        # AUTOMATED STORAGE SYSTEM — VStore / Carousel
         # ────────────────────────────────────────────────────────────
         elif wh_sub == "Automated Storage System":
             st.markdown("#### 📋 Automated Storage System")
@@ -1267,8 +1462,19 @@ if submitted:
                 common_data['installation_df']      = st.session_state.get('installation_df', pd.DataFrame())
 
             else:
-                # Storage System / Material Handling / Dock Leveller
-                common_data['spec_df'] = st.session_state.get('spec_df', pd.DataFrame())
+                # Storage System / Material Handling / Dock Leveller — multi-section
+                prefix_map  = {'Storage System':'ss', 'Material Handling':'mh', 'Dock Leveller':'dl'}
+                template_map = {
+                    'Storage System':   STORAGE_SYSTEM_SPEC,
+                    'Material Handling':MATERIAL_HANDLING_SPEC,
+                    'Dock Leveller':    DOCK_LEVELLER_SPEC,
+                }
+                pfx  = prefix_map.get(wh_sub_submit, 'ss')
+                tmpl = template_map.get(wh_sub_submit, STORAGE_SYSTEM_SPEC)
+                for section_name in tmpl.keys():
+                    sk = f"{pfx}_{section_name}"
+                    sec_df = st.session_state.get(sk, pd.DataFrame(_copy.deepcopy(tmpl[section_name])))
+                    common_data[f'spec_{pfx}_{section_name}'] = sec_df
 
         else:
             items_check = st.session_state.get('dynamic_items_df', pd.DataFrame())
