@@ -498,19 +498,22 @@ def create_advanced_rfq_pdf(data):
 
         # ── Column header row ──────────────────────────────────────────────
         pdf.set_fill_color(220, 230, 241)
-        pdf.set_font('Arial', 'B', 11)
+        pdf.set_font('Arial', 'B', 10)
         col_header_y = pdf.get_y()
-        col_header_h = 9
+        # Calculate header height: for each column count how many lines the label needs
+        # at font size 10 (~2.0 mm per char width) with 6pt line height
+        col_header_h = 10  # minimum
         for i, c in enumerate(cols):
             label = c.replace('\n', ' ')
-            lines = max(1, -(-len(label) // max(1, int(widths[i] / 2.5))))
-            col_header_h = max(col_header_h, lines * 6 + 4)
+            chars_per_line = max(1, int(widths[i] / 2.0))   # ~2mm per char at size 10
+            n_lines = max(1, -(-len(label) // chars_per_line))
+            col_header_h = max(col_header_h, n_lines * 6 + 4)
 
         cx = pdf.l_margin
         for i, c in enumerate(cols):
             label = c.replace('\n', ' ')
             pdf.rect(cx, col_header_y, widths[i], col_header_h, 'FD')
-            pdf.set_xy(cx + 1, col_header_y + 1)
+            pdf.set_xy(cx + 1, col_header_y + 2)
             pdf.multi_cell(widths[i] - 2, 6, label, border=0, align='C')
             cx += widths[i]
             pdf.set_xy(cx, col_header_y)
@@ -542,13 +545,13 @@ def create_advanced_rfq_pdf(data):
                 # (Remark cell up to page break is handled by the pre-draw below)
                 pdf.add_page()
                 pdf.set_fill_color(220, 230, 241)
-                pdf.set_font('Arial', 'B', 11)
+                pdf.set_font('Arial', 'B', 10)
                 cy2 = pdf.get_y()
                 cx2 = pdf.l_margin
                 for i, c in enumerate(cols):
                     label = c.replace('\n', ' ')
                     pdf.rect(cx2, cy2, widths[i], col_header_h, 'FD')
-                    pdf.set_xy(cx2 + 1, cy2 + 1)
+                    pdf.set_xy(cx2 + 1, cy2 + 2)
                     pdf.multi_cell(widths[i] - 2, 6, label, border=0, align='C')
                     cx2 += widths[i]
                     pdf.set_xy(cx2, cy2)
@@ -832,12 +835,12 @@ def create_advanced_rfq_pdf(data):
 
             render_model_details(pdf, data.get('carousel_model_df'), subtitle=data.get('model_detail_header', ''))
             render_navy_section(pdf, "Key Features", data.get('key_features_df'),
-                                ["Sr.no", "Description", "Status", "Remarks"], [10, 110, 30, 40])
+                                ["Sr.no", "Description", "Status", "Remarks"], [10, 102, 38, 40])
             render_navy_section(pdf, "Inbuilt features", data.get('inbuilt_features_df'),
-                                ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"], [10, 110, 30, 40])
+                                ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"], [10, 102, 38, 40])
             render_navy_section(pdf, "Installation Accountability", data.get('installation_df'),
                                 ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
-                                [10, 75, 28, 28, 49])
+                                [10, 67, 36, 36, 41])
             render_layout_images(pdf, data.get('layout_images', []))
 
         else:
@@ -845,13 +848,13 @@ def create_advanced_rfq_pdf(data):
             render_model_details(pdf, data.get(f'spec_{pfx}_Model Details'),
                                  subtitle=data.get('model_detail_header', ''))
             render_navy_section(pdf, "Key Features", data.get(f'spec_{pfx}_Key Features'),
-                                ["Sr.no", "Description", "Status", "Remarks"], [10, 110, 30, 40])
+                                ["Sr.no", "Description", "Status", "Remarks"], [10, 102, 38, 40])
             render_navy_section(pdf, "Inbuilt features", data.get(f'spec_{pfx}_Inbuilt features'),
-                                ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"], [10, 110, 30, 40])
+                                ["Sr.no", "Description", "Vendor Scope (Yes/No)", "Remarks"], [10, 102, 38, 40])
             render_navy_section(pdf, "Installation Accountability",
                                 data.get(f'spec_{pfx}_Installation Accountability'),
                                 ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
-                                [10, 75, 28, 28, 49])
+                                [10, 67, 36, 36, 41])
             render_layout_images(pdf, data.get('layout_images', []))
     else:
         render_generic_items(pdf, data.get('items_df', pd.DataFrame()))
