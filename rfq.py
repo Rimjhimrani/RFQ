@@ -789,26 +789,12 @@ def create_advanced_rfq_pdf(data):
         return t.strip()
 
     def _write_paragraph(pdf, text, line_h=6):
-        """Word-wrap text using FPDF's own get_string_width for accuracy."""
-        text = _fix_spacing(text)
-        words = text.split(' ')
-        max_w = usable_w - 2
-        line  = ''
-        for word in words:
-            word = _safe_text(word)
-            if not word:
-                continue
-            test = (line + ' ' + word).strip() if line else word
-            if pdf.get_string_width(test) <= max_w:
-                line = test
-            else:
-                if line:
-                    pdf.set_x(pdf.l_margin)
-                    pdf.cell(usable_w, line_h, line, ln=1)
-                line = word
-        if line:
-            pdf.set_x(pdf.l_margin)
-            pdf.cell(usable_w, line_h, line, ln=1)
+        """Render a paragraph fully justified using multi_cell with align J."""
+        text = _fix_spacing(_safe_text(text))
+        if not text:
+            return
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(usable_w, line_h, text, border=0, align='J')
 
     for para in purpose_text.split('\n'):
         if para.strip():
