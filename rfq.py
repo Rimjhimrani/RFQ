@@ -176,8 +176,12 @@ def create_advanced_rfq_pdf(data):
         def header(self):
             if self.page_no() == 1:
                 return
-            # Logo 1 — left
             logo1_data = self._data.get('logo1_data')
+            logo2_data = self._data.get('logo2_data') or LOGO2_BYTES
+            logo2_w    = self._data.get('logo2_w', 45)
+            logo2_h    = self._data.get('logo2_h', 20)
+
+            # Logo 1 — left
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -189,19 +193,25 @@ def create_advanced_rfq_pdf(data):
                     os.remove(tmp.name)
                 except Exception:
                     pass
-            # Logo 2 — right, fixed 40×10 mm, hardcoded Agilomatrix
+
+            # Logo 2 — right, user-uploaded PNG or hardcoded fallback
             try:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                    tmp.write(LOGO2_BYTES)
+                    tmp.write(logo2_data)
                     tmp.flush()
-                    self.image(tmp.name, x=self.w - self.r_margin - 40, y=6, w=40, h=10)
+                    self.image(tmp.name,
+                               x=self.w - self.r_margin - logo2_w,
+                               y=6, w=logo2_w, h=logo2_h)
                 os.remove(tmp.name)
             except Exception:
                 pass
+
+            # Page title centred — sits below the logos
+            header_h = max(self._data.get('logo1_h', 18), logo2_h) + 2
             self.set_y(6)
             self.set_font('Arial', 'B', 12)
-            self.cell(0, 14, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            self.ln(6)
+            self.cell(0, header_h, 'Request for Quotation (RFQ)', 0, 1, 'C')
+            self.ln(4)
 
         def footer(self):
             self.set_y(-25)
@@ -259,11 +269,16 @@ def create_advanced_rfq_pdf(data):
     # ── COVER PAGE ────────────────────────────────────────────────────────────
     def create_cover_page(pdf):
         pdf.add_page()
+        logo2_data = data.get('logo2_data') or LOGO2_BYTES
+        logo2_w    = data.get('logo2_w', 45)
+        logo2_h    = data.get('logo2_h', 20)
+
         # Logo 1 — left, user-defined size
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-        # Logo 2 — right, hardcoded Agilomatrix, fixed 40×10 mm
-        _write_logo(pdf, LOGO2_BYTES, pdf.w - pdf.r_margin - 40, 12, 40, 10)
+        # Logo 2 — right, user-uploaded PNG or hardcoded fallback
+        _write_logo(pdf, logo2_data,
+                    pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
@@ -887,16 +902,26 @@ st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
 # ── Step 1: Logos ─────────────────────────────────────────────────────────────
-with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
-    st.markdown("**Logo 1 — appears top-left on every page** (width/height adjustable)")
-    logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
+with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
     c1, c2 = st.columns(2)
-    logo1_w = c1.number_input("Logo 1 Width (mm)", 5, 80, 35, 1)
-    logo1_h = c2.number_input("Logo 1 Height (mm)", 5, 50, 18, 1)
-    if logo1_file:
-        st.image(logo1_file, width=150)
-    st.caption("The Agilomatrix logo is fixed on the top-right of every page automatically.")
-logo2_file = None  # Not used — Agilomatrix logo is hardcoded
+    with c1:
+        st.markdown("**Logo 1 — Your company logo (top-left)**")
+        logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
+        lc1, lc2 = st.columns(2)
+        logo1_w = lc1.number_input("Width (mm)", 5, 80, 35, 1, key="l1w")
+        logo1_h = lc2.number_input("Height (mm)", 5, 50, 18, 1, key="l1h")
+        if logo1_file:
+            st.image(logo1_file, width=160)
+    with c2:
+        st.markdown("**Logo 2 — Agilomatrix logo (top-right, PNG only)**")
+        logo2_file = st.file_uploader("Upload Logo 2 (.png)", type=['png'], key="logo2")
+        lc3, lc4 = st.columns(2)
+        logo2_w = lc3.number_input("Width (mm)", 20, 80, 45, 1, key="l2w")
+        logo2_h = lc4.number_input("Height (mm)", 8, 40, 20, 1, key="l2h")
+        if logo2_file:
+            st.image(logo2_file, width=160)
+        else:
+            st.caption("If no logo is uploaded, the default Agilomatrix placeholder appears.")
 
 # ── Step 2: Cover page ────────────────────────────────────────────────────────
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
@@ -1323,6 +1348,8 @@ if submitted:
         'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
+        'logo2_data': logo2_file.getvalue() if logo2_file else None,
+        'logo2_w': logo2_w, 'logo2_h': logo2_h,
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
