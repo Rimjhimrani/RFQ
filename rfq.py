@@ -458,141 +458,97 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(5)
 
     # ── NAVY SECTION TABLE ────────────────────────────────────────────────────
-    # The LAST column is "Remarks". Its first non-empty value is drawn as a
-    # single merged cell spanning the full height of all data rows on each page.
+    # Simple, reliable renderer. Every row draws all its own cells.
+    # The Remarks column shows the remark text only on row 1; all other rows
+    # show an empty cell — giving a clean "merged" visual without complex logic.
     def render_navy_section(pdf, title, df, cols, widths):
         if df is None or df.empty:
             return
 
-        total_w     = sum(widths)
-        remarks_col = cols[-1]
-        remarks_w   = widths[-1]
-        body_cols   = cols[:-1]
-        body_widths = widths[:-1]
-        body_w      = sum(body_widths)
+        total_w = sum(widths)
 
-        # Single merged remark text (first non-empty value in Remarks column)
-        merged_remark = ""
+        # Collect the single remark value (first non-empty in Remarks column)
+        remarks_col = cols[-1]
+        remark_text = ""
         for _, row in df.iterrows():
             v = _clean(row.get(remarks_col, ""))
             if v:
-                merged_remark = v
+                remark_text = v
                 break
 
-        # ── Helper: draw the blue section title bar ────────────────────────
-        def draw_title():
-            pdf.set_fill_color(26, 58, 92)
-            pdf.set_text_color(255, 255, 255)
-            pdf.set_font('Arial', 'B', 12)
-            ty = pdf.get_y()
-            pdf.rect(pdf.l_margin, ty, total_w, 10, 'F')
-            pdf.set_xy(pdf.l_margin + 3, ty + 2)
-            pdf.cell(total_w - 6, 6, f'  {title}', border=0)
-            pdf.set_text_color(0, 0, 0)
-            pdf.set_y(ty + 10)
-            pdf.ln(1)
+        # ── Draw section title bar ─────────────────────────────────────────
+        if pdf.get_y() + 35 > pdf.page_break_trigger:
+            pdf.add_page()
 
-        # ── Helper: draw the blue-filled column header row ─────────────────
-        def draw_col_headers():
+        pdf.set_fill_color(26, 58, 92)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 11)
+        ty = pdf.get_y()
+        pdf.rect(pdf.l_margin, ty, total_w, 9, 'F')
+        pdf.set_xy(pdf.l_margin + 3, ty + 1.5)
+        pdf.cell(total_w - 6, 6, f'  {title}', border=0)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_y(ty + 9)
+        pdf.ln(1)
+
+        # ── Draw column headers ────────────────────────────────────────────
+        def draw_headers():
             pdf.set_fill_color(220, 230, 241)
             pdf.set_font('Arial', 'B', 9)
             hy = pdf.get_y()
-
-            # Calculate required header height based on longest label in each col
-            hh = 10  # minimum
+            # Compute header row height: each label wraps at ~1.85mm/char (font 9)
+            hh = 10
             for i, c in enumerate(cols):
-                label = c.strip()
-                # ~1.8 mm per character at font 9
-                chars_per_line = max(1, int(widths[i] / 1.8))
-                n_lines = max(1, -(-len(label) // chars_per_line))
-                hh = max(hh, n_lines * 5 + 5)
-
+                lbl = c.strip()
+                cpl = max(1, int(widths[i] / 1.85))
+                hh  = max(hh, -(-len(lbl) // cpl) * 5 + 5)
             cx = pdf.l_margin
             for i, c in enumerate(cols):
-                label = c.strip()
                 pdf.rect(cx, hy, widths[i], hh, 'FD')
                 pdf.set_xy(cx + 1, hy + 2)
-                pdf.multi_cell(widths[i] - 2, 5, label, border=0, align='C')
+                pdf.multi_cell(widths[i] - 2, 5, c.strip(), border=0, align='C')
                 cx += widths[i]
                 pdf.set_xy(cx, hy)
             pdf.set_y(hy + hh)
-            return hh  # return actual height used
+            return hh
 
-        # ── Pre-calculate row heights (body columns only, font 9) ──────────
+        draw_headers()
+
+        # ── Draw data rows ─────────────────────────────────────────────────
         pdf.set_font('Arial', '', 9)
-        row_heights = []
-        for _, row in df.iterrows():
+
+        for row_num, (_, row) in enumerate(df.iterrows()):
+            # Build cell values: Remarks only on first data row, blank thereafter
+            vals = []
+            for c in cols:
+                if c == remarks_col:
+                    vals.append(remark_text if row_num == 0 else "")
+                else:
+                    vals.append(_clean(row.get(c, "")))
+
+            # Calculate row height from all columns
             rh = 8
-            for i, col in enumerate(body_cols):
-                val = _clean(row.get(col, ""))
-                # ~1.9 mm per char at font 9
-                cpl = max(1, int(body_widths[i] / 1.9))
-                n   = max(1, -(-len(val) // cpl))
-                rh  = max(rh, n * 5 + 3)
-            row_heights.append(rh)
+            for i, val in enumerate(vals):
+                cpl = max(1, int(widths[i] / 1.85))
+                rh  = max(rh, -(-len(val) // cpl) * 5 + 3)
 
-        # ── Ensure title + header + at least 1 row fits before starting ────
-        if pdf.get_y() + 10 + 20 + row_heights[0] > pdf.page_break_trigger:
-            pdf.add_page()
-
-        draw_title()
-        col_header_h = draw_col_headers()
-
-        # ── Draw rows, tracking page segments for the merged Remarks rect ──
-        # A "segment" is a consecutive run of rows on the same page.
-        # At the end of each segment we draw the merged Remarks rect.
-
-        page_seg_start_y = pdf.get_y()   # y where current segment's data starts
-        page_seg_h       = 0             # cumulative height of rows on current page
-        is_first_seg     = True          # first segment gets the remark text
-
-        pdf.set_font('Arial', '', 9)
-
-        for row_idx, (_, row) in enumerate(df.iterrows()):
-            rh = row_heights[row_idx]
-
-            # Check if this row needs a page break
+            # Page break if needed — redraw headers on new page
             if pdf.get_y() + rh > pdf.page_break_trigger:
-                # Close current segment: draw Remarks rect for rows so far
-                remarks_x = pdf.l_margin + body_w
-                pdf.rect(remarks_x, page_seg_start_y, remarks_w, page_seg_h)
-                if merged_remark and is_first_seg:
-                    pdf.set_font('Arial', '', 9)
-                    pdf.set_xy(remarks_x + 1, page_seg_start_y + 2)
-                    pdf.multi_cell(remarks_w - 2, 5, merged_remark, border=0, align='C')
-                    pdf.set_font('Arial', '', 9)
-
-                # New page
                 pdf.add_page()
-                col_header_h = draw_col_headers()
+                draw_headers()
+                pdf.set_font('Arial', '', 9)
 
-                # Reset segment tracking
-                page_seg_start_y = pdf.get_y()
-                page_seg_h       = 0
-                is_first_seg     = False
-
-            # Draw body cells for this row
             row_y = pdf.get_y()
             cx    = pdf.l_margin
-            for i, col in enumerate(body_cols):
-                val = _clean(row.get(col, ""))
-                pdf.rect(cx, row_y, body_widths[i], rh)
+            for i, val in enumerate(vals):
+                pdf.rect(cx, row_y, widths[i], rh)
                 pdf.set_xy(cx + 1, row_y + 1)
-                pdf.multi_cell(body_widths[i] - 2, 5, val, border=0,
+                pdf.multi_cell(widths[i] - 2, 5, val, border=0,
                                align='L' if i <= 1 else 'C')
-                cx += body_widths[i]
+                cx += widths[i]
                 pdf.set_xy(cx, row_y)
 
-            page_seg_h += rh
             pdf.set_y(row_y + rh)
-
-        # ── Close final segment: draw Remarks rect ─────────────────────────
-        remarks_x = pdf.l_margin + body_w
-        pdf.rect(remarks_x, page_seg_start_y, remarks_w, page_seg_h)
-        if merged_remark:
-            pdf.set_font('Arial', '', 9)
-            pdf.set_xy(remarks_x + 1, page_seg_start_y + 2)
-            pdf.multi_cell(remarks_w - 2, 5, merged_remark, border=0, align='C')
 
         pdf.ln(4)
 
@@ -813,6 +769,7 @@ def create_advanced_rfq_pdf(data):
     purpose_text = data.get('purpose', '')
     for para in purpose_text.split('\n'):
         if para.strip():
+            pdf.set_x(pdf.l_margin)
             pdf.multi_cell(usable_w, 6, para, 0, 'L')
         else:
             pdf.ln(3)
