@@ -189,25 +189,33 @@ def create_advanced_rfq_pdf(data):
                 return
 
             logo1_data = self._data.get('logo1_data')
-            # ── Logo 2: always read from Image.png on disk ──
             logo2_data = LOGO2_BYTES          # module-level bytes (None if file missing)
-            logo2_w    = 45
-            logo2_h    = 20
 
-            # Logo 1 — left (user-uploaded)
+            # Fixed dimensions for both logos
+            logo1_w = self._data.get('logo1_w', 35)
+            logo1_h = self._data.get('logo1_h', 18)
+            logo2_w = 45
+            logo2_h = 20
+
+            # Header band height = tallest logo + top margin (6) + bottom padding (4)
+            header_h = max(logo1_h if logo1_data else 0, logo2_h if logo2_data else 0, 10)
+            logo_y   = 6   # logos sit at y=6
+
+            # Logo 1 — left, vertically centred in band
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         tmp.write(logo1_data)
                         tmp.flush()
-                        self.image(tmp.name, x=self.l_margin, y=6,
-                                   w=self._data.get('logo1_w', 35),
-                                   h=self._data.get('logo1_h', 18))
+                        self.image(tmp.name,
+                                   x=self.l_margin,
+                                   y=logo_y + (header_h - logo1_h) / 2,
+                                   w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
                 except Exception:
                     pass
 
-            # Logo 2 — right (fixed Image.png)
+            # Logo 2 — right, vertically centred in band
             if logo2_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -215,17 +223,32 @@ def create_advanced_rfq_pdf(data):
                         tmp.flush()
                         self.image(tmp.name,
                                    x=self.w - self.r_margin - logo2_w,
-                                   y=6, w=logo2_w, h=logo2_h)
+                                   y=logo_y + (header_h - logo2_h) / 2,
+                                   w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
                 except Exception:
                     pass
 
-            # Page title centred — sits below the logos
-            header_h = max(self._data.get('logo1_h', 18), logo2_h) + 2
-            self.set_y(6)
-            self.set_font('Arial', 'B', 12)
-            self.cell(0, header_h, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            self.ln(4)
+            # Title — centred horizontally in the MIDDLE third, vertically centred in band
+            title_text = 'Request for Quotation (RFQ)'
+            self.set_font('Arial', 'B', 11)
+            # Reserve left-logo zone and right-logo zone; title fills the gap between them
+            left_end  = self.l_margin + (logo1_w + 4 if logo1_data else 0)
+            right_start = self.w - self.r_margin - (logo2_w + 4 if logo2_data else 0)
+            mid_w = right_start - left_end
+            if mid_w > 20:
+                title_h = 6
+                title_y = logo_y + (header_h - title_h) / 2
+                self.set_xy(left_end, title_y)
+                self.cell(mid_w, title_h, title_text, 0, 0, 'C')
+
+            # Move cursor below header band + a small gap
+            self.set_y(logo_y + header_h + 3)
+            # Thin separator line
+            self.set_draw_color(180, 180, 180)
+            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+            self.set_draw_color(0, 0, 0)
+            self.ln(3)
 
         def footer(self):
             self.set_y(-25)
@@ -435,20 +458,37 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(5)
 
     # ── NAVY SECTION TABLE ────────────────────────────────────────────────────
+    # The LAST column is always "Remarks".
+    # Its first non-empty value is drawn once as a single merged cell that spans
+    # the full height of all data rows; the individual row cells are left blank.
     def render_navy_section(pdf, title, df, cols, widths):
         if df is None or df.empty:
             return
         total_w = sum(widths)
+        remarks_col   = cols[-1]          # last column = Remarks
+        remarks_w     = widths[-1]
+        body_cols     = cols[:-1]
+        body_widths   = widths[:-1]
+        body_w        = sum(body_widths)
+
+        # Collect the single merged remark text (first non-empty value)
+        merged_remark = ""
+        for _, row in df.iterrows():
+            v = _clean(row.get(remarks_col, ""))
+            if v:
+                merged_remark = v
+                break
+
         if pdf.get_y() + 30 > pdf.page_break_trigger:
             pdf.add_page()
 
+        # ── Section title bar ──────────────────────────────────────────────
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
         title_x = pdf.l_margin
         title_y = pdf.get_y()
-        title_lines = max(1, -(-len(f'  {title}') // max(1, int(total_w / 3.0))))
-        title_h = title_lines * 6 + 4
+        title_h = 10
         pdf.rect(title_x, title_y, total_w, title_h, 'F')
         pdf.set_xy(title_x + 2, title_y + 2)
         pdf.multi_cell(total_w - 4, 6, f'  {title}', border=0, align='L')
@@ -456,6 +496,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(title_y + title_h)
         pdf.ln(1)
 
+        # ── Column header row ──────────────────────────────────────────────
         pdf.set_fill_color(220, 230, 241)
         pdf.set_font('Arial', 'B', 11)
         col_header_y = pdf.get_y()
@@ -475,18 +516,30 @@ def create_advanced_rfq_pdf(data):
             pdf.set_xy(cx, col_header_y)
         pdf.set_y(col_header_y + col_header_h)
 
+        # ── Pre-calculate each row height (body cols only) ─────────────────
         pdf.set_font('Arial', '', 9)
-
+        row_heights = []
         for _, row in df.iterrows():
-            row_vals = [_clean(row.get(c, "")) for c in cols]
-
             rh = 8
-            for i, val in enumerate(row_vals):
-                chars_per_line = max(1, int(widths[i] / 2.2))
+            for i, col in enumerate(body_cols):
+                val = _clean(row.get(col, ""))
+                chars_per_line = max(1, int(body_widths[i] / 2.2))
                 lines = max(1, -(-len(val) // chars_per_line))
                 rh = max(rh, lines * 5 + 3)
+            row_heights.append(rh)
 
-            if pdf.get_y() + rh > pdf.page_break_trigger:
+        total_body_h = sum(row_heights)
+        data_start_y = pdf.get_y()
+
+        # ── Draw body rows (body columns only) ────────────────────────────
+        current_y = data_start_y
+        for row_idx, (_, row) in enumerate(df.iterrows()):
+            rh = row_heights[row_idx]
+
+            if current_y + rh > pdf.page_break_trigger:
+                # Page break: draw merged remark for rows already on this page,
+                # then start a new page with column headers.
+                # (Remark cell up to page break is handled by the pre-draw below)
                 pdf.add_page()
                 pdf.set_fill_color(220, 230, 241)
                 pdf.set_font('Arial', 'B', 11)
@@ -501,19 +554,34 @@ def create_advanced_rfq_pdf(data):
                     pdf.set_xy(cx2, cy2)
                 pdf.set_y(cy2 + col_header_h)
                 pdf.set_font('Arial', '', 9)
+                # Recalculate: the remaining rows start fresh on the new page
+                data_start_y  = pdf.get_y()
+                total_body_h  = sum(row_heights[row_idx:])
+                current_y     = data_start_y
 
-            row_y = pdf.get_y()
-            cx = pdf.l_margin
-
-            for i, val in enumerate(row_vals):
-                pdf.rect(cx, row_y, widths[i], rh)
+            row_y = current_y
+            cx    = pdf.l_margin
+            for i, col in enumerate(body_cols):
+                val = _clean(row.get(col, ""))
+                pdf.rect(cx, row_y, body_widths[i], rh)
                 pdf.set_xy(cx + 1, row_y + 1)
-                pdf.multi_cell(widths[i] - 2, 5, val, border=0,
+                pdf.multi_cell(body_widths[i] - 2, 5, val, border=0,
                                align='L' if i <= 1 else 'C')
-                cx += widths[i]
+                cx += body_widths[i]
                 pdf.set_xy(cx, row_y)
 
-            pdf.set_y(row_y + rh)
+            current_y += rh
+
+        # ── Draw merged Remarks cell spanning all rows ─────────────────────
+        remarks_x = pdf.l_margin + body_w
+        pdf.rect(remarks_x, data_start_y, remarks_w, total_body_h)
+        if merged_remark:
+            # Vertically centre the text inside the merged cell
+            pdf.set_font('Arial', '', 9)
+            pdf.set_xy(remarks_x + 1, data_start_y + 2)
+            pdf.multi_cell(remarks_w - 2, 5, merged_remark, border=0, align='C')
+
+        pdf.set_y(data_start_y + total_body_h)
         pdf.ln(4)
 
     # ── LANDSCAPE STORAGE CONTAINER TABLE ─────────────────────────────────────
