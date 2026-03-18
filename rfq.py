@@ -7,6 +7,11 @@ import os
 from PIL import Image
 import io
 import copy as _copy
+import base64
+
+# ── Hardcoded Agilomatrix logo (Logo 2 — always appears top-right) ────────────
+_LOGO2_B64 = "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"
+LOGO2_BYTES = base64.b64decode(_LOGO2_B64)
 
 # --- App Configuration ---
 st.set_page_config(
@@ -184,17 +189,15 @@ def create_advanced_rfq_pdf(data):
                     os.remove(tmp.name)
                 except Exception:
                     pass
-            # Logo 2 — right, fixed 40×10 mm
-            logo2_data = self._data.get('logo2_data')
-            if logo2_data:
-                try:
-                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                        tmp.write(logo2_data)
-                        tmp.flush()
-                        self.image(tmp.name, x=self.w - self.r_margin - 40, y=6, w=40, h=10)
-                    os.remove(tmp.name)
-                except Exception:
-                    pass
+            # Logo 2 — right, fixed 40×10 mm, hardcoded Agilomatrix
+            try:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                    tmp.write(LOGO2_BYTES)
+                    tmp.flush()
+                    self.image(tmp.name, x=self.w - self.r_margin - 40, y=6, w=40, h=10)
+                os.remove(tmp.name)
+            except Exception:
+                pass
             self.set_y(6)
             self.set_font('Arial', 'B', 12)
             self.cell(0, 14, 'Request for Quotation (RFQ)', 0, 1, 'C')
@@ -221,8 +224,15 @@ def create_advanced_rfq_pdf(data):
             self.set_font('Arial', 'B', 12)
             self.set_fill_color(26, 58, 92)
             self.set_text_color(255, 255, 255)
-            self.cell(0, 9, f'  {title}', 0, 1, 'L', fill=True)
+            usable = self.w - self.l_margin - self.r_margin
+            sx = self.l_margin
+            sy = self.get_y()
+            sh = 9
+            self.rect(sx, sy, usable, sh, 'F')
+            self.set_xy(sx + 2, sy + 2)
+            self.multi_cell(usable - 4, 6, f'  {title}', border=0, align='L')
             self.set_text_color(0, 0, 0)
+            self.set_y(sy + sh)
             self.ln(3)
 
     def _clean(v):
@@ -252,9 +262,8 @@ def create_advanced_rfq_pdf(data):
         # Logo 1 — left, user-defined size
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-        # Logo 2 — right, fixed 40×10 mm
-        _write_logo(pdf, data.get('logo2_data'),
-                    pdf.w - pdf.r_margin - 40, 12, 40, 10)
+        # Logo 2 — right, hardcoded Agilomatrix, fixed 40×10 mm
+        _write_logo(pdf, LOGO2_BYTES, pdf.w - pdf.r_margin - 40, 12, 40, 10)
 
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
@@ -300,16 +309,33 @@ def create_advanced_rfq_pdf(data):
         def draw_col_headers():
             pdf.set_fill_color(*header_fill)
             pdf.set_font('Arial', 'B', 11)
-            for i, c in enumerate(["Sr.no", "Category", "Description", "UNIT", "Requirement"]):
-                pdf.cell(cw[i], 9, c, border=1, align='C', fill=True)
-            pdf.ln()
+            col_y = pdf.get_y()
+            col_h = 9
+            cx = pdf.l_margin
+            labels = ["Sr.no", "Category", "Description", "UNIT", "Requirement"]
+            for i, c in enumerate(labels):
+                lines = max(1, -(-len(c) // max(1, int(cw[i] / 2.5))))
+                col_h = max(col_h, lines * 6 + 3)
+            for i, c in enumerate(labels):
+                pdf.rect(cx, col_y, cw[i], col_h, 'FD')
+                pdf.set_xy(cx + 1, col_y + 1)
+                pdf.multi_cell(cw[i] - 2, 6, c, border=0, align='C')
+                cx += cw[i]
+                pdf.set_xy(cx, col_y)
+            pdf.set_y(col_y + col_h)
 
-        # Section header — navy, font 12
+        # Section header — navy, font 12, wraps inside box
         pdf.set_font('Arial', 'B', 12)
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(total_w, 9, '  Model Details', border=1, ln=1, align='L', fill=True)
+        hdr_x = pdf.l_margin
+        hdr_y = pdf.get_y()
+        hdr_h = 9
+        pdf.rect(hdr_x, hdr_y, total_w, hdr_h, 'F')
+        pdf.set_xy(hdr_x + 2, hdr_y + 2)
+        pdf.multi_cell(total_w - 4, 6, '  Model Details', border=0, align='L')
         pdf.set_text_color(0, 0, 0)
+        pdf.set_y(hdr_y + hdr_h)
 
         if subtitle:
             pdf.set_font('Arial', 'B', 9)
@@ -395,22 +421,44 @@ def create_advanced_rfq_pdf(data):
         if pdf.get_y() + 30 > pdf.page_break_trigger:
             pdf.add_page()
 
-        # Navy section header — font 12
+        # ── Navy section title — wraps inside box ────────────────────────────
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
-        pdf.cell(total_w, 9, f'  {title}', border=0, ln=1, align='L', fill=True)
+        title_x = pdf.l_margin
+        title_y = pdf.get_y()
+        # Measure height needed for the title text
+        title_lines = max(1, -(-len(f'  {title}') // max(1, int(total_w / 3.0))))
+        title_h = title_lines * 6 + 4
+        pdf.rect(title_x, title_y, total_w, title_h, 'F')
+        pdf.set_xy(title_x + 2, title_y + 2)
+        pdf.multi_cell(total_w - 4, 6, f'  {title}', border=0, align='L')
         pdf.set_text_color(0, 0, 0)
+        pdf.set_y(title_y + title_h)
         pdf.ln(1)
 
-        # Column headers — font 11
+        # ── Column headers — each wraps inside its own box ───────────────────
         pdf.set_fill_color(220, 230, 241)
         pdf.set_font('Arial', 'B', 11)
+        col_header_y = pdf.get_y()
+        # Calculate max height needed across all column headers
+        col_header_h = 9
         for i, c in enumerate(cols):
-            pdf.cell(widths[i], 9, c.replace('\n', ' '), border=1, align='C', fill=True)
-        pdf.ln()
+            label = c.replace('\n', ' ')
+            lines = max(1, -(-len(label) // max(1, int(widths[i] / 2.5))))
+            col_header_h = max(col_header_h, lines * 6 + 4)
 
-        # Data rows — font 9, wrapped strictly inside borders
+        cx = pdf.l_margin
+        for i, c in enumerate(cols):
+            label = c.replace('\n', ' ')
+            pdf.rect(cx, col_header_y, widths[i], col_header_h, 'FD')
+            pdf.set_xy(cx + 1, col_header_y + 1)
+            pdf.multi_cell(widths[i] - 2, 6, label, border=0, align='C')
+            cx += widths[i]
+            pdf.set_xy(cx, col_header_y)
+        pdf.set_y(col_header_y + col_header_h)
+
+        # ── Data rows ────────────────────────────────────────────────────────
         pdf.set_font('Arial', '', 9)
 
         for _, row in df.iterrows():
@@ -419,34 +467,36 @@ def create_advanced_rfq_pdf(data):
             # Calculate required row height based on tallest cell
             rh = 8
             for i, val in enumerate(row_vals):
-                # Estimate lines needed: chars / approx chars-per-line
                 chars_per_line = max(1, int(widths[i] / 2.2))
-                lines = max(1, -(-len(val) // chars_per_line))  # ceiling div
+                lines = max(1, -(-len(val) // chars_per_line))
                 rh = max(rh, lines * 5 + 3)
 
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
+                # Repeat column headers
                 pdf.set_fill_color(220, 230, 241)
                 pdf.set_font('Arial', 'B', 11)
+                cy2 = pdf.get_y()
+                cx2 = pdf.l_margin
                 for i, c in enumerate(cols):
-                    pdf.cell(widths[i], 9, c.replace('\n', ' '), border=1, align='C', fill=True)
-                pdf.ln()
+                    label = c.replace('\n', ' ')
+                    pdf.rect(cx2, cy2, widths[i], col_header_h, 'FD')
+                    pdf.set_xy(cx2 + 1, cy2 + 1)
+                    pdf.multi_cell(widths[i] - 2, 6, label, border=0, align='C')
+                    cx2 += widths[i]
+                    pdf.set_xy(cx2, cy2)
+                pdf.set_y(cy2 + col_header_h)
                 pdf.set_font('Arial', '', 9)
 
             row_y = pdf.get_y()
             cx = pdf.l_margin
 
             for i, val in enumerate(row_vals):
-                # Draw border first
                 pdf.rect(cx, row_y, widths[i], rh)
-                # Use multi_cell clipped to the column width
                 pdf.set_xy(cx + 1, row_y + 1)
-                # Save/restore position after multi_cell
-                pdf.multi_cell(widths[i] - 2, 5, val,
-                               border=0,
+                pdf.multi_cell(widths[i] - 2, 5, val, border=0,
                                align='L' if i <= 1 else 'C')
                 cx += widths[i]
-                # Always reset y to row start for next column
                 pdf.set_xy(cx, row_y)
 
             pdf.set_y(row_y + rh)
@@ -539,9 +589,19 @@ def create_advanced_rfq_pdf(data):
 
         pdf.set_fill_color(220, 230, 241)
         pdf.set_font('Arial', 'B', 11)
+        ch_y = pdf.get_y()
+        ch_h = 9
         for i, c in enumerate(cols):
-            pdf.cell(widths[i], 9, c, border=1, align='C', fill=True)
-        pdf.ln()
+            lines = max(1, -(-len(c) // max(1, int(widths[i] / 2.5))))
+            ch_h = max(ch_h, lines * 6 + 3)
+        cx = pdf.l_margin
+        for i, c in enumerate(cols):
+            pdf.rect(cx, ch_y, widths[i], ch_h, 'FD')
+            pdf.set_xy(cx + 1, ch_y + 1)
+            pdf.multi_cell(widths[i] - 2, 6, c, border=0, align='C')
+            cx += widths[i]
+            pdf.set_xy(cx, ch_y)
+        pdf.set_y(ch_y + ch_h)
         pdf.set_font('Arial', '', 9)
 
         for i, (_, row) in enumerate(df.iterrows()):
@@ -556,9 +616,15 @@ def create_advanced_rfq_pdf(data):
                 pdf.add_page()
                 pdf.set_fill_color(220, 230, 241)
                 pdf.set_font('Arial', 'B', 11)
+                cy2 = pdf.get_y()
+                cx2 = pdf.l_margin
                 for j, c in enumerate(cols):
-                    pdf.cell(widths[j], 9, c, border=1, align='C', fill=True)
-                pdf.ln()
+                    pdf.rect(cx2, cy2, widths[j], ch_h, 'FD')
+                    pdf.set_xy(cx2 + 1, cy2 + 1)
+                    pdf.multi_cell(widths[j] - 2, 6, c, border=0, align='C')
+                    cx2 += widths[j]
+                    pdf.set_xy(cx2, cy2)
+                pdf.set_y(cy2 + ch_h)
                 pdf.set_font('Arial', '', 9)
             row_y = pdf.get_y()
             cx = pdf.l_margin
@@ -821,21 +887,16 @@ st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
 # ── Step 1: Logos ─────────────────────────────────────────────────────────────
-with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
+with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
+    st.markdown("**Logo 1 — appears top-left on every page** (width/height adjustable)")
+    logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
     c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Logo 1 — Left side** (width/height adjustable)")
-        logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
-        logo1_w = st.number_input("Logo 1 Width (mm)", 5, 80, 35, 1)
-        logo1_h = st.number_input("Logo 1 Height (mm)", 5, 50, 18, 1)
-        if logo1_file:
-            st.image(logo1_file, width=120)
-    with c2:
-        st.markdown("**Logo 2 — Right side** (fixed: 40 mm wide × 10 mm tall)")
-        logo2_file = st.file_uploader("Upload Logo 2", type=['png', 'jpg', 'jpeg'], key="logo2")
-        if logo2_file:
-            st.image(logo2_file, width=120)
-        st.caption("Logo 2 dimensions are fixed at 40 × 10 mm in the PDF.")
+    logo1_w = c1.number_input("Logo 1 Width (mm)", 5, 80, 35, 1)
+    logo1_h = c2.number_input("Logo 1 Height (mm)", 5, 50, 18, 1)
+    if logo1_file:
+        st.image(logo1_file, width=150)
+    st.caption("The Agilomatrix logo is fixed on the top-right of every page automatically.")
+logo2_file = None  # Not used — Agilomatrix logo is hardcoded
 
 # ── Step 2: Cover page ────────────────────────────────────────────────────────
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
@@ -1261,9 +1322,7 @@ if submitted:
         'company_name': company_name, 'company_address': company_address,
         'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
-        'logo2_data': logo2_file.getvalue() if logo2_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
-        'logo2_w': 40, 'logo2_h': 10,
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
