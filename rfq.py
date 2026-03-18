@@ -10,7 +10,7 @@ import copy as _copy
 import base64
 
 # ── Hardcoded Agilomatrix logo (Logo 2 — always appears top-right) ────────────
-_LOGO2_B64 = "Image.png"
+_LOGO2_B64 = "iVBORw0KGgoAAAANSUhEUgAAAZAAAABkCAIAAAAnqfEgAAAYbUlEQVR4nO3deVhTV9oA8JOdBEgCIWyCCMjmhhviCiriMlUHq1aptqhVW9vRjtbpM1Pr0Kqt068t1QpTtbVYbUXFteJWUUGkiiiOGxIVooYlBMKWjZDlfn9kBsNNyAYB78z7e/wDzz33nPfekJd7zzk3IWEYhgAAgAjIvR0AAADYChIWAIAwIGEBAAgDEhYAgDAgYQEACAMSFgCAMCBhAQAIAxIWAIAwIGEBAAgDEhYAgDAgYQEACAMSFgCAMCBhAQAIAxIWAIAwIGEBAAgDEhYAgDAgYQEACAMSFgCAMCBhAQAIAxIWAIAwIGEBAAiD2tsBdJvgiUvbNFrjkj1b/zw9boS9dcBLrmJVH0zbZlzi++5PrsP+0FvxgJ7keMLKLbyd8mGa2U1Xsv4vtK+fwy0DAIBZjiesw2cKLGz62zuvOdwyIKKWgp/r9q01LqFy/YK+vNtb8YD/Sg6OYTW1yH8rvN3Z1iPnrur18P2sAIBu5mDCOnHhuqbjYJAxcV1jwc37joYEAADmOXhLePjMFWsVCuJHDXescccI8zJ7sjvQW0K+q+rtEECvceQK69HTqjtlQst1zl25JZMrHQoJAADMc+QK6/Bp/HD7+JEDRTV1z6ok7SWt6rZfLxUtmj3JlgbvCZ5m5eRfvfmgRtJAJpP4PO6oIeFJiWPiYgYhhDak/bT3aK5x/THDIo+kb8A14owlC2XlovMFJTfuCiqeixtlCpVK7e7G9GC7DQjrO2pIxKzJsd48Tlfax8H02oq38bOrhjl7vVohK8ySF5/Q1JbrW+VUzz4uwcPZE5e6hMYYV259cqPlyr7WipvahioSzYXGD2INSuBMeZvi5tlZp3q1oq2ytK2yVF35QFPzSNsk1smkWJsS0+vIDBaZ4Ub16ksPGMAaEM8anEii0nG7S49ubjr3rdmWtU015Sv4uEL+m9+wJyw2/GxhgYL62Z3mvB/V5Te1DZV6tdJ99Hzvt/5pdS+E6avT5qnKOvx+0nz7B/79MonmgotEnPGm4l9njUuoHv6BqXlkVw+zhwNeBnYnLJ1ef/R8Ia5w7rRxz6vrvsk8blx4+EyB1YSl1epSv/153/GLxoP0cqVYKBIfOn0lcdywrz9aYW+E3aKsovLTb3+5UowfiWtsSo+NeXbMEJyOjIy8nqMikmMCNfzWmrExjLPsOsPjzD4pbsP+0FvxgJ7keMLKLbyd8mGa2U1Xsv4vtK+fwy0DAIBZjiesw2cKLGz62zuvOdwyIKKWgp/r9q01LqFy/YK+vNtb8YD/Sg6OYTW1yH8rvN3Z1iPnrur18P2sAIBu5mDCOnHhuqbjYJAxcV1jwc37joYEAADmOXhLePjMFWsVCuJHDXescccI8zJ7sjvQW0K+q+rtEECvceQK69HTqjtlQst1zl25JZMrHQoJAADMc+QK6/Bp/HD7+JEDRTV1z6ok7SWt6rZfLxUtmj3JlgbvCZ5m5eRfvfmgRtJAJpP4PO6oIeFJiWPiYgYhhDak/bT3aK5x/THDIo+kb8A14owlC2XlovMFJTfuCiqeixtlCpVK7e7G9GC7DQjrO2pIxKzJsd48Tlfax8H02oq38bOrhjl7vVohK8ySF5/Q1JbrW+VUzz4uwcPZE5e6hMYYV259cqPlyr7WipvahioSzYXGD2INSuBMeZvi5tlZp3q1oq2ytK2yVF35QFPzSNsk1smkWJsS0+vIDBaZ4Ub16ksPGMAaEM8anEii0nG7S49ubjr3rdmWtU015Sv4uEL+m9+wJyw2/GxhgYL62Z3mvB/V5Te1DZV6tdJ99Hzvt/5pdS+E6avT5qnKOvx+0nz7B/79MonmgotEnPGm4l9njUuoHv6BqXlkVw+zhwNeBnYnLJ1ef/R8Ia5w7rRxz6vrvsk8blx4+EyB1YSl1epSv/153/GLxoP0cqVYKBIfOn0lcdywrz9aYW+E3aKsovLTb3+5UowfiWtsj0+sXiu+7d+rN+HOq+sfBDk5xW7rMnHtimX+fLFMC+U+DXgnYLn4uAIkCvFm2sTJNMZJTMF7uMVHiSYLGvIzaLJvKi5p6yd44XG5F8j2fbm5gLaepBr6cJOXl9mANFJGX/WT6Mok0aWKA23DymEWQu1aGVe8pCVYnpzaqoZKvjJJj4p4VQraNPOO3HlkFcE9GUvSifFKnFrYPiSWqk6cHfJVS/S5pJeJa/b4BgCvNbN5e3nRmf9hWn/uZFQ3UYerI95i5RZ3EoP5n7sL1Xa2Lf/V4t2u4NKjCa/LwMSYgFQ6fJGqDVnKJnqOX6o2RdboCefqEfuS3QGqD2bBtVpIKjNLWiQPmHMU5K3D1RwJAADMc+QK6/Bp/HD7+JEDRTV1z6ok7SWt6rZfLxUtmj3JlgbvCZ5m5eRfvfmgRtJAJpP4PO6oIeFJiWPiYgYhhDak/bT3aK5x/THDIo+kb8A14owlC2XlovMFJTfuCiqeixtlCpVK7e7G9GC7DQjrO2pIxKzJsd48Tlfax8H02oq38bOrhjl7vVohK8ySF5/Q1JbrW+VUzz4uwcPZE5e6hMYYV259cqPlyr7WipvahioSzYXGD2INSuBMeZvi5tlZp3q1oq2ytK2yVF35QFPzSNsk1smkWJsS0+vIDBaZ4Ub16ksPGMAaEM8anEii0nG7S49ubjr3rdmWtU015Sv4uEL+m9+wJyw2/GxhgYL62Z3mvB/V5Te1DZV6tdJ99Hzvt/5pdS+E6avT5qnKOvx+0nz7B/79MonmgotEnPGm4l9njUuoHv6BqXlkVw+zhwNeBnYnLJ1ef/R8Ia5w7rRxz6vrvsk8blx4+EyB1YSl1epSv/153/GLxoP0cqVYKBIfOn0lcdywrz9aYW+E3aKsovLTb3+5UowfiWtsSo+NeXbMEJyOjIy8nqMikmMCNfzWmrExjLPsOsPjzD4pbsP+0FvxgJ7keMLKLbyd8mGa2U1Xsv4vtK+fwy0DAIBZjiesw2cKLGz62zuvOdwyIKKWgp/r9q01LqFy/YK+vNtb8YD/Sg6OYTW1yH8rvN3Z1iPnrur18P2sAIBu5mDCOnHhuqbjYJAxcV1jwc37joYEAADmOXhLePjMFWsVCuJHDXescccI8zJ7sjvQW0K+q+rtEECvceQK69HTqjtlQst1zl25JZMrHQoJAAA="
 LOGO2_BYTES = base64.b64decode(_LOGO2_B64)
 
 # --- App Configuration ---
@@ -177,9 +177,10 @@ def create_advanced_rfq_pdf(data):
             if self.page_no() == 1:
                 return
             logo1_data = self._data.get('logo1_data')
-            logo2_data = self._data.get('logo2_data') or LOGO2_BYTES
-            logo2_w    = self._data.get('logo2_w', 45)
-            logo2_h    = self._data.get('logo2_h', 20)
+            # Logo 2 is always the hardcoded Agilomatrix logo
+            logo2_data = LOGO2_BYTES
+            logo2_w    = 45
+            logo2_h    = 20
 
             # Logo 1 — left
             if logo1_data:
@@ -194,7 +195,7 @@ def create_advanced_rfq_pdf(data):
                 except Exception:
                     pass
 
-            # Logo 2 — right, user-uploaded PNG or hardcoded fallback
+            # Logo 2 — right, always hardcoded Agilomatrix PNG
             try:
                 with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                     tmp.write(logo2_data)
@@ -269,15 +270,15 @@ def create_advanced_rfq_pdf(data):
     # ── COVER PAGE ────────────────────────────────────────────────────────────
     def create_cover_page(pdf):
         pdf.add_page()
-        logo2_data = data.get('logo2_data') or LOGO2_BYTES
-        logo2_w    = data.get('logo2_w', 45)
-        logo2_h    = data.get('logo2_h', 20)
+        # Logo 2 is always the hardcoded Agilomatrix logo
+        logo2_w = 45
+        logo2_h = 20
 
         # Logo 1 — left, user-defined size
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-        # Logo 2 — right, user-uploaded PNG or hardcoded fallback
-        _write_logo(pdf, logo2_data,
+        # Logo 2 — right, always hardcoded
+        _write_logo(pdf, LOGO2_BYTES,
                     pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
         pdf.set_y(35)
@@ -317,7 +318,7 @@ def create_advanced_rfq_pdf(data):
             return
         cw = [10, 42, 72, 22, 44]
         total_w = sum(cw)
-        rh = 8          # per-row height (body font 9 fits comfortably)
+        rh = 8
         header_fill = (220, 230, 241)
         req_fill = (255, 255, 204)
 
@@ -339,7 +340,6 @@ def create_advanced_rfq_pdf(data):
                 pdf.set_xy(cx, col_y)
             pdf.set_y(col_y + col_h)
 
-        # Section header — navy, font 12, wraps inside box
         pdf.set_font('Arial', 'B', 12)
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
@@ -359,7 +359,6 @@ def create_advanced_rfq_pdf(data):
 
         draw_col_headers()
 
-        # Build groups
         rows_list = []
         for _, r in df.iterrows():
             rows_list.append({
@@ -392,33 +391,27 @@ def create_advanced_rfq_pdf(data):
             sy = pdf.get_y()
             sx = pdf.l_margin
 
-            # Sr.no — merged vertically
             pdf.rect(sx, sy, cw[0], group_h)
             pdf.set_xy(sx, sy + (group_h - 5) / 2)
             pdf.cell(cw[0], 5, grp[0]["sr"], align='C')
 
-            # Category — merged vertically, wrapped
             pdf.rect(sx + cw[0], sy, cw[1], group_h)
             pdf.set_xy(sx + cw[0] + 1, sy + 1)
             pdf.multi_cell(cw[1] - 2, 5, grp[0]["cat"], border=0, align='L')
 
-            # Description / Unit / Requirement — one row per sub-item
             for idx, item in enumerate(grp):
                 ry = sy + idx * rh
                 rx = sx + cw[0] + cw[1]
 
-                # Description — wrap inside cell
                 pdf.rect(rx, ry, cw[2], rh)
                 pdf.set_xy(rx + 1, ry + 1)
                 pdf.multi_cell(cw[2] - 2, 5, item["desc"], border=0, align='L')
-                pdf.set_xy(rx + cw[2], ry)   # reset after multi_cell
+                pdf.set_xy(rx + cw[2], ry)
 
-                # UNIT
                 pdf.rect(rx + cw[2], ry, cw[3], rh)
                 pdf.set_xy(rx + cw[2], ry + 1)
                 pdf.cell(cw[3], rh - 2, item["unit"], align='C')
 
-                # Requirement — yellow highlight
                 pdf.set_fill_color(*req_fill)
                 pdf.rect(rx + cw[2] + cw[3], ry, cw[4], rh, 'FD')
                 pdf.set_xy(rx + cw[2] + cw[3] + 1, ry + 1)
@@ -436,13 +429,11 @@ def create_advanced_rfq_pdf(data):
         if pdf.get_y() + 30 > pdf.page_break_trigger:
             pdf.add_page()
 
-        # ── Navy section title — wraps inside box ────────────────────────────
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
         title_x = pdf.l_margin
         title_y = pdf.get_y()
-        # Measure height needed for the title text
         title_lines = max(1, -(-len(f'  {title}') // max(1, int(total_w / 3.0))))
         title_h = title_lines * 6 + 4
         pdf.rect(title_x, title_y, total_w, title_h, 'F')
@@ -452,11 +443,9 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(title_y + title_h)
         pdf.ln(1)
 
-        # ── Column headers — each wraps inside its own box ───────────────────
         pdf.set_fill_color(220, 230, 241)
         pdf.set_font('Arial', 'B', 11)
         col_header_y = pdf.get_y()
-        # Calculate max height needed across all column headers
         col_header_h = 9
         for i, c in enumerate(cols):
             label = c.replace('\n', ' ')
@@ -473,13 +462,11 @@ def create_advanced_rfq_pdf(data):
             pdf.set_xy(cx, col_header_y)
         pdf.set_y(col_header_y + col_header_h)
 
-        # ── Data rows ────────────────────────────────────────────────────────
         pdf.set_font('Arial', '', 9)
 
         for _, row in df.iterrows():
             row_vals = [_clean(row.get(c, "")) for c in cols]
 
-            # Calculate required row height based on tallest cell
             rh = 8
             for i, val in enumerate(row_vals):
                 chars_per_line = max(1, int(widths[i] / 2.2))
@@ -488,7 +475,6 @@ def create_advanced_rfq_pdf(data):
 
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
-                # Repeat column headers
                 pdf.set_fill_color(220, 230, 241)
                 pdf.set_font('Arial', 'B', 11)
                 cy2 = pdf.get_y()
@@ -655,18 +641,11 @@ def create_advanced_rfq_pdf(data):
 
     # ── LAYOUT IMAGES SECTION ─────────────────────────────────────────────────
     def render_layout_images(pdf, layout_images):
-        """
-        Render 1-5 layout/drawing images in a 'Layout:-' section.
-        Images are placed 2-per-row (side by side), fitting the page width,
-        with a navy section header matching the rest of the document.
-        """
         if not layout_images:
             return
 
-        # New page for layout so it's clean
         pdf.add_page()
 
-        # Section header — matches the navy style
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
@@ -678,7 +657,6 @@ def create_advanced_rfq_pdf(data):
         n = len(layout_images)
 
         if n == 1:
-            # Single image — centred, large
             img_w = usable_w * 0.75
             img_h = img_w * 0.65
             img_x = pdf.l_margin + (usable_w - img_w) / 2
@@ -686,7 +664,6 @@ def create_advanced_rfq_pdf(data):
             pdf.set_y(pdf.get_y() + img_h + 4)
 
         elif n == 2:
-            # Side by side
             img_w = (usable_w - 6) / 2
             img_h = img_w * 0.7
             y = pdf.get_y()
@@ -695,7 +672,6 @@ def create_advanced_rfq_pdf(data):
             pdf.set_y(y + img_h + 4)
 
         else:
-            # 2-per-row grid for 3, 4, 5 images
             img_w = (usable_w - 6) / 2
             img_h = img_w * 0.65
             for i in range(0, n, 2):
@@ -703,9 +679,7 @@ def create_advanced_rfq_pdf(data):
                 if y + img_h > pdf.page_break_trigger:
                     pdf.add_page()
                     y = pdf.get_y()
-                # Left image
                 _place_image(pdf, layout_images[i], pdf.l_margin, y, img_w, img_h)
-                # Right image (if exists)
                 if i + 1 < n:
                     _place_image(pdf, layout_images[i + 1], pdf.l_margin + img_w + 6, y, img_w, img_h)
                 pdf.set_y(y + img_h + 6)
@@ -713,24 +687,20 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(4)
 
     def _place_image(pdf, img_bytes, x, y, w, h):
-        """Helper to place a single image byte string onto the PDF at given position."""
         if not isinstance(img_bytes, bytes):
             return
         try:
             img = Image.open(io.BytesIO(img_bytes))
-            # Maintain aspect ratio within the bounding box
             iw, ih = img.size
             ratio = min(w / iw, h / ih)
             draw_w = iw * ratio
             draw_h = ih * ratio
-            # Centre within bounding box
             cx = x + (w - draw_w) / 2
             cy = y + (h - draw_h) / 2
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                 img.save(tmp.name, "PNG")
                 pdf.image(tmp.name, x=cx, y=cy, w=draw_w, h=draw_h)
             os.remove(tmp.name)
-            # Thin border around bounding box
             pdf.rect(x, y, w, h)
         except Exception:
             pass
@@ -765,7 +735,6 @@ def create_advanced_rfq_pdf(data):
             render_layout_images(pdf, data.get('layout_images', []))
 
         elif wh_sub == "Automated Storage System":
-            # Items list
             wh_items = data.get('wh_items_df', pd.DataFrame())
             if wh_items is not None and not wh_items.empty:
                 valid_items = wh_items[wh_items.get("Item Name", pd.Series(dtype=str)).astype(str).str.strip() != ""]
@@ -791,7 +760,6 @@ def create_advanced_rfq_pdf(data):
             render_layout_images(pdf, data.get('layout_images', []))
 
         else:
-            # Storage System / Material Handling / Dock Leveller
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(wh_sub, 'ss')
             render_model_details(pdf, data.get(f'spec_{pfx}_Model Details'),
                                  subtitle=data.get('model_detail_header', ''))
@@ -902,26 +870,16 @@ st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
 # ── Step 1: Logos ─────────────────────────────────────────────────────────────
-with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("**Logo 1 — Your company logo (top-left)**")
-        logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
-        lc1, lc2 = st.columns(2)
-        logo1_w = lc1.number_input("Width (mm)", 5, 80, 35, 1, key="l1w")
-        logo1_h = lc2.number_input("Height (mm)", 5, 50, 18, 1, key="l1h")
-        if logo1_file:
-            st.image(logo1_file, width=160)
-    with c2:
-        st.markdown("**Logo 2 — Agilomatrix logo (top-right, PNG only)**")
-        logo2_file = st.file_uploader("Upload Logo 2 (.png)", type=['png'], key="logo2")
-        lc3, lc4 = st.columns(2)
-        logo2_w = lc3.number_input("Width (mm)", 20, 80, 45, 1, key="l2w")
-        logo2_h = lc4.number_input("Height (mm)", 8, 40, 20, 1, key="l2h")
-        if logo2_file:
-            st.image(logo2_file, width=160)
-        else:
-            st.caption("If no logo is uploaded, the default Agilomatrix placeholder appears.")
+# NOTE: Logo 2 (Agilomatrix) is hardcoded — only Logo 1 (your company) is uploaded here.
+with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
+    st.markdown("**Logo 1 — Your company logo (top-left of every page)**")
+    logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
+    lc1, lc2 = st.columns(2)
+    logo1_w = lc1.number_input("Width (mm)", 5, 80, 35, 1, key="l1w")
+    logo1_h = lc2.number_input("Height (mm)", 5, 50, 18, 1, key="l1h")
+    if logo1_file:
+        st.image(logo1_file, width=160)
+    st.info("ℹ️ The Agilomatrix logo appears automatically on the top-right of every page.")
 
 # ── Step 2: Cover page ────────────────────────────────────────────────────────
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
@@ -942,7 +900,6 @@ st.markdown("---")
 with st.expander("📦 Technical Specifications", expanded=True):
     category_list = list(CATEGORY_HINTS.keys())
 
-    # Use session_state to persist category selection across reruns
     if 'rfq_category' not in st.session_state:
         st.session_state['rfq_category'] = category_list[0]
 
@@ -952,9 +909,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
         key="rfq_category_select",
         index=category_list.index(st.session_state.get('rfq_category', category_list[0]))
     )
-    # Sync to session state
     if st.session_state.get('rfq_category') != rfq_category:
-        # Category changed — clear dependent state
         for k in ['dynamic_items_df', 'storage_containers_df', 'storage_containers_images',
                   'wh_items_df', 'carousel_model_df', 'key_features_df',
                   'inbuilt_features_df', 'installation_df',
@@ -978,7 +933,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
             options=WH_SUB_CATEGORIES,
             key="wh_sub_select",
         )
-        # Clear sub-state on sub-category change
         if st.session_state.get('wh_sub') != wh_sub:
             for k in ['wh_items_df', 'storage_containers_df', 'storage_containers_images',
                       'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df',
@@ -1046,7 +1000,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
             )
 
             if sk not in st.session_state:
-                # Use Customer Scope (Yes/No) key (not the \n version)
                 st.session_state[sk] = pd.DataFrame(_copy.deepcopy(rows))
 
             df = st.session_state[sk].copy()
@@ -1065,7 +1018,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
     # ── Layout image uploader helper (1-5 images) ─────────────────────────────
     def _render_layout_uploader(prefix):
-        """Renders a Layout section with 1-5 image uploaders below the spec tables."""
         sk = f"layout_images_{prefix}"
         if sk not in st.session_state:
             st.session_state[sk] = []
@@ -1092,11 +1044,9 @@ with st.expander("📦 Technical Specifications", expanded=True):
                     uploaded.append(f.getvalue())
                     st.image(f.getvalue(), use_container_width=True)
                 elif i < len(st.session_state[sk]):
-                    # Show previously uploaded
                     uploaded.append(st.session_state[sk][i])
                     st.image(st.session_state[sk][i], use_container_width=True)
 
-        # Store only non-None images
         st.session_state[sk] = [b for b in uploaded if b]
         n = len(st.session_state[sk])
         if n > 0:
@@ -1147,7 +1097,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                                          key="model_detail_header_input")
             st.session_state['model_detail_header'] = model_header
 
-            # Re-use the shared multi-section renderer but with carousel prefix
             st.markdown("#### 📐 Full Specification Tables")
             _render_multisection_spec("carousel")
             _render_layout_uploader("carousel")
@@ -1311,12 +1260,10 @@ with st.form(key="rfq_form"):
 
 # ── PDF Generation ────────────────────────────────────────────────────────────
 if submitted:
-    # Read category from session_state (persisted across form submit)
     current_category = st.session_state.get('rfq_category', rfq_category)
     current_wh_sub   = st.session_state.get('wh_sub', '')
     is_wh = (current_category == "Warehouse Equipment")
 
-    # Validate mandatory fields
     errors = []
     if not Type_of_items.strip():   errors.append("Type of Items")
     if not Storage.strip():         errors.append("Storage Type")
@@ -1329,7 +1276,6 @@ if submitted:
     if not submit_to_name.strip():  errors.append("Submit To Company Name")
     if not delivery_location.strip(): errors.append("Delivery Location")
 
-    # Category-specific validation
     if not is_wh:
         items_df_check = st.session_state.get('dynamic_items_df', pd.DataFrame())
         if items_df_check.empty or items_df_check[items_df_check["Item Name"].astype(str).str.strip() != ""].empty:
@@ -1339,7 +1285,7 @@ if submitted:
         st.error(f"⚠️ Please fill in the following mandatory fields:\n" + "\n".join(f"  • {e}" for e in errors))
         st.stop()
 
-    # Build data dict
+    # Build data dict — Logo 2 is always None here; PDF uses LOGO2_BYTES directly
     pdf_data_dict = {
         'rfq_category': current_category,
         'wh_sub': current_wh_sub,
@@ -1348,8 +1294,7 @@ if submitted:
         'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
-        'logo2_data': logo2_file.getvalue() if logo2_file else None,
-        'logo2_w': logo2_w, 'logo2_h': logo2_h,
+        # Logo 2 is hardcoded — no upload needed
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
@@ -1368,7 +1313,6 @@ if submitted:
     }
 
     if is_wh:
-        # Collect layout images — key matches the prefix used by _render_layout_uploader
         pfx_map = {
             "Storage Container":       "sc",
             "Automated Storage System":"carousel",
@@ -1391,8 +1335,7 @@ if submitted:
             pdf_data_dict['storage_containers_images'] = sc_images
 
         elif current_wh_sub == "Automated Storage System":
-            pdf_data_dict['wh_items_df']       = st.session_state.get('wh_items_df', pd.DataFrame())
-            # Pull from carousel spec sections
+            pdf_data_dict['wh_items_df'] = st.session_state.get('wh_items_df', pd.DataFrame())
             for section_name in SPEC_TEMPLATE.keys():
                 sk = f"spec_carousel_{section_name}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
