@@ -530,6 +530,88 @@ def create_advanced_rfq_pdf(data):
             pdf.ln(rh)
         pdf.ln(5)
 
+    # ── LAYOUT IMAGES SECTION ─────────────────────────────────────────────────
+    def render_layout_images(pdf, layout_images):
+        """
+        Render 1-5 layout/drawing images in a 'Layout:-' section.
+        Images are placed 2-per-row (side by side), fitting the page width,
+        with a navy section header matching the rest of the document.
+        """
+        if not layout_images:
+            return
+
+        # New page for layout so it's clean
+        pdf.add_page()
+
+        # Section header — matches the navy style
+        pdf.set_fill_color(26, 58, 92)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(0, 10, '  Layout:-', border=0, ln=1, align='L', fill=True)
+        pdf.set_text_color(0, 0, 0)
+        pdf.ln(6)
+
+        usable_w = pdf.w - pdf.l_margin - pdf.r_margin
+        n = len(layout_images)
+
+        if n == 1:
+            # Single image — centred, large
+            img_w = usable_w * 0.75
+            img_h = img_w * 0.65
+            img_x = pdf.l_margin + (usable_w - img_w) / 2
+            _place_image(pdf, layout_images[0], img_x, pdf.get_y(), img_w, img_h)
+            pdf.set_y(pdf.get_y() + img_h + 4)
+
+        elif n == 2:
+            # Side by side
+            img_w = (usable_w - 6) / 2
+            img_h = img_w * 0.7
+            y = pdf.get_y()
+            _place_image(pdf, layout_images[0], pdf.l_margin, y, img_w, img_h)
+            _place_image(pdf, layout_images[1], pdf.l_margin + img_w + 6, y, img_w, img_h)
+            pdf.set_y(y + img_h + 4)
+
+        else:
+            # 2-per-row grid for 3, 4, 5 images
+            img_w = (usable_w - 6) / 2
+            img_h = img_w * 0.65
+            for i in range(0, n, 2):
+                y = pdf.get_y()
+                if y + img_h > pdf.page_break_trigger:
+                    pdf.add_page()
+                    y = pdf.get_y()
+                # Left image
+                _place_image(pdf, layout_images[i], pdf.l_margin, y, img_w, img_h)
+                # Right image (if exists)
+                if i + 1 < n:
+                    _place_image(pdf, layout_images[i + 1], pdf.l_margin + img_w + 6, y, img_w, img_h)
+                pdf.set_y(y + img_h + 6)
+
+        pdf.ln(4)
+
+    def _place_image(pdf, img_bytes, x, y, w, h):
+        """Helper to place a single image byte string onto the PDF at given position."""
+        if not isinstance(img_bytes, bytes):
+            return
+        try:
+            img = Image.open(io.BytesIO(img_bytes))
+            # Maintain aspect ratio within the bounding box
+            iw, ih = img.size
+            ratio = min(w / iw, h / ih)
+            draw_w = iw * ratio
+            draw_h = ih * ratio
+            # Centre within bounding box
+            cx = x + (w - draw_w) / 2
+            cy = y + (h - draw_h) / 2
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                img.save(tmp.name, "PNG")
+                pdf.image(tmp.name, x=cx, y=cy, w=draw_w, h=draw_h)
+            os.remove(tmp.name)
+            # Thin border around bounding box
+            pdf.rect(x, y, w, h)
+        except Exception:
+            pass
+
     # ── BUILD PDF ─────────────────────────────────────────────────────────────
     pdf = PDF('P', 'mm', 'A4')
     pdf._data = data
@@ -557,6 +639,7 @@ def create_advanced_rfq_pdf(data):
             sc_images = data.get('storage_containers_images', {})
             render_container_table(pdf, sc_df, sc_images)
             pdf.add_page(orientation='P')
+            render_layout_images(pdf, data.get('layout_images', []))
 
         elif wh_sub == "Automated Storage System":
             # Items list
@@ -582,6 +665,7 @@ def create_advanced_rfq_pdf(data):
             render_navy_section(pdf, "Installation Accountability", data.get('installation_df'),
                                 ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
                                 [10, 75, 28, 28, 49])
+            render_layout_images(pdf, data.get('layout_images', []))
 
         else:
             # Storage System / Material Handling / Dock Leveller
@@ -596,6 +680,7 @@ def create_advanced_rfq_pdf(data):
                                 data.get(f'spec_{pfx}_Installation Accountability'),
                                 ["Sr.no", "Category", "Vendor Scope (Yes/No)", "Customer Scope (Yes/No)", "Remarks"],
                                 [10, 75, 28, 28, 49])
+            render_layout_images(pdf, data.get('layout_images', []))
     else:
         render_generic_items(pdf, data.get('items_df', pd.DataFrame()))
 
@@ -845,6 +930,47 @@ with st.expander("📦 Technical Specifications", expanded=True):
             )
             st.session_state[sk] = edited
 
+    # ── Layout image uploader helper (1-5 images) ─────────────────────────────
+    def _render_layout_uploader(prefix):
+        """Renders a Layout section with 1-5 image uploaders below the spec tables."""
+        sk = f"layout_images_{prefix}"
+        if sk not in st.session_state:
+            st.session_state[sk] = []
+
+        st.markdown("---")
+        st.markdown(
+            "<div style='background:#1a3a5c;color:white;font-weight:bold;"
+            "padding:8px 12px;margin-bottom:8px;font-size:15px;border-radius:3px;'>"
+            "📐 Layout Images (1 to 5)</div>",
+            unsafe_allow_html=True
+        )
+        st.caption("Upload layout drawings, front/side views, or 3D renders. Min 1, Max 5. These will appear on a dedicated 'Layout:-' page in the PDF.")
+
+        uploaded = []
+        cols = st.columns(5)
+        for i in range(5):
+            with cols[i]:
+                f = st.file_uploader(
+                    f"Image {i+1}" + (" *" if i == 0 else " (optional)"),
+                    type=["png", "jpg", "jpeg"],
+                    key=f"layout_img_{prefix}_{i}"
+                )
+                if f is not None:
+                    uploaded.append(f.getvalue())
+                    st.image(f.getvalue(), use_container_width=True)
+                elif i < len(st.session_state[sk]):
+                    # Show previously uploaded
+                    uploaded.append(st.session_state[sk][i])
+                    st.image(st.session_state[sk][i], use_container_width=True)
+
+        # Store only non-None images
+        st.session_state[sk] = [b for b in uploaded if b]
+        n = len(st.session_state[sk])
+        if n > 0:
+            st.success(f"✅ {n} layout image(s) ready for PDF")
+        else:
+            st.info("Upload at least 1 layout image to include the Layout section in the PDF.")
+
     # ── Render per sub-category ───────────────────────────────────────────────
     if is_warehouse:
         if wh_sub in ("Storage System", "Material Handling", "Dock Leveller"):
@@ -852,6 +978,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             st.markdown(f"#### 📋 {wh_sub} Specification")
             st.caption("Pre-filled from standard template. Edit the **Requirement / Status / Vendor Scope** columns.")
             _render_multisection_spec(pfx)
+            _render_layout_uploader(pfx)
 
         elif wh_sub == "Automated Storage System":
             st.markdown("#### 📋 Automated Storage System")
@@ -890,6 +1017,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             # Re-use the shared multi-section renderer but with carousel prefix
             st.markdown("#### 📐 Full Specification Tables")
             _render_multisection_spec("carousel")
+            _render_layout_uploader("carousel")
 
         elif wh_sub == "Storage Container":
             st.caption("Select container type, fill dimensions, and upload a conceptual image per row.")
@@ -950,6 +1078,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             valid_count = len(edited_sc[edited_sc["Description"].astype(str).str.strip() != ""])
             if valid_count:
                 st.success(f"✅ {valid_count} container type(s) defined")
+            _render_layout_uploader("sc")
 
     else:
         # Non-warehouse generic category
@@ -1106,6 +1235,17 @@ if submitted:
     }
 
     if is_wh:
+        # Collect layout images — key matches the prefix used by _render_layout_uploader
+        pfx_map = {
+            "Storage Container":       "sc",
+            "Automated Storage System":"carousel",
+            "Storage System":          "ss",
+            "Material Handling":       "mh",
+            "Dock Leveller":           "dl",
+        }
+        layout_key = f"layout_images_{pfx_map.get(current_wh_sub, 'ss')}"
+        pdf_data_dict['layout_images'] = st.session_state.get(layout_key, [])
+
         if current_wh_sub == "Storage Container":
             sc_df = st.session_state.get('storage_containers_df', pd.DataFrame())
             sc_images = st.session_state.get('storage_containers_images', {})
@@ -1137,6 +1277,7 @@ if submitted:
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
                 pdf_data_dict[f"spec_{pfx}_{section_name}"] = st.session_state.get(sk, fallback)
     else:
+        pdf_data_dict['layout_images'] = []
         items_df = st.session_state.get('dynamic_items_df', pd.DataFrame())
         pdf_data_dict['items_df'] = items_df[items_df["Item Name"].astype(str).str.strip() != ""].reset_index(drop=True)
 
