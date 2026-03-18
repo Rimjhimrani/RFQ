@@ -769,26 +769,46 @@ def create_advanced_rfq_pdf(data):
     purpose_text = data.get('purpose', '')
 
     def _safe_text(t):
-        # Encode to latin-1, replace unmappable chars, decode back — keeps spaces intact
+        """Encode to latin-1, replacing unmappable chars."""
         return t.encode('latin-1', errors='replace').decode('latin-1')
 
+    def _fix_spacing(t):
+        """
+        Clean up text that may be missing spaces after punctuation
+        or after line-break concatenation (common with copy-paste into Streamlit).
+        """
+        import re
+        # 1. Add space after sentence punctuation not followed by a space
+        t = re.sub(r'([.,:;!?])(?=[A-Za-z])', r'\1 ', t)
+        # 2. Add space before a capital letter that immediately follows a lowercase
+        #    letter (catches CamelCase joins like "businesswith" -> still joined,
+        #    but catches "systemwithThe" -> "systemwith The")
+        t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
+        # 3. Collapse multiple spaces
+        t = re.sub(r'  +', ' ', t)
+        return t.strip()
+
     def _write_paragraph(pdf, text, line_h=6):
-        # Manual word-wrap: split into words, build lines that fit usable_w
+        """Word-wrap text using FPDF's own get_string_width for accuracy."""
+        text = _fix_spacing(text)
         words = text.split(' ')
+        max_w = usable_w - 2
         line  = ''
         for word in words:
-            test = (line + ' ' + word).strip()
-            # Estimate width: Arial 10pt ~ 2.1mm per char average
-            if len(test) * 2.1 <= usable_w - 2:
+            word = _safe_text(word)
+            if not word:
+                continue
+            test = (line + ' ' + word).strip() if line else word
+            if pdf.get_string_width(test) <= max_w:
                 line = test
             else:
                 if line:
                     pdf.set_x(pdf.l_margin)
-                    pdf.cell(usable_w, line_h, _safe_text(line), ln=1)
+                    pdf.cell(usable_w, line_h, line, ln=1)
                 line = word
         if line:
             pdf.set_x(pdf.l_margin)
-            pdf.cell(usable_w, line_h, _safe_text(line), ln=1)
+            pdf.cell(usable_w, line_h, line, ln=1)
 
     for para in purpose_text.split('\n'):
         if para.strip():
