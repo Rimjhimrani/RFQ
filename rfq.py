@@ -171,20 +171,34 @@ def create_advanced_rfq_pdf(data):
         def header(self):
             if self.page_no() == 1:
                 return
+            # Logo 1 — left
             logo1_data = self._data.get('logo1_data')
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         tmp.write(logo1_data)
                         tmp.flush()
-                        self.image(tmp.name, x=self.l_margin, y=8, w=self._data.get('logo1_w', 30), h=self._data.get('logo1_h', 15))
+                        self.image(tmp.name, x=self.l_margin, y=6,
+                                   w=self._data.get('logo1_w', 35),
+                                   h=self._data.get('logo1_h', 18))
                     os.remove(tmp.name)
                 except Exception:
                     pass
-            self.set_y(8)
-            self.set_font('Arial', 'B', 14)
-            self.cell(0, 10, 'Request for Quotation (RFQ)', 0, 1, 'C')
-            self.ln(8)
+            # Logo 2 — right, fixed 40×10 mm
+            logo2_data = self._data.get('logo2_data')
+            if logo2_data:
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        tmp.write(logo2_data)
+                        tmp.flush()
+                        self.image(tmp.name, x=self.w - self.r_margin - 40, y=6, w=40, h=10)
+                    os.remove(tmp.name)
+                except Exception:
+                    pass
+            self.set_y(6)
+            self.set_font('Arial', 'B', 12)
+            self.cell(0, 14, 'Request for Quotation (RFQ)', 0, 1, 'C')
+            self.ln(6)
 
         def footer(self):
             self.set_y(-25)
@@ -204,10 +218,10 @@ def create_advanced_rfq_pdf(data):
             self.cell(0, 10, f'Page {self.page_no()}/{{nb}}', 0, 0, 'C')
 
         def section_title(self, title):
-            self.set_font('Arial', 'B', 11)
+            self.set_font('Arial', 'B', 12)
             self.set_fill_color(26, 58, 92)
             self.set_text_color(255, 255, 255)
-            self.cell(0, 8, f'  {title}', 0, 1, 'L', fill=True)
+            self.cell(0, 9, f'  {title}', 0, 1, 'L', fill=True)
             self.set_text_color(0, 0, 0)
             self.ln(3)
 
@@ -235,12 +249,12 @@ def create_advanced_rfq_pdf(data):
     # ── COVER PAGE ────────────────────────────────────────────────────────────
     def create_cover_page(pdf):
         pdf.add_page()
-        # Logos
-        _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 15,
-                    data.get('logo1_w', 30), data.get('logo1_h', 15))
+        # Logo 1 — left, user-defined size
+        _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
+                    data.get('logo1_w', 35), data.get('logo1_h', 18))
+        # Logo 2 — right, fixed 40×10 mm
         _write_logo(pdf, data.get('logo2_data'),
-                    pdf.w - pdf.r_margin - data.get('logo2_w', 30), 15,
-                    data.get('logo2_w', 30), data.get('logo2_h', 15))
+                    pdf.w - pdf.r_margin - 40, 12, 40, 10)
 
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
@@ -279,22 +293,22 @@ def create_advanced_rfq_pdf(data):
             return
         cw = [10, 42, 72, 22, 44]
         total_w = sum(cw)
-        rh = 7
+        rh = 8          # per-row height (body font 9 fits comfortably)
         header_fill = (220, 230, 241)
         req_fill = (255, 255, 204)
 
         def draw_col_headers():
             pdf.set_fill_color(*header_fill)
-            pdf.set_font('Arial', 'B', 8)
+            pdf.set_font('Arial', 'B', 11)
             for i, c in enumerate(["Sr.no", "Category", "Description", "UNIT", "Requirement"]):
-                pdf.cell(cw[i], 8, c, border=1, align='C', fill=True)
+                pdf.cell(cw[i], 9, c, border=1, align='C', fill=True)
             pdf.ln()
 
-        # Title
-        pdf.set_font('Arial', 'B', 10)
+        # Section header — navy, font 12
+        pdf.set_font('Arial', 'B', 12)
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
-        pdf.cell(total_w, 8, '  Model Details', border=1, ln=1, align='L', fill=True)
+        pdf.cell(total_w, 9, '  Model Details', border=1, ln=1, align='L', fill=True)
         pdf.set_text_color(0, 0, 0)
 
         if subtitle:
@@ -304,7 +318,7 @@ def create_advanced_rfq_pdf(data):
 
         draw_col_headers()
 
-        # Build groups (rows sharing same Sr.no block)
+        # Build groups
         rows_list = []
         for _, r in df.iterrows():
             rows_list.append({
@@ -326,44 +340,48 @@ def create_advanced_rfq_pdf(data):
                     curr.append(item)
             groups.append(curr)
 
-        pdf.set_font('Arial', '', 8)
+        pdf.set_font('Arial', '', 9)
         for grp in groups:
             group_h = len(grp) * rh
             if pdf.get_y() + group_h > pdf.page_break_trigger:
                 pdf.add_page()
                 draw_col_headers()
-                pdf.set_font('Arial', '', 8)
+                pdf.set_font('Arial', '', 9)
 
             sy = pdf.get_y()
             sx = pdf.l_margin
 
-            # Sr.no — merged
+            # Sr.no — merged vertically
             pdf.rect(sx, sy, cw[0], group_h)
             pdf.set_xy(sx, sy + (group_h - 5) / 2)
             pdf.cell(cw[0], 5, grp[0]["sr"], align='C')
 
-            # Category — merged
+            # Category — merged vertically, wrapped
             pdf.rect(sx + cw[0], sy, cw[1], group_h)
-            pdf.set_xy(sx + cw[0] + 1, sy + max(0, (group_h - 6 * len(grp[0]["cat"].split('\n'))) / 2))
+            pdf.set_xy(sx + cw[0] + 1, sy + 1)
             pdf.multi_cell(cw[1] - 2, 5, grp[0]["cat"], border=0, align='L')
 
-            # Description / Unit / Requirement — per row
+            # Description / Unit / Requirement — one row per sub-item
             for idx, item in enumerate(grp):
                 ry = sy + idx * rh
                 rx = sx + cw[0] + cw[1]
 
+                # Description — wrap inside cell
                 pdf.rect(rx, ry, cw[2], rh)
                 pdf.set_xy(rx + 1, ry + 1)
-                pdf.cell(cw[2] - 2, rh - 2, item["desc"][:60], align='L')
+                pdf.multi_cell(cw[2] - 2, 5, item["desc"], border=0, align='L')
+                pdf.set_xy(rx + cw[2], ry)   # reset after multi_cell
 
+                # UNIT
                 pdf.rect(rx + cw[2], ry, cw[3], rh)
                 pdf.set_xy(rx + cw[2], ry + 1)
                 pdf.cell(cw[3], rh - 2, item["unit"], align='C')
 
+                # Requirement — yellow highlight
                 pdf.set_fill_color(*req_fill)
                 pdf.rect(rx + cw[2] + cw[3], ry, cw[4], rh, 'FD')
-                pdf.set_xy(rx + cw[2] + cw[3], ry + 1)
-                pdf.cell(cw[4], rh - 2, item["req"], align='C')
+                pdf.set_xy(rx + cw[2] + cw[3] + 1, ry + 1)
+                pdf.multi_cell(cw[4] - 2, 5, item["req"], border=0, align='C')
                 pdf.set_fill_color(255, 255, 255)
 
             pdf.set_y(sy + group_h)
@@ -374,43 +392,64 @@ def create_advanced_rfq_pdf(data):
         if df is None or df.empty:
             return
         total_w = sum(widths)
-        if pdf.get_y() + 25 > pdf.page_break_trigger:
+        if pdf.get_y() + 30 > pdf.page_break_trigger:
             pdf.add_page()
 
+        # Navy section header — font 12
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(total_w, 8, f'  {title}', border=0, ln=1, align='L', fill=True)
+        pdf.set_font('Arial', 'B', 12)
+        pdf.cell(total_w, 9, f'  {title}', border=0, ln=1, align='L', fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.ln(1)
 
-        # Column headers
+        # Column headers — font 11
         pdf.set_fill_color(220, 230, 241)
-        pdf.set_font('Arial', 'B', 8)
+        pdf.set_font('Arial', 'B', 11)
         for i, c in enumerate(cols):
-            pdf.cell(widths[i], 8, c.replace('\n', ' '), border=1, align='C', fill=True)
+            pdf.cell(widths[i], 9, c.replace('\n', ' '), border=1, align='C', fill=True)
         pdf.ln()
-        pdf.set_font('Arial', '', 8)
+
+        # Data rows — font 9, wrapped strictly inside borders
+        pdf.set_font('Arial', '', 9)
 
         for _, row in df.iterrows():
             row_vals = [_clean(row.get(c, "")) for c in cols]
+
+            # Calculate required row height based on tallest cell
             rh = 8
+            for i, val in enumerate(row_vals):
+                # Estimate lines needed: chars / approx chars-per-line
+                chars_per_line = max(1, int(widths[i] / 2.2))
+                lines = max(1, -(-len(val) // chars_per_line))  # ceiling div
+                rh = max(rh, lines * 5 + 3)
+
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
                 pdf.set_fill_color(220, 230, 241)
-                pdf.set_font('Arial', 'B', 8)
+                pdf.set_font('Arial', 'B', 11)
                 for i, c in enumerate(cols):
-                    pdf.cell(widths[i], 8, c.replace('\n', ' '), border=1, align='C', fill=True)
+                    pdf.cell(widths[i], 9, c.replace('\n', ' '), border=1, align='C', fill=True)
                 pdf.ln()
-                pdf.set_font('Arial', '', 8)
+                pdf.set_font('Arial', '', 9)
 
+            row_y = pdf.get_y()
             cx = pdf.l_margin
+
             for i, val in enumerate(row_vals):
-                pdf.rect(cx, pdf.get_y(), widths[i], rh)
-                pdf.set_xy(cx + 1, pdf.get_y())
-                pdf.cell(widths[i] - 2, rh, val[:80], align='L' if i <= 1 else 'C')
+                # Draw border first
+                pdf.rect(cx, row_y, widths[i], rh)
+                # Use multi_cell clipped to the column width
+                pdf.set_xy(cx + 1, row_y + 1)
+                # Save/restore position after multi_cell
+                pdf.multi_cell(widths[i] - 2, 5, val,
+                               border=0,
+                               align='L' if i <= 1 else 'C')
                 cx += widths[i]
-            pdf.ln(rh)
+                # Always reset y to row start for next column
+                pdf.set_xy(cx, row_y)
+
+            pdf.set_y(row_y + rh)
         pdf.ln(4)
 
     # ── LANDSCAPE STORAGE CONTAINER TABLE ─────────────────────────────────────
@@ -499,9 +538,9 @@ def create_advanced_rfq_pdf(data):
         total_w = sum(widths)
 
         pdf.set_fill_color(220, 230, 241)
-        pdf.set_font('Arial', 'B', 9)
+        pdf.set_font('Arial', 'B', 11)
         for i, c in enumerate(cols):
-            pdf.cell(widths[i], 8, c, border=1, align='C', fill=True)
+            pdf.cell(widths[i], 9, c, border=1, align='C', fill=True)
         pdf.ln()
         pdf.set_font('Arial', '', 9)
 
@@ -516,18 +555,21 @@ def create_advanced_rfq_pdf(data):
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
                 pdf.set_fill_color(220, 230, 241)
-                pdf.set_font('Arial', 'B', 9)
+                pdf.set_font('Arial', 'B', 11)
                 for j, c in enumerate(cols):
-                    pdf.cell(widths[j], 8, c, border=1, align='C', fill=True)
+                    pdf.cell(widths[j], 9, c, border=1, align='C', fill=True)
                 pdf.ln()
                 pdf.set_font('Arial', '', 9)
+            row_y = pdf.get_y()
             cx = pdf.l_margin
             for j, val in enumerate(vals):
-                pdf.rect(cx, pdf.get_y(), widths[j], rh)
-                pdf.set_xy(cx + 1, pdf.get_y())
-                pdf.cell(widths[j] - 2, rh, val[:60], align='L' if j <= 2 else 'C')
+                pdf.rect(cx, row_y, widths[j], rh)
+                pdf.set_xy(cx + 1, row_y + 1)
+                pdf.multi_cell(widths[j] - 2, 5, val, border=0,
+                               align='L' if j <= 2 else 'C')
                 cx += widths[j]
-            pdf.ln(rh)
+                pdf.set_xy(cx, row_y)
+            pdf.set_y(row_y + rh)
         pdf.ln(5)
 
     # ── LAYOUT IMAGES SECTION ─────────────────────────────────────────────────
@@ -699,10 +741,10 @@ def create_advanced_rfq_pdf(data):
         ("Installation Deadline",            data.get('date_install')),
     ]
     pdf.set_fill_color(220, 230, 241)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(90, 8, 'Milestone', 1, 0, 'C', fill=True)
-    pdf.cell(100, 8, 'Date', 1, 1, 'C', fill=True)
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(90, 9, 'Milestone', 1, 0, 'C', fill=True)
+    pdf.cell(100, 9, 'Date', 1, 1, 'C', fill=True)
+    pdf.set_font('Arial', '', 11)
     for m, d in milestones:
         date_str = d.strftime('%B %d, %Y') if d else 'TBD'
         pdf.cell(90, 8, m, 1, 0, 'L')
@@ -713,18 +755,18 @@ def create_advanced_rfq_pdf(data):
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('SINGLE POINT OF CONTACT')
-    pdf.set_font('Arial', 'B', 10)
+    pdf.set_font('Arial', 'B', 11)
     pdf.cell(0, 6, 'Primary Contact:', 0, 1)
-    pdf.set_font('Arial', '', 10)
-    pdf.cell(0, 6, f"Name: {data.get('spoc1_name', '')}   |   Designation: {data.get('spoc1_designation', '')}", 0, 1)
-    pdf.cell(0, 6, f"Phone: {data.get('spoc1_phone', '')}   |   Email: {data.get('spoc1_email', '')}", 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.cell(0, 7, f"Name: {data.get('spoc1_name', '')}   |   Designation: {data.get('spoc1_designation', '')}", 0, 1)
+    pdf.cell(0, 7, f"Phone: {data.get('spoc1_phone', '')}   |   Email: {data.get('spoc1_email', '')}", 0, 1)
     if data.get('spoc2_name'):
         pdf.ln(3)
-        pdf.set_font('Arial', 'B', 10)
+        pdf.set_font('Arial', 'B', 11)
         pdf.cell(0, 6, 'Secondary Contact:', 0, 1)
-        pdf.set_font('Arial', '', 10)
-        pdf.cell(0, 6, f"Name: {data.get('spoc2_name', '')}   |   Designation: {data.get('spoc2_designation', '')}", 0, 1)
-        pdf.cell(0, 6, f"Phone: {data.get('spoc2_phone', '')}   |   Email: {data.get('spoc2_email', '')}", 0, 1)
+        pdf.set_font('Arial', '', 11)
+        pdf.cell(0, 7, f"Name: {data.get('spoc2_name', '')}   |   Designation: {data.get('spoc2_designation', '')}", 0, 1)
+        pdf.cell(0, 7, f"Phone: {data.get('spoc2_phone', '')}   |   Email: {data.get('spoc2_email', '')}", 0, 1)
     pdf.ln(5)
 
     # 5. Commercials
@@ -734,11 +776,11 @@ def create_advanced_rfq_pdf(data):
     commercial_df = data.get('commercial_df', pd.DataFrame())
     if commercial_df is not None and not commercial_df.empty:
         pdf.set_fill_color(220, 230, 241)
-        pdf.set_font('Arial', 'B', 10)
-        pdf.cell(85, 8, 'Cost Component', 1, 0, 'C', fill=True)
-        pdf.cell(40, 8, 'Amount', 1, 0, 'C', fill=True)
-        pdf.cell(65, 8, 'Remarks', 1, 1, 'C', fill=True)
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(85, 9, 'Cost Component', 1, 0, 'C', fill=True)
+        pdf.cell(40, 9, 'Amount', 1, 0, 'C', fill=True)
+        pdf.cell(65, 9, 'Remarks', 1, 1, 'C', fill=True)
+        pdf.set_font('Arial', '', 11)
         for _, r in commercial_df.iterrows():
             pdf.cell(85, 8, _clean(r.get('Cost Component', '')), 1, 0, 'L')
             pdf.cell(40, 8, '', 1, 0)
@@ -749,25 +791,25 @@ def create_advanced_rfq_pdf(data):
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(0, 6, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
-        pdf.set_font('Arial', '', 9)
+        pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
     pdf.ln(3)
-    pdf.set_font('Arial', 'B', 10)
-    pdf.cell(0, 6, 'Delivery Location:', 0, 1)
-    pdf.set_font('Arial', '', 10)
-    pdf.multi_cell(0, 6, data.get('delivery_location', ''), 0, 'L')
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(0, 7, 'Delivery Location:', 0, 1)
+    pdf.set_font('Arial', '', 11)
+    pdf.multi_cell(0, 7, data.get('delivery_location', ''), 0, 'L')
 
     annexures = data.get('annexures', '').strip()
     if annexures:
         pdf.ln(5)
         pdf.section_title('ANNEXURES')
-        pdf.set_font('Arial', '', 10)
+        pdf.set_font('Arial', '', 11)
         for line in annexures.split('\n'):
             if line.strip():
-                pdf.cell(0, 6, f'  - {line.strip()}', 0, 1)
+                pdf.cell(0, 7, f'  - {line.strip()}', 0, 1)
 
     return bytes(pdf.output())
 
@@ -779,16 +821,21 @@ st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
 # ── Step 1: Logos ─────────────────────────────────────────────────────────────
-with st.expander("Step 1: Upload Company Logos & Set Dimensions (Optional)", expanded=True):
+with st.expander("Step 1: Upload Company Logos (Optional)", expanded=True):
     c1, c2 = st.columns(2)
     with c1:
-        logo1_file = st.file_uploader("Upload Company Logo 1 (Left Side)", type=['png', 'jpg', 'jpeg'], key="logo1")
-        logo1_w = st.number_input("Logo 1 Width (mm)", 5, 80, 30, 1)
-        logo1_h = st.number_input("Logo 1 Height (mm)", 5, 50, 15, 1)
+        st.markdown("**Logo 1 — Left side** (width/height adjustable)")
+        logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
+        logo1_w = st.number_input("Logo 1 Width (mm)", 5, 80, 35, 1)
+        logo1_h = st.number_input("Logo 1 Height (mm)", 5, 50, 18, 1)
+        if logo1_file:
+            st.image(logo1_file, width=120)
     with c2:
-        logo2_file = st.file_uploader("Upload Company Logo 2 (Right Side)", type=['png', 'jpg', 'jpeg'], key="logo2")
-        logo2_w = st.number_input("Logo 2 Width (mm)", 5, 80, 30, 1)
-        logo2_h = st.number_input("Logo 2 Height (mm)", 5, 50, 15, 1)
+        st.markdown("**Logo 2 — Right side** (fixed: 40 mm wide × 10 mm tall)")
+        logo2_file = st.file_uploader("Upload Logo 2", type=['png', 'jpg', 'jpeg'], key="logo2")
+        if logo2_file:
+            st.image(logo2_file, width=120)
+        st.caption("Logo 2 dimensions are fixed at 40 × 10 mm in the PDF.")
 
 # ── Step 2: Cover page ────────────────────────────────────────────────────────
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
@@ -1216,7 +1263,7 @@ if submitted:
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo2_data': logo2_file.getvalue() if logo2_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
-        'logo2_w': logo2_w, 'logo2_h': logo2_h,
+        'logo2_w': 40, 'logo2_h': 10,
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
