@@ -9,9 +9,20 @@ import io
 import copy as _copy
 import base64
 
-# ── Hardcoded Agilomatrix logo (Logo 2 — always appears top-right) ────────────
-_LOGO2_B64 = "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"
-LOGO2_BYTES = base64.b64decode(_LOGO2_B64)
+# ── Logo 2 — Agilomatrix logo loaded from fixed path "Image.png" ──────────────
+# Place "Image.png" in the same directory as this script.
+# It will appear top-right on every page automatically — no upload required.
+_LOGO2_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Image.png")
+
+def _load_logo2_bytes() -> bytes | None:
+    """Return the raw bytes of Image.png, or None if the file is missing."""
+    try:
+        with open(_LOGO2_PATH, "rb") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
+
+LOGO2_BYTES: bytes | None = _load_logo2_bytes()
 
 # --- App Configuration ---
 st.set_page_config(
@@ -176,13 +187,14 @@ def create_advanced_rfq_pdf(data):
         def header(self):
             if self.page_no() == 1:
                 return
+
             logo1_data = self._data.get('logo1_data')
-            # Logo 2 is always the hardcoded Agilomatrix logo
-            logo2_data = LOGO2_BYTES
+            # ── Logo 2: always read from Image.png on disk ──
+            logo2_data = LOGO2_BYTES          # module-level bytes (None if file missing)
             logo2_w    = 45
             logo2_h    = 20
 
-            # Logo 1 — left
+            # Logo 1 — left (user-uploaded)
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -195,17 +207,18 @@ def create_advanced_rfq_pdf(data):
                 except Exception:
                     pass
 
-            # Logo 2 — right, always hardcoded Agilomatrix PNG
-            try:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
-                    tmp.write(logo2_data)
-                    tmp.flush()
-                    self.image(tmp.name,
-                               x=self.w - self.r_margin - logo2_w,
-                               y=6, w=logo2_w, h=logo2_h)
-                os.remove(tmp.name)
-            except Exception:
-                pass
+            # Logo 2 — right (fixed Image.png)
+            if logo2_data:
+                try:
+                    with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
+                        tmp.write(logo2_data)
+                        tmp.flush()
+                        self.image(tmp.name,
+                                   x=self.w - self.r_margin - logo2_w,
+                                   y=6, w=logo2_w, h=logo2_h)
+                    os.remove(tmp.name)
+                except Exception:
+                    pass
 
             # Page title centred — sits below the logos
             header_h = max(self._data.get('logo1_h', 18), logo2_h) + 2
@@ -270,14 +283,14 @@ def create_advanced_rfq_pdf(data):
     # ── COVER PAGE ────────────────────────────────────────────────────────────
     def create_cover_page(pdf):
         pdf.add_page()
-        # Logo 2 is always the hardcoded Agilomatrix logo
         logo2_w = 45
         logo2_h = 20
 
-        # Logo 1 — left, user-defined size
+        # Logo 1 — left, user-uploaded
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-        # Logo 2 — right, always hardcoded
+
+        # Logo 2 — right, fixed Image.png
         _write_logo(pdf, LOGO2_BYTES,
                     pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
@@ -869,8 +882,7 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
-# ── Step 1: Logos ─────────────────────────────────────────────────────────────
-# NOTE: Logo 2 (Agilomatrix) is hardcoded — only Logo 1 (your company) is uploaded here.
+# ── Step 1: Logo 1 only (Logo 2 is fixed from Image.png) ──────────────────────
 with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     st.markdown("**Logo 1 — Your company logo (top-left of every page)**")
     logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
@@ -879,7 +891,15 @@ with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     logo1_h = lc2.number_input("Height (mm)", 5, 50, 18, 1, key="l1h")
     if logo1_file:
         st.image(logo1_file, width=160)
-    st.info("ℹ️ The Agilomatrix logo appears automatically on the top-right of every page.")
+
+    # Show status of Logo 2 (fixed path)
+    if LOGO2_BYTES:
+        st.success("✅ Agilomatrix logo (Image.png) loaded — appears automatically on every page (top-right).")
+    else:
+        st.warning(
+            "⚠️ Image.png not found next to app.py. "
+            "Place your Agilomatrix logo as **Image.png** in the same folder as app.py and restart."
+        )
 
 # ── Step 2: Cover page ────────────────────────────────────────────────────────
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
@@ -1285,7 +1305,6 @@ if submitted:
         st.error(f"⚠️ Please fill in the following mandatory fields:\n" + "\n".join(f"  • {e}" for e in errors))
         st.stop()
 
-    # Build data dict — Logo 2 is always None here; PDF uses LOGO2_BYTES directly
     pdf_data_dict = {
         'rfq_category': current_category,
         'wh_sub': current_wh_sub,
@@ -1294,7 +1313,7 @@ if submitted:
         'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
-        # Logo 2 is hardcoded — no upload needed
+        # Logo 2 is loaded from Image.png at module level — no dict entry needed
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
