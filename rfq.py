@@ -767,10 +767,32 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', '', 10)
     usable_w = pdf.w - pdf.l_margin - pdf.r_margin
     purpose_text = data.get('purpose', '')
+
+    def _safe_text(t):
+        # Encode to latin-1, replace unmappable chars, decode back — keeps spaces intact
+        return t.encode('latin-1', errors='replace').decode('latin-1')
+
+    def _write_paragraph(pdf, text, line_h=6):
+        # Manual word-wrap: split into words, build lines that fit usable_w
+        words = text.split(' ')
+        line  = ''
+        for word in words:
+            test = (line + ' ' + word).strip()
+            # Estimate width: Arial 10pt ~ 2.1mm per char average
+            if len(test) * 2.1 <= usable_w - 2:
+                line = test
+            else:
+                if line:
+                    pdf.set_x(pdf.l_margin)
+                    pdf.cell(usable_w, line_h, _safe_text(line), ln=1)
+                line = word
+        if line:
+            pdf.set_x(pdf.l_margin)
+            pdf.cell(usable_w, line_h, _safe_text(line), ln=1)
+
     for para in purpose_text.split('\n'):
         if para.strip():
-            pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(usable_w, 6, para, 0, 'L')
+            _write_paragraph(pdf, para.strip())
         else:
             pdf.ln(3)
     pdf.ln(5)
@@ -905,7 +927,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11)
     pdf.cell(0, 7, 'Delivery Location:', 0, 1)
     pdf.set_font('Arial', '', 11)
-    pdf.multi_cell(0, 7, data.get('delivery_location', ''), 0, 'L')
+    _write_paragraph(pdf, data.get('delivery_location', ''), line_h=7)
 
     annexures = data.get('annexures', '').strip()
     if annexures:
