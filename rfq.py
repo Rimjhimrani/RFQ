@@ -60,7 +60,7 @@ UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons"
 
 # ─── SPEC TABLE DATA ──────────────────────────────────────────────────────────
 MODEL_DETAILS_ROWS = [
-    {"Sr.no": 1,  "Category": "Dimensions of VStore",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
+    {"Sr.no": 1,  "Category": "Dimensions",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Width (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                   "UNIT": "m2",     "Requirement": ""},
@@ -388,7 +388,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 14, 'CONFIDENTIAL', 0, 1, 'L')
+        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
@@ -905,68 +905,7 @@ def create_advanced_rfq_pdf(data):
     else:
         render_generic_items(pdf, data.get('items_df', pd.DataFrame()))
 
-    # ── 3. TIMELINES ──────────────────────────────────────────────────────────
-    if pdf.get_y() + 60 > pdf.page_break_trigger:
-        pdf.add_page()
-    pdf.section_title('TIMELINES')
-    milestones = [
-        ("Date of RFQ Release",             data.get('date_release')),
-        ("Query Resolution Deadline",        data.get('date_query')),
-        ("Face to Face Meet",                data.get('date_meet')),
-        ("First Level Quotation",            data.get('date_quote')),
-        ("Negotiation & Vendor Selection",   data.get('date_selection')),
-        ("Joint Review of Quotation",        data.get('date_review')),
-        ("Delivery Deadline",                data.get('date_delivery')),
-        ("Installation Deadline",            data.get('date_install')),
-    ]
-    pdf.set_fill_color(220, 230, 241)
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(90, 9, 'Milestone', 1, 0, 'C', fill=True)
-    pdf.cell(100, 9, 'Date', 1, 1, 'C', fill=True)
-    pdf.set_font('Arial', '', 11)
-    for m, d in milestones:
-        date_str = d.strftime('%B %d, %Y') if d else 'TBD'
-        pdf.cell(90, 8, m, 1, 0, 'L')
-        pdf.cell(100, 8, date_str, 1, 1, 'L')
-    pdf.ln(5)
-
-    # ── 4. SPOC ───────────────────────────────────────────────────────────────
-    if pdf.get_y() + 40 > pdf.page_break_trigger:
-        pdf.add_page()
-    pdf.section_title('SINGLE POINT OF CONTACT')
-    pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 6, 'Primary Contact:', 0, 1)
-    pdf.set_font('Arial', '', 11)
-    pdf.cell(0, 7, f"Name: {data.get('spoc1_name', '')}   |   Designation: {data.get('spoc1_designation', '')}", 0, 1)
-    pdf.cell(0, 7, f"Phone: {data.get('spoc1_phone', '')}   |   Email: {data.get('spoc1_email', '')}", 0, 1)
-    if data.get('spoc2_name'):
-        pdf.ln(3)
-        pdf.set_font('Arial', 'B', 11)
-        pdf.cell(0, 6, 'Secondary Contact:', 0, 1)
-        pdf.set_font('Arial', '', 11)
-        pdf.cell(0, 7, f"Name: {data.get('spoc2_name', '')}   |   Designation: {data.get('spoc2_designation', '')}", 0, 1)
-        pdf.cell(0, 7, f"Phone: {data.get('spoc2_phone', '')}   |   Email: {data.get('spoc2_email', '')}", 0, 1)
-    pdf.ln(5)
-
-    # ── 5. COMMERCIALS ────────────────────────────────────────────────────────
-    if pdf.get_y() + 50 > pdf.page_break_trigger:
-        pdf.add_page()
-    pdf.section_title('COMMERCIAL REQUIREMENTS')
-    commercial_df = data.get('commercial_df', pd.DataFrame())
-    if commercial_df is not None and not commercial_df.empty:
-        pdf.set_fill_color(220, 230, 241)
-        pdf.set_font('Arial', 'B', 11)
-        pdf.cell(85, 9, 'Cost Component', 1, 0, 'C', fill=True)
-        pdf.cell(40, 9, 'Amount', 1, 0, 'C', fill=True)
-        pdf.cell(65, 9, 'Remarks', 1, 1, 'C', fill=True)
-        pdf.set_font('Arial', '', 11)
-        for _, r in commercial_df.iterrows():
-            pdf.cell(85, 8, _clean(r.get('Cost Component', '')), 1, 0, 'L')
-            pdf.cell(40, 8, '', 1, 0)
-            pdf.cell(65, 8, _clean(r.get('Remarks', '')), 1, 1, 'L')
-    pdf.ln(5)
-
-    # ── 6. SUBMISSION & DELIVERY ──────────────────────────────────────────────
+    # -- 3. QUOTATION SUBMISSION & DELIVERY
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
@@ -991,6 +930,72 @@ def create_advanced_rfq_pdf(data):
         for line in annexures.split('\n'):
             if line.strip():
                 pdf.cell(0, 7, f'  - {_safe_text(line.strip())}', 0, 1)
+    pdf.ln(5)
+
+    # -- 4. TIMELINES
+    if pdf.get_y() + 60 > pdf.page_break_trigger:
+        pdf.add_page()
+    pdf.section_title('TIMELINES')
+    milestones = [
+        ('Date of RFQ Release',             data.get('date_release')),
+        ('Query Resolution Deadline',        data.get('date_query')),
+        ('Face to Face Meet',               data.get('date_meet')),
+        ('First Level Quotation',            data.get('date_quote')),
+        ('Negotiation & Vendor Selection',   data.get('date_selection')),
+        ('Joint Review of Quotation',        data.get('date_review')),
+        ('Delivery Deadline',                data.get('date_delivery')),
+        ('Installation Deadline',            data.get('date_install')),
+    ]
+    pdf.set_fill_color(220, 230, 241)
+    pdf.set_font('Arial', 'B', 11)
+    pdf.cell(90, 9, 'Milestone', 1, 0, 'C', fill=True)
+    pdf.cell(100, 9, 'Date', 1, 1, 'C', fill=True)
+    pdf.set_font('Arial', '', 11)
+    for m, d in milestones:
+        date_str = d.strftime('%B %d, %Y') if d else 'TBD'
+        pdf.cell(90, 8, m, 1, 0, 'L')
+        pdf.cell(100, 8, date_str, 1, 1, 'L')
+    pdf.ln(5)
+
+    # -- 5. SPOC two-column, no designation
+    if pdf.get_y() + 50 > pdf.page_break_trigger:
+        pdf.add_page()
+    pdf.section_title('SINGLE POINT OF CONTACT')
+    pdf.ln(4)
+    col_w = usable_w / 2
+    lbl_w = 28
+    has_spoc2 = bool(data.get('spoc2_name', '').strip())
+
+    hy = pdf.get_y()
+    pdf.set_xy(pdf.l_margin, hy)
+    pdf.set_font('Arial', 'BU', 12)
+    pdf.cell(col_w, 8, 'Primary Contact', 0, 0, 'L')
+    if has_spoc2:
+        pdf.set_xy(pdf.l_margin + col_w, hy)
+        pdf.cell(col_w, 8, 'Secondary Contact', 0, 0, 'L')
+    pdf.ln(11)
+
+    spoc_rows = [
+        ('Name:',     'spoc1_name',  'spoc2_name'),
+        ('Phone No:', 'spoc1_phone', 'spoc2_phone'),
+        ('Email ID:', 'spoc1_email', 'spoc2_email'),
+    ]
+    for label, k1, k2 in spoc_rows:
+        ry = pdf.get_y()
+        pdf.set_xy(pdf.l_margin, ry)
+        pdf.set_font('Arial', 'B', 11)
+        pdf.cell(lbl_w, 8, label, 0, 0, 'L')
+        pdf.set_font('Arial', '', 11)
+        pdf.cell(col_w - lbl_w, 8, _safe_text(data.get(k1, '')), 0, 0, 'L')
+        if has_spoc2:
+            pdf.set_xy(pdf.l_margin + col_w, ry)
+            pdf.set_font('Arial', 'B', 11)
+            pdf.cell(lbl_w, 8, label, 0, 0, 'L')
+            pdf.set_font('Arial', '', 11)
+            pdf.cell(col_w - lbl_w, 8, _safe_text(data.get(k2, '')), 0, 0, 'L')
+        pdf.ln(9)
+    pdf.ln(5)
+
 
     # ── LAST PAGE: Vendor Response / Sign-off ─────────────────────────────────
     pdf.add_page()
