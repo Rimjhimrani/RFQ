@@ -1170,6 +1170,16 @@ with st.expander("📦 Technical Specifications", expanded=True):
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}[wh_sub]
             st.markdown(f"#### 📋 {wh_sub} Specification")
             st.caption("Pre-filled from standard template. Edit the **Requirement / Status / Vendor Scope** columns.")
+
+            # Model Details subtitle row (editable, shown under Model Details navy header in PDF)
+            model_header_pfx = st.text_input(
+                "Model Header / Subtitle (shown under Model Details in PDF)",
+                value=st.session_state.get(f'model_detail_header_{pfx}', ''),
+                placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
+                key=f"model_detail_header_input_{pfx}"
+            )
+            st.session_state[f'model_detail_header_{pfx}'] = model_header_pfx
+
             _render_multisection_spec(pfx)
             _render_layout_uploader(pfx)
 
@@ -1430,7 +1440,7 @@ if submitted:
         'submit_to_registered_office': submit_to_registered_office,
         'delivery_location': delivery_location,
         'annexures': annexures,
-        'model_detail_header': st.session_state.get('model_detail_header', ''),
+        'model_detail_header': st.session_state.get('model_detail_header', ''),  # overridden per-subtype below
     }
 
     if is_wh:
@@ -1469,6 +1479,8 @@ if submitted:
 
         else:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
+            # Use the per-subtype model header entered in the UI
+            pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
             for section_name in SPEC_TEMPLATE.keys():
                 sk = f"spec_{pfx}_{section_name}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
