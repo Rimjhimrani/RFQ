@@ -245,7 +245,7 @@ def create_advanced_rfq_pdf(data):
             self._data = data
             # Footer occupies ~25mm from bottom; use 32mm break margin so last
             # table row never overlaps the footer band.
-            self.set_auto_page_break(auto=True, margin=32)
+            self.set_auto_page_break(auto=True, margin=38)
 
         def header(self):
             if self.page_no() == 1:
@@ -306,21 +306,37 @@ def create_advanced_rfq_pdf(data):
             self.ln(3)
 
         def footer(self):
-            self.set_y(-25)
-            fn = self._data.get('footer_company_name', '')
-            fa = self._data.get('footer_company_address', '')
-            if fn or fa:
-                self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
-                self.ln(2)
-                if fn:
-                    self.set_font('Arial', 'B', 10)
-                    self.cell(0, 5, fn, 0, 1, 'C')
-                if fa:
-                    self.set_font('Arial', '', 8)
-                    self.cell(0, 4, fa, 0, 1, 'C')
-            self.set_y(-12)
-            self.set_font('Arial', 'I', 8)
-            self.cell(0, 10, f'Page {self.page_no()}/{{nb}}', 0, 0, 'C')
+            # ── Separator line ────────────────────────────────────────────
+            self.set_y(-30)
+            self.set_draw_color(180, 180, 180)
+            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+            self.set_draw_color(0, 0, 0)
+            self.ln(1)
+
+            # ── "APL-Confidential" — right-aligned, dark grey ──────────────
+            self.set_font('Arial', 'B', 9)
+            self.set_text_color(80, 80, 80)
+            self.cell(0, 5, 'APL-Confidential', 0, 1, 'R')
+            self.ln(1)
+
+            # ── Company name — bold black, centred ────────────────────────
+            fn = self._data.get('footer_company_name', 'Agilomatrix Private Ltd')
+            self.set_font('Arial', 'B', 13)
+            self.set_text_color(0, 0, 0)
+            self.cell(0, 6, fn, 0, 1, 'C')
+
+            # ── Address — grey, centred ───────────────────────────────────
+            fa = self._data.get('footer_company_address',
+                                'Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033')
+            self.set_font('Arial', '', 8)
+            self.set_text_color(120, 120, 120)
+            self.cell(0, 5, fa, 0, 1, 'C')
+
+            # ── Page number — grey, centred ───────────────────────────────
+            self.set_font('Arial', '', 8)
+            self.set_text_color(120, 120, 120)
+            self.cell(0, 5, f'Page {self.page_no()}/{{nb}}', 0, 0, 'C')
+            self.set_text_color(0, 0, 0)
 
         def section_title(self, title):
             self.set_font('Arial', 'B', 12)
