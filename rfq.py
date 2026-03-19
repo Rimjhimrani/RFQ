@@ -184,53 +184,26 @@ def _safe_text(t):
 
 def _normalize_paragraph(text):
     """
-    Comprehensive text normalizer for PDF paragraphs.
-    Fixes missing spaces from copy-paste artifacts, word joins,
-    punctuation spacing, and camelCase boundaries.
+    Safe, minimal text normalizer for PDF paragraphs.
+    Only fixes:
+      1. Collapses tabs/carriage-returns to spaces
+      2. Adds a space after punctuation (.!?,;:) when immediately followed by a letter
+      3. Collapses multiple spaces to one
+    Does NOT insert spaces inside words — that causes FPDF justification breakage.
     """
     if not text:
         return ""
 
-    # Step 1: Replace internal newlines / tabs with a single space
-    text = re.sub(r'[ \t\r]+', ' ', text)
+    # 1. Replace tabs and carriage-returns with a space
+    text = re.sub(r'[\t\r]+', ' ', text)
 
-    # Step 2: Add space after sentence-ending punctuation if missing
-    text = re.sub(r'([.!?])(?=[A-Za-z(])', r'\1 ', text)
+    # 2. Add a single space after sentence/clause punctuation if directly followed by a letter
+    #    e.g. "hello.World" → "hello. World",  "MP.PMSPL" → "MP. PMSPL"
+    text = re.sub(r'([.!?])([A-Za-z(])', r'\1 \2', text)
+    text = re.sub(r'([,;:])([A-Za-z(])', r'\1 \2', text)
 
-    # Step 3: Add space after comma / semicolon / colon if missing
-    text = re.sub(r'([,:;])(?=[A-Za-z(])', r'\1 ', text)
-
-    # Step 4: Add space at lowercase → uppercase boundary
-    #         e.g. "systemwithThe" → "systemwith The"
-    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
-
-    # Step 5: Add space before common English words that get glued
-    #         e.g. "businesswith" → "business with"
-    glue_words = [
-        'within', 'without', 'with', 'the', 'that', 'this', 'their', 'there',
-        'those', 'through', 'throughout',
-        'to', 'and', 'or', 'nor', 'for', 'from', 'at', 'in', 'on', 'of',
-        'by', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
-        'must', 'will', 'shall', 'should', 'would', 'could', 'can',
-        'new', 'its', 'it', 'has', 'have', 'had',
-        'an', 'any', 'all', 'also', 'after', 'about',
-        'defined', 'applicable', 'ensuring', 'seeks', 'supply', 'install',
-        'design', 'manufacture', 'comply', 'including', 'install',
-        'delivery', 'timely',
-    ]
-    # Sort longest first to avoid partial replacements
-    glue_words_sorted = sorted(glue_words, key=len, reverse=True)
-    for word in glue_words_sorted:
-        # Only insert space if preceded by a lowercase letter (i.e. words are joined)
-        pattern = r'(?<=[a-z])(' + re.escape(word) + r')(?=[a-zA-Z\s,.])'
-        text = re.sub(pattern, r' \1', text, flags=re.IGNORECASE)
-
-    # Step 6: Add space around closing/opening parentheses if missing
-    text = re.sub(r'([a-zA-Z0-9])(\()', r'\1 \2', text)
-    text = re.sub(r'(\))([a-zA-Z])', r'\1 \2', text)
-
-    # Step 7: Collapse multiple spaces to one
-    text = re.sub(r'  +', ' ', text)
+    # 3. Collapse multiple spaces to one
+    text = re.sub(r' {2,}', ' ', text)
 
     return text.strip()
 
@@ -238,23 +211,26 @@ def _normalize_paragraph(text):
 def _prepare_purpose_text(raw_text):
     """
     Split raw textarea input into proper paragraphs and normalize each.
-    Returns a list of normalized paragraph strings.
+    - Splits on blank lines (true paragraph breaks)
+    - Within each paragraph, joins soft line-breaks (single newlines) into one line
+      so words at line boundaries are not concatenated without a space
+    Returns a list of clean paragraph strings ready for PDF rendering.
     """
     if not raw_text:
         return []
 
-    # Split on blank lines to identify paragraph boundaries
+    # Split on one or more blank lines → paragraph boundaries
     raw_paragraphs = re.split(r'\n\s*\n', raw_text)
 
     result = []
     for para in raw_paragraphs:
-        # Within each paragraph, join soft line-breaks into one line
+        # Join soft line-breaks: split on single \n, strip each line, rejoin with space
         lines = [line.strip() for line in para.split('\n') if line.strip()]
-        joined = ' '.join(lines)
+        joined = ' '.join(lines)          # ensures words across line-breaks get a space
         if joined:
-            normalized = _normalize_paragraph(_safe_text(joined))
-            if normalized:
-                result.append(normalized)
+            cleaned = _normalize_paragraph(_safe_text(joined))
+            if cleaned:
+                result.append(cleaned)
 
     return result
 
@@ -828,21 +804,20 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', '', 11)
     usable_w = pdf.w - pdf.l_margin - pdf.r_margin
 
-    # Use the new robust paragraph normalizer
     raw_purpose = data.get('purpose', '')
     paragraphs = _prepare_purpose_text(raw_purpose)
 
     if paragraphs:
         for para_text in paragraphs:
-            # Check for page break before writing
             if pdf.get_y() + 12 > pdf.page_break_trigger:
                 pdf.add_page()
             pdf.set_x(pdf.l_margin)
-            pdf.multi_cell(usable_w, 7, para_text, border=0, align='J')
+            # Use align='L' — avoids FPDF over-expanding spaces (which breaks words visually)
+            pdf.multi_cell(usable_w, 7, para_text, border=0, align='L')
             pdf.ln(3)
     else:
         pdf.set_x(pdf.l_margin)
-        pdf.multi_cell(usable_w, 7, _safe_text(raw_purpose), border=0, align='J')
+        pdf.multi_cell(usable_w, 7, _safe_text(raw_purpose), border=0, align='L')
 
     pdf.ln(5)
 
@@ -978,7 +953,7 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', '', 11)
     delivery_text = _normalize_paragraph(_safe_text(data.get('delivery_location', '')))
     pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(usable_w, 7, delivery_text, border=0, align='J')
+    pdf.multi_cell(usable_w, 7, delivery_text, border=0, align='L')
 
     annexures = data.get('annexures', '').strip()
     if annexures:
