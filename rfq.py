@@ -153,10 +153,11 @@ ITEM_TABLE_HEADERS = [
     "Base Type", "Colour", "Weight Kg", "Load Capacity", "LID", "Qty",
     "Conceptual Image"
 ]
+# Widths sum to 190mm — fits portrait A4 (210 - 10 margin each side)
 ITEM_TABLE_COL_WIDTHS = [
-    12, 45, 20, 20, 20,
-    22, 20, 22, 25, 18, 14,
-    30
+    8, 34, 14, 14, 14,
+    15, 14, 15, 18, 12, 9,
+    23
 ]
 
 def _empty_container_row(sr=1):
@@ -611,8 +612,8 @@ def create_advanced_rfq_pdf(data):
         headers = ITEM_TABLE_HEADERS
         cw = ITEM_TABLE_COL_WIDTHS
         hh = 10
-        rh = 28
-        IMG_W, IMG_H = 22, 18
+        rh = 24          # row height reduced for portrait
+        IMG_W, IMG_H = 18, 16
 
         def draw_header():
             pdf.set_font("Arial", "B", 7)
@@ -633,7 +634,7 @@ def create_advanced_rfq_pdf(data):
             for idx, row in df.iterrows():
                 ry = pdf.get_y()
                 if ry + rh > pdf.page_break_trigger:
-                    pdf.add_page(orientation='L')
+                    pdf.add_page()
                     draw_header()
                     pdf.set_font("Arial", "", 7)
                     ry = pdf.get_y()
@@ -841,11 +842,10 @@ def create_advanced_rfq_pdf(data):
 
     if rfq_category == "Warehouse Equipment":
         if wh_sub == "Storage Container":
-            pdf.add_page(orientation='L')
+            pdf.add_page()
             sc_df = data.get('storage_containers_df', pd.DataFrame())
             sc_images = data.get('storage_containers_images', {})
             render_container_table(pdf, sc_df, sc_images)
-            pdf.add_page(orientation='P')
             render_layout_images(pdf, data.get('layout_images', []))
 
         elif wh_sub == "Automated Storage System":
