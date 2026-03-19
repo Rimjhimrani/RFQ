@@ -754,7 +754,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 10, '   LAYOUT', border=0, ln=1, align='L', fill=True)
+        pdf.cell(0, 10, '  Layout:-', border=0, ln=1, align='L', fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.ln(6)
 
@@ -980,6 +980,71 @@ def create_advanced_rfq_pdf(data):
         for line in annexures.split('\n'):
             if line.strip():
                 pdf.cell(0, 7, f'  - {_safe_text(line.strip())}', 0, 1)
+
+    # ── LAST PAGE: Vendor Response / Sign-off ─────────────────────────────────
+    pdf.add_page()
+
+    page_w = pdf.w - pdf.l_margin - pdf.r_margin
+
+    # helper: labelled underline field
+    def _field_line(label, line_w=110):
+        pdf.set_font('Arial', '', 10)
+        lbl_w = pdf.get_string_width(label + '  ')
+        pdf.cell(lbl_w, 7, label, 0, 0, 'L')
+        x1 = pdf.get_x()
+        y1 = pdf.get_y() + 6.2
+        pdf.line(x1, y1, x1 + line_w, y1)
+        pdf.ln(8)
+
+    pdf.ln(4)
+
+    # Buyer Information
+    pdf.set_font('Arial', 'B', 11)
+    pdf.set_fill_color(240, 244, 248)
+    pdf.set_draw_color(180, 180, 180)
+    pdf.cell(page_w, 8, '  Buyer Information', border='B', ln=1, align='L', fill=True)
+    pdf.set_draw_color(0, 0, 0)
+    pdf.ln(4)
+    _field_line('Company Name:         ')
+    _field_line('Contact Information:  ')
+    _field_line('Date of Issue:        ')
+    _field_line('RFQ Reference Number:')
+    pdf.ln(6)
+
+    # Supplier Information
+    pdf.set_font('Arial', 'B', 11)
+    pdf.set_fill_color(240, 244, 248)
+    pdf.set_draw_color(180, 180, 180)
+    pdf.cell(page_w, 8, '  Supplier Information', border='B', ln=1, align='L', fill=True)
+    pdf.set_draw_color(0, 0, 0)
+    pdf.ln(4)
+    _field_line('Supplier Name:   ')
+    _field_line('Contact Person:  ')
+    _field_line('Contact Details: ')
+    pdf.ln(6)
+
+    # Terms and Conditions
+    pdf.set_font('Arial', 'BI', 12)
+    pdf.set_text_color(26, 58, 92)
+    pdf.cell(0, 8, 'Terms and Conditions', 0, 1, 'L')
+    pdf.set_text_color(0, 0, 0)
+    terms = [
+        'Prices quoted should include all applicable taxes and duties.',
+        'Delivery timeline must be clearly mentioned.',
+        'Payment terms to be agreed upon before order confirmation.',
+        'This RFQ does not constitute a commitment to purchase.',
+        'The company reserves the right to accept or reject any quotation.',
+    ]
+    pdf.set_font('Arial', '', 10)
+    for idx, term in enumerate(terms, 1):
+        pdf.cell(8, 6, f'{idx}.', 0, 0, 'L')
+        pdf.multi_cell(page_w - 8, 6, _safe_text(term), 0, 'L')
+    pdf.ln(10)
+
+    # Authorized Signatory
+    _field_line('Authorized Signatory: ')
+    _field_line('Designation:          ')
+    _field_line('Date:                 ')
 
     return bytes(pdf.output())
 
