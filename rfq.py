@@ -8,14 +8,12 @@ from PIL import Image
 import io
 import copy as _copy
 import base64
+import re
 
 # ── Logo 2 — Agilomatrix logo loaded from fixed path "Image.png" ──────────────
-# Place "Image.png" in the same directory as this script.
-# It will appear top-right on every page automatically — no upload required.
 _LOGO2_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Image.png")
 
 def _load_logo2_bytes() -> bytes | None:
-    """Return the raw bytes of Image.png, or None if the file is missing."""
     try:
         with open(_LOGO2_PATH, "rb") as f:
             return f.read()
@@ -143,7 +141,6 @@ INSTALLATION_ROWS = [
     {"Sr.no": 15, "Category": "PEB Cladding and Civil Floor for outside installation",   "Vendor Scope (Yes/No)": "", "Customer Scope (Yes/No)": "", "Remarks": ""},
 ]
 
-# One shared template used for ALL warehouse spec subtypes
 SPEC_TEMPLATE = {
     "Model Details": MODEL_DETAILS_ROWS,
     "Key Features": KEY_FEATURES_ROWS,
@@ -175,6 +172,94 @@ def _empty_container_row(sr=1):
 
 
 # ==============================================================
+# TEXT CLEANING UTILITIES
+# ==============================================================
+
+def _safe_text(t):
+    """Encode to latin-1, replacing unmappable chars."""
+    if not t:
+        return ""
+    return str(t).encode('latin-1', errors='replace').decode('latin-1')
+
+
+def _normalize_paragraph(text):
+    """
+    Comprehensive text normalizer for PDF paragraphs.
+    Fixes missing spaces from copy-paste artifacts, word joins,
+    punctuation spacing, and camelCase boundaries.
+    """
+    if not text:
+        return ""
+
+    # Step 1: Replace internal newlines / tabs with a single space
+    text = re.sub(r'[ \t\r]+', ' ', text)
+
+    # Step 2: Add space after sentence-ending punctuation if missing
+    text = re.sub(r'([.!?])(?=[A-Za-z(])', r'\1 ', text)
+
+    # Step 3: Add space after comma / semicolon / colon if missing
+    text = re.sub(r'([,:;])(?=[A-Za-z(])', r'\1 ', text)
+
+    # Step 4: Add space at lowercase → uppercase boundary
+    #         e.g. "systemwithThe" → "systemwith The"
+    text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)
+
+    # Step 5: Add space before common English words that get glued
+    #         e.g. "businesswith" → "business with"
+    glue_words = [
+        'within', 'without', 'with', 'the', 'that', 'this', 'their', 'there',
+        'those', 'through', 'throughout',
+        'to', 'and', 'or', 'nor', 'for', 'from', 'at', 'in', 'on', 'of',
+        'by', 'as', 'is', 'are', 'was', 'were', 'be', 'been', 'being',
+        'must', 'will', 'shall', 'should', 'would', 'could', 'can',
+        'new', 'its', 'it', 'has', 'have', 'had',
+        'an', 'any', 'all', 'also', 'after', 'about',
+        'defined', 'applicable', 'ensuring', 'seeks', 'supply', 'install',
+        'design', 'manufacture', 'comply', 'including', 'install',
+        'delivery', 'timely',
+    ]
+    # Sort longest first to avoid partial replacements
+    glue_words_sorted = sorted(glue_words, key=len, reverse=True)
+    for word in glue_words_sorted:
+        # Only insert space if preceded by a lowercase letter (i.e. words are joined)
+        pattern = r'(?<=[a-z])(' + re.escape(word) + r')(?=[a-zA-Z\s,.])'
+        text = re.sub(pattern, r' \1', text, flags=re.IGNORECASE)
+
+    # Step 6: Add space around closing/opening parentheses if missing
+    text = re.sub(r'([a-zA-Z0-9])(\()', r'\1 \2', text)
+    text = re.sub(r'(\))([a-zA-Z])', r'\1 \2', text)
+
+    # Step 7: Collapse multiple spaces to one
+    text = re.sub(r'  +', ' ', text)
+
+    return text.strip()
+
+
+def _prepare_purpose_text(raw_text):
+    """
+    Split raw textarea input into proper paragraphs and normalize each.
+    Returns a list of normalized paragraph strings.
+    """
+    if not raw_text:
+        return []
+
+    # Split on blank lines to identify paragraph boundaries
+    raw_paragraphs = re.split(r'\n\s*\n', raw_text)
+
+    result = []
+    for para in raw_paragraphs:
+        # Within each paragraph, join soft line-breaks into one line
+        lines = [line.strip() for line in para.split('\n') if line.strip()]
+        joined = ' '.join(lines)
+        if joined:
+            normalized = _normalize_paragraph(_safe_text(joined))
+            if normalized:
+                result.append(normalized)
+
+    return result
+
+
+# ==============================================================
 # PDF GENERATION
 # ==============================================================
 def create_advanced_rfq_pdf(data):
@@ -182,26 +267,23 @@ def create_advanced_rfq_pdf(data):
     class PDF(FPDF):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-            self._data = data  # store reference for header/footer
+            self._data = data
 
         def header(self):
             if self.page_no() == 1:
                 return
 
             logo1_data = self._data.get('logo1_data')
-            logo2_data = LOGO2_BYTES          # module-level bytes (None if file missing)
+            logo2_data = LOGO2_BYTES
 
-            # Fixed dimensions for both logos
             logo1_w = self._data.get('logo1_w', 35)
             logo1_h = self._data.get('logo1_h', 18)
             logo2_w = 45
             logo2_h = 20
 
-            # Header band height = tallest logo + top margin (6) + bottom padding (4)
             header_h = max(logo1_h if logo1_data else 0, logo2_h if logo2_data else 0, 10)
-            logo_y   = 6   # logos sit at y=6
+            logo_y   = 6
 
-            # Logo 1 — left, vertically centred in band
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -215,7 +297,6 @@ def create_advanced_rfq_pdf(data):
                 except Exception:
                     pass
 
-            # Logo 2 — right, vertically centred in band
             if logo2_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -229,10 +310,8 @@ def create_advanced_rfq_pdf(data):
                 except Exception:
                     pass
 
-            # Title — centred horizontally in the MIDDLE third, vertically centred in band
             title_text = 'Request for Quotation (RFQ)'
             self.set_font('Arial', 'B', 11)
-            # Reserve left-logo zone and right-logo zone; title fills the gap between them
             left_end  = self.l_margin + (logo1_w + 4 if logo1_data else 0)
             right_start = self.w - self.r_margin - (logo2_w + 4 if logo2_data else 0)
             mid_w = right_start - left_end
@@ -242,9 +321,7 @@ def create_advanced_rfq_pdf(data):
                 self.set_xy(left_end, title_y)
                 self.cell(mid_w, title_h, title_text, 0, 0, 'C')
 
-            # Move cursor below header band + a small gap
             self.set_y(logo_y + header_h + 3)
-            # Thin separator line
             self.set_draw_color(180, 180, 180)
             self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
             self.set_draw_color(0, 0, 0)
@@ -309,11 +386,8 @@ def create_advanced_rfq_pdf(data):
         logo2_w = 45
         logo2_h = 20
 
-        # Logo 1 — left, user-uploaded
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-
-        # Logo 2 — right, fixed Image.png
         _write_logo(pdf, LOGO2_BYTES,
                     pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
@@ -458,16 +532,12 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(5)
 
     # ── NAVY SECTION TABLE ────────────────────────────────────────────────────
-    # Simple, reliable renderer. Every row draws all its own cells.
-    # The Remarks column shows the remark text only on row 1; all other rows
-    # show an empty cell — giving a clean "merged" visual without complex logic.
     def render_navy_section(pdf, title, df, cols, widths):
         if df is None or df.empty:
             return
 
         total_w = sum(widths)
 
-        # Collect the single remark value (first non-empty in Remarks column)
         remarks_col = cols[-1]
         remark_text = ""
         for _, row in df.iterrows():
@@ -476,7 +546,6 @@ def create_advanced_rfq_pdf(data):
                 remark_text = v
                 break
 
-        # ── Draw section title bar ─────────────────────────────────────────
         if pdf.get_y() + 35 > pdf.page_break_trigger:
             pdf.add_page()
 
@@ -491,12 +560,10 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(ty + 9)
         pdf.ln(1)
 
-        # ── Draw column headers ────────────────────────────────────────────
         def draw_headers():
             pdf.set_fill_color(220, 230, 241)
             pdf.set_font('Arial', 'B', 9)
             hy = pdf.get_y()
-            # Compute header row height: each label wraps at ~1.85mm/char (font 9)
             hh = 10
             for i, c in enumerate(cols):
                 lbl = c.strip()
@@ -514,11 +581,9 @@ def create_advanced_rfq_pdf(data):
 
         draw_headers()
 
-        # ── Draw data rows ─────────────────────────────────────────────────
         pdf.set_font('Arial', '', 9)
 
         for row_num, (_, row) in enumerate(df.iterrows()):
-            # Build cell values: Remarks only on first data row, blank thereafter
             vals = []
             for c in cols:
                 if c == remarks_col:
@@ -526,13 +591,11 @@ def create_advanced_rfq_pdf(data):
                 else:
                     vals.append(_clean(row.get(c, "")))
 
-            # Calculate row height from all columns
             rh = 8
             for i, val in enumerate(vals):
                 cpl = max(1, int(widths[i] / 1.85))
                 rh  = max(rh, -(-len(val) // cpl) * 5 + 3)
 
-            # Page break if needed — redraw headers on new page
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
                 draw_headers()
@@ -711,7 +774,6 @@ def create_advanced_rfq_pdf(data):
             img_x = pdf.l_margin + (usable_w - img_w) / 2
             _place_image(pdf, layout_images[0], img_x, pdf.get_y(), img_w, img_h)
             pdf.set_y(pdf.get_y() + img_h + 4)
-
         elif n == 2:
             img_w = (usable_w - 6) / 2
             img_h = img_w * 0.7
@@ -719,7 +781,6 @@ def create_advanced_rfq_pdf(data):
             _place_image(pdf, layout_images[0], pdf.l_margin, y, img_w, img_h)
             _place_image(pdf, layout_images[1], pdf.l_margin + img_w + 6, y, img_w, img_h)
             pdf.set_y(y + img_h + 4)
-
         else:
             img_w = (usable_w - 6) / 2
             img_h = img_w * 0.65
@@ -762,48 +823,30 @@ def create_advanced_rfq_pdf(data):
     create_cover_page(pdf)
     pdf.add_page()
 
-    # 1. Background
+    # ── 1. REQUIREMENT BACKGROUND ─────────────────────────────────────────────
     pdf.section_title('REQUIREMENT BACKGROUND')
-    pdf.set_font('Arial', '', 10)
+    pdf.set_font('Arial', '', 11)
     usable_w = pdf.w - pdf.l_margin - pdf.r_margin
-    purpose_text = data.get('purpose', '')
 
-    def _safe_text(t):
-        """Encode to latin-1, replacing unmappable chars."""
-        return t.encode('latin-1', errors='replace').decode('latin-1')
+    # Use the new robust paragraph normalizer
+    raw_purpose = data.get('purpose', '')
+    paragraphs = _prepare_purpose_text(raw_purpose)
 
-    def _fix_spacing(t):
-        """
-        Clean up text that may be missing spaces after punctuation
-        or after line-break concatenation (common with copy-paste into Streamlit).
-        """
-        import re
-        # 1. Add space after sentence punctuation not followed by a space
-        t = re.sub(r'([.,:;!?])(?=[A-Za-z])', r'\1 ', t)
-        # 2. Add space before a capital letter that immediately follows a lowercase
-        #    letter (catches CamelCase joins like "businesswith" -> still joined,
-        #    but catches "systemwithThe" -> "systemwith The")
-        t = re.sub(r'([a-z])([A-Z])', r'\1 \2', t)
-        # 3. Collapse multiple spaces
-        t = re.sub(r'  +', ' ', t)
-        return t.strip()
-
-    def _write_paragraph(pdf, text, line_h=6):
-        """Render a paragraph fully justified using multi_cell with align J."""
-        text = _fix_spacing(_safe_text(text))
-        if not text:
-            return
-        pdf.set_x(pdf.l_margin)
-        pdf.multi_cell(usable_w, line_h, text, border=0, align='J')
-
-    for para in purpose_text.split('\n'):
-        if para.strip():
-            _write_paragraph(pdf, para.strip())
-        else:
+    if paragraphs:
+        for para_text in paragraphs:
+            # Check for page break before writing
+            if pdf.get_y() + 12 > pdf.page_break_trigger:
+                pdf.add_page()
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(usable_w, 7, para_text, border=0, align='J')
             pdf.ln(3)
+    else:
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(usable_w, 7, _safe_text(raw_purpose), border=0, align='J')
+
     pdf.ln(5)
 
-    # 2. Technical Specification
+    # ── 2. TECHNICAL SPECIFICATION ────────────────────────────────────────────
     pdf.section_title('TECHNICAL SPECIFICATION')
 
     rfq_category = data.get('rfq_category', 'General')
@@ -859,7 +902,7 @@ def create_advanced_rfq_pdf(data):
     else:
         render_generic_items(pdf, data.get('items_df', pd.DataFrame()))
 
-    # 3. Timelines
+    # ── 3. TIMELINES ──────────────────────────────────────────────────────────
     if pdf.get_y() + 60 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('TIMELINES')
@@ -884,7 +927,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(100, 8, date_str, 1, 1, 'L')
     pdf.ln(5)
 
-    # 4. SPOC
+    # ── 4. SPOC ───────────────────────────────────────────────────────────────
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('SINGLE POINT OF CONTACT')
@@ -902,7 +945,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(0, 7, f"Phone: {data.get('spoc2_phone', '')}   |   Email: {data.get('spoc2_email', '')}", 0, 1)
     pdf.ln(5)
 
-    # 5. Commercials
+    # ── 5. COMMERCIALS ────────────────────────────────────────────────────────
     if pdf.get_y() + 50 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('COMMERCIAL REQUIREMENTS')
@@ -920,7 +963,7 @@ def create_advanced_rfq_pdf(data):
             pdf.cell(65, 8, _clean(r.get('Remarks', '')), 1, 1, 'L')
     pdf.ln(5)
 
-    # 6. Submission & Delivery
+    # ── 6. SUBMISSION & DELIVERY ──────────────────────────────────────────────
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
@@ -933,7 +976,9 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11)
     pdf.cell(0, 7, 'Delivery Location:', 0, 1)
     pdf.set_font('Arial', '', 11)
-    _write_paragraph(pdf, data.get('delivery_location', ''), line_h=7)
+    delivery_text = _normalize_paragraph(_safe_text(data.get('delivery_location', '')))
+    pdf.set_x(pdf.l_margin)
+    pdf.multi_cell(usable_w, 7, delivery_text, border=0, align='J')
 
     annexures = data.get('annexures', '').strip()
     if annexures:
@@ -942,7 +987,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 11)
         for line in annexures.split('\n'):
             if line.strip():
-                pdf.cell(0, 7, f'  - {line.strip()}', 0, 1)
+                pdf.cell(0, 7, f'  - {_safe_text(line.strip())}', 0, 1)
 
     return bytes(pdf.output())
 
@@ -953,7 +998,7 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
-# ── Step 1: Logo 1 only (Logo 2 is fixed from Image.png) ──────────────────────
+# ── Step 1: Logo ───────────────────────────────────────────────────────────────
 with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     st.markdown("**Logo 1 — Your company logo (top-left of every page)**")
     logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
@@ -963,7 +1008,6 @@ with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     if logo1_file:
         st.image(logo1_file, width=160)
 
-    # Show status of Logo 2 (fixed path)
     if LOGO2_BYTES:
         st.success("✅ Agilomatrix logo (Image.png) loaded — appears automatically on every page (top-right).")
     else:
@@ -1107,7 +1151,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             )
             st.session_state[sk] = edited
 
-    # ── Layout image uploader helper (1-5 images) ─────────────────────────────
+    # ── Layout image uploader helper ──────────────────────────────────────────
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
         if sk not in st.session_state:
@@ -1120,7 +1164,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             "📐 Layout Images (1 to 5)</div>",
             unsafe_allow_html=True
         )
-        st.caption("Upload layout drawings, front/side views, or 3D renders. Min 1, Max 5. These will appear on a dedicated 'Layout:-' page in the PDF.")
+        st.caption("Upload layout drawings, front/side views, or 3D renders. Min 1, Max 5.")
 
         uploaded = []
         cols = st.columns(5)
@@ -1298,11 +1342,24 @@ with st.expander("📦 Technical Specifications", expanded=True):
         else:
             st.warning("⚠️ Add at least one item to generate the RFQ.")
 
-# ── Steps 5+ — inside the form ────────────────────────────────────────────────
+# ── Steps 5+ ──────────────────────────────────────────────────────────────────
 with st.form(key="rfq_form"):
     st.subheader("Step 5: Requirement Background")
-    purpose = st.text_area("Purpose of Requirement *", max_chars=1000, height=120,
-                           placeholder="Describe why this RFQ is being raised, the business need, and any key constraints...")
+    purpose = st.text_area(
+        "Purpose of Requirement *",
+        max_chars=2000,
+        height=160,
+        placeholder=(
+            "Paste or type your requirement background here.\n\n"
+            "Example:\n"
+            "Pinnacle Mobility Solutions Pvt. Ltd. (PMSPL) is expanding its production "
+            "capability in the component business with a new facility at Pithampur, MP. "
+            "PMSPL seeks qualified vendors to design, manufacture, supply, and install a "
+            "Carousel Racking System within the defined premises. The system must comply "
+            "with applicable safety, quality, and operational standards, ensuring timely "
+            "delivery and installation."
+        )
+    )
 
     with st.expander("📅 Timelines", expanded=True):
         today = date.today()
@@ -1373,7 +1430,7 @@ if submitted:
             errors.append("At least one Item in the Item List")
 
     if errors:
-        st.error(f"⚠️ Please fill in the following mandatory fields:\n" + "\n".join(f"  • {e}" for e in errors))
+        st.error("⚠️ Please fill in the following mandatory fields:\n" + "\n".join(f"  • {e}" for e in errors))
         st.stop()
 
     pdf_data_dict = {
@@ -1384,7 +1441,6 @@ if submitted:
         'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
-        # Logo 2 is loaded from Image.png at module level — no dict entry needed
         'purpose': purpose,
         'date_release': date_release, 'date_query': date_query,
         'date_meet': date_meet, 'date_quote': date_quote,
