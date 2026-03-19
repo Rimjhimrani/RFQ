@@ -60,7 +60,7 @@ UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons"
 
 # ─── SPEC TABLE DATA ──────────────────────────────────────────────────────────
 MODEL_DETAILS_ROWS = [
-    {"Sr.no": 1,  "Category": "Dimensions",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
+    {"Sr.no": 1,  "Category": "Dimensions of VStore",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Width (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                   "UNIT": "m2",     "Requirement": ""},
@@ -388,7 +388,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 10, 'CONFIDENTIAL', 0, 1, 'L')
+        pdf.cell(0, 14, 'CONFIDENTIAL', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
