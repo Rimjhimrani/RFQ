@@ -149,25 +149,23 @@ SPEC_TEMPLATE = {
 }
 
 ITEM_TABLE_HEADERS = [
-    "Sr.No", "Description", "Material", "Length", "Width", "Height",
-    "Inner L", "Inner W", "Inner H", "UOM", "Base Type", "Colour",
-    "Weight", "Load Cap", "Stackable", "Cover/Open", "Rate", "Qty",
-    "Conceptual Image", "Remarks"
+    "Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
+    "Base Type", "Colour", "Weight Kg", "Load Capacity", "LID", "Qty",
+    "Conceptual Image"
 ]
 ITEM_TABLE_COL_WIDTHS = [
-    12, 30, 22, 14, 14, 14, 14, 14, 14,
-    14, 18, 18, 16, 18, 18, 18, 14, 12,
-    28, 28
+    12, 45, 20, 20, 20,
+    22, 20, 22, 25, 18, 14,
+    30
 ]
 
 def _empty_container_row(sr=1):
     return {
-        "Sr.No": sr, "Description": "", "Material Type": "Plastic",
-        "Length": "", "Width": "", "Height": "",
-        "Inner Length": "", "Inner Width": "", "Inner Height": "",
-        "Unit of Measurement": "Nos", "Base Type": "Flat", "Colour": "",
-        "Weight Kg": "", "Load capacity": "", "Stackable": "Yes",
-        "BIn Cover/ Open": "Open", "Rate": "", "Qty": 1, "Remarks": ""
+        "Sr.No": sr, "Description": "",
+        "OL (mm)": "", "OW (mm)": "", "OH (mm)": "",
+        "Base Type": "Flat", "Colour": "",
+        "Weight Kg": "", "Load capacity": "", "LID": "No",
+        "Qty": 1
     }
 
 
@@ -642,14 +640,11 @@ def create_advanced_rfq_pdf(data):
 
                 vals = [
                     str(idx + 1), _clean(row.get("Description")),
-                    _clean(row.get("Material Type")), _clean(row.get("Length")),
-                    _clean(row.get("Width")), _clean(row.get("Height")),
-                    _clean(row.get("Inner Length")), _clean(row.get("Inner Width")),
-                    _clean(row.get("Inner Height")), _clean(row.get("Unit of Measurement")),
+                    _clean(row.get("OL (mm)")), _clean(row.get("OW (mm)")),
+                    _clean(row.get("OH (mm)")),
                     _clean(row.get("Base Type")), _clean(row.get("Colour")),
                     _clean(row.get("Weight Kg")), _clean(row.get("Load capacity")),
-                    _clean(row.get("Stackable")), _clean(row.get("BIn Cover/ Open")),
-                    _clean(row.get("Rate")), _clean(row.get("Qty")), "", _clean(row.get("Remarks"))
+                    _clean(row.get("LID")), _clean(row.get("Qty")), ""
                 ]
 
                 cx = pdf.l_margin
@@ -1314,7 +1309,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             _render_layout_uploader("carousel")
 
         elif wh_sub == "Storage Container":
-            st.caption("Select container type, fill dimensions, and upload a conceptual image per row.")
+            st.caption("Fill in dimensions and upload a conceptual image per row.")
             container_options = [""] + STORAGE_CONTAINERS_ITEMS
             if 'storage_containers_df' not in st.session_state:
                 st.session_state['storage_containers_df'] = pd.DataFrame([_empty_container_row(1)])
@@ -1323,39 +1318,31 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             sc_df = st.session_state['storage_containers_df'].copy()
             sc_df["Sr.No"] = range(1, len(sc_df) + 1)
-            for col in ["Description", "Material Type", "Length", "Width", "Height",
-                        "Inner Length", "Inner Width", "Inner Height", "Unit of Measurement",
-                        "Base Type", "Colour", "Weight Kg", "Load capacity",
-                        "Stackable", "BIn Cover/ Open", "Rate", "Remarks"]:
+            for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)",
+                        "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
                 if col not in sc_df.columns: sc_df[col] = ""
                 sc_df[col] = sc_df[col].astype(str).replace("nan", "")
             if "Qty" not in sc_df.columns: sc_df["Qty"] = 1
             sc_df["Qty"] = pd.to_numeric(sc_df["Qty"], errors='coerce').fillna(1).astype(int)
 
-            editor_col, img_col = st.columns([3, 1])
+            editor_col, img_col = st.columns([4, 1])
             with editor_col:
                 edited_sc = st.data_editor(
-                    sc_df, num_rows="dynamic", use_container_width=True,
+                    sc_df[["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
+                            "Base Type", "Colour", "Weight Kg", "Load capacity", "LID", "Qty"]],
+                    num_rows="dynamic", use_container_width=True,
                     column_config={
-                        "Sr.No":               st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
-                        "Description":         st.column_config.SelectboxColumn("Container Type ▼", width="medium", options=container_options),
-                        "Material Type":       st.column_config.SelectboxColumn("Material ▼", width="small", options=["", "Plastic", "Metal", "Wood", "Corrugated", "Fibre", "Other"]),
-                        "Length":              st.column_config.TextColumn("Outer L (mm)", width="small"),
-                        "Width":               st.column_config.TextColumn("Outer W (mm)", width="small"),
-                        "Height":              st.column_config.TextColumn("Outer H (mm)", width="small"),
-                        "Inner Length":        st.column_config.TextColumn("Inner L (mm)", width="small"),
-                        "Inner Width":         st.column_config.TextColumn("Inner W (mm)", width="small"),
-                        "Inner Height":        st.column_config.TextColumn("Inner H (mm)", width="small"),
-                        "Unit of Measurement": st.column_config.SelectboxColumn("UOM ▼", width="small", options=[""] + UNIT_OPTIONS),
-                        "Base Type":           st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Other"]),
-                        "Colour":              st.column_config.TextColumn("Colour", width="small"),
-                        "Weight Kg":           st.column_config.TextColumn("Weight (Kg)", width="small"),
-                        "Load capacity":       st.column_config.TextColumn("Load Cap (Kg)", width="small"),
-                        "Stackable":           st.column_config.SelectboxColumn("Stackable ▼", width="small", options=["", "Yes", "No", "N/A"]),
-                        "BIn Cover/ Open":     st.column_config.SelectboxColumn("Cover/Open ▼", width="small", options=["", "Open", "Covered", "Lid", "N/A"]),
-                        "Rate":                st.column_config.TextColumn("Rate", width="small"),
-                        "Qty":                 st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
-                        "Remarks":             st.column_config.TextColumn("Remarks", width="medium"),
+                        "Sr.No":        st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
+                        "Description":  st.column_config.SelectboxColumn("Container Type ▼", width="medium", options=container_options),
+                        "OL (mm)":      st.column_config.TextColumn("OL (mm)", width="small"),
+                        "OW (mm)":      st.column_config.TextColumn("OW (mm)", width="small"),
+                        "OH (mm)":      st.column_config.TextColumn("OH (mm)", width="small"),
+                        "Base Type":    st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Plain", "Other"]),
+                        "Colour":       st.column_config.TextColumn("Colour", width="small"),
+                        "Weight Kg":    st.column_config.TextColumn("Weight Kg", width="small"),
+                        "Load capacity":st.column_config.TextColumn("Load Cap (Kg)", width="small"),
+                        "LID":          st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
+                        "Qty":          st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
                     }, key="sc_df_editor")
             with img_col:
                 st.write("**Conceptual Images**")
