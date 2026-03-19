@@ -388,7 +388,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
+        pdf.cell(0, 10, 'CONFIDENTIAL', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
