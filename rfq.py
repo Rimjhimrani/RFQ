@@ -244,6 +244,9 @@ def create_advanced_rfq_pdf(data):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._data = data
+            # Footer occupies ~25mm from bottom; use 32mm break margin so last
+            # table row never overlaps the footer band.
+            self.set_auto_page_break(auto=True, margin=32)
 
         def header(self):
             if self.page_no() == 1:
@@ -410,18 +413,23 @@ def create_advanced_rfq_pdf(data):
 
         def draw_col_headers():
             pdf.set_fill_color(*header_fill)
-            pdf.set_font('Arial', 'B', 11)
+            pdf.set_font('Arial', 'B', 9)
             col_y = pdf.get_y()
-            col_h = 9
-            cx = pdf.l_margin
+            col_h = 14  # min height so Sr.no fits without overflow
             labels = ["Sr.no", "Category", "Description", "UNIT", "Requirement"]
             for i, c in enumerate(labels):
-                lines = max(1, -(-len(c) // max(1, int(cw[i] / 2.5))))
-                col_h = max(col_h, lines * 6 + 3)
+                cpl = max(1, int(cw[i] / 2.2))
+                lines = max(1, -(-len(c) // cpl))
+                col_h = max(col_h, lines * 5 + 6)
+            cx = pdf.l_margin  # initialise x cursor
             for i, c in enumerate(labels):
+                cpl = max(1, int(cw[i] / 2.2))
+                n_lines = max(1, -(-len(c) // cpl))
+                text_h = n_lines * 5
+                top_pad = max(1, (col_h - text_h) / 2)
                 pdf.rect(cx, col_y, cw[i], col_h, 'FD')
-                pdf.set_xy(cx + 1, col_y + 1)
-                pdf.multi_cell(cw[i] - 2, 6, c, border=0, align='C')
+                pdf.set_xy(cx + 1, col_y + top_pad)
+                pdf.multi_cell(cw[i] - 2, 5, c, border=0, align='C')
                 cx += cw[i]
                 pdf.set_xy(cx, col_y)
             pdf.set_y(col_y + col_h)
@@ -540,16 +548,25 @@ def create_advanced_rfq_pdf(data):
             pdf.set_fill_color(220, 230, 241)
             pdf.set_font('Arial', 'B', 9)
             hy = pdf.get_y()
-            hh = 10
+            # Minimum header height = 14 so two-line labels have breathing room
+            hh = 14
             for i, c in enumerate(cols):
                 lbl = c.strip()
-                cpl = max(1, int(widths[i] / 1.85))
-                hh  = max(hh, -(-len(lbl) // cpl) * 5 + 5)
+                # Use a slightly more generous chars-per-line estimate (2.2mm/char at font 9)
+                cpl = max(1, int(widths[i] / 2.2))
+                n_lines = -(-len(lbl) // cpl)
+                hh = max(hh, n_lines * 5 + 6)
             cx = pdf.l_margin
             for i, c in enumerate(cols):
+                lbl = c.strip()
                 pdf.rect(cx, hy, widths[i], hh, 'FD')
-                pdf.set_xy(cx + 1, hy + 2)
-                pdf.multi_cell(widths[i] - 2, 5, c.strip(), border=0, align='C')
+                # Vertically centre short labels inside the header cell
+                cpl = max(1, int(widths[i] / 2.2))
+                n_lines = -(-len(lbl) // cpl)
+                text_h = n_lines * 5
+                top_pad = max(1, (hh - text_h) / 2)
+                pdf.set_xy(cx + 1, hy + top_pad)
+                pdf.multi_cell(widths[i] - 2, 5, lbl, border=0, align='C')
                 cx += widths[i]
                 pdf.set_xy(cx, hy)
             pdf.set_y(hy + hh)
