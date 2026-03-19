@@ -1036,9 +1036,19 @@ def create_advanced_rfq_pdf(data):
         'The company reserves the right to accept or reject any quotation.',
     ]
     pdf.set_font('Arial', '', 10)
+    num_col_w = 8   # width reserved for the number "1."
+    txt_col_w = page_w - num_col_w
     for idx, term in enumerate(terms, 1):
-        pdf.cell(8, 6, f'{idx}.', 0, 0, 'L')
-        pdf.multi_cell(page_w - 8, 6, _safe_text(term), 0, 'L')
+        # Save Y before this row
+        row_y = pdf.get_y()
+        # Draw number in left cell (no line break)
+        pdf.set_xy(pdf.l_margin, row_y)
+        pdf.cell(num_col_w, 6, f'{idx}.', 0, 0, 'L')
+        # Draw text in right cell — multi_cell handles wrapping
+        pdf.set_xy(pdf.l_margin + num_col_w, row_y)
+        pdf.multi_cell(txt_col_w, 6, _safe_text(term), 0, 'L')
+        # multi_cell moves Y down automatically; just add a small gap
+        pdf.ln(1)
     pdf.ln(10)
 
     # Authorized Signatory
