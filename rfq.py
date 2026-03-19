@@ -616,19 +616,19 @@ def create_advanced_rfq_pdf(data):
         IMG_W, IMG_H = 18, 16
 
         def draw_header():
-            pdf.set_font("Arial", "B", 7)
+            pdf.set_font("Arial", "B", 8)
             pdf.set_fill_color(220, 230, 241)
             sy = pdf.get_y()
             cx = pdf.l_margin
             for i, h in enumerate(headers):
-                pdf.rect(cx, sy, cw[i], hh)
+                pdf.rect(cx, sy, cw[i], hh, 'FD')
                 pdf.set_xy(cx, sy + 1)
                 pdf.multi_cell(cw[i], 3, h, align="C")
                 cx += cw[i]
             pdf.set_y(sy + hh)
 
         draw_header()
-        pdf.set_font("Arial", "", 7)
+        pdf.set_font("Arial", "", 8)
 
         if df is not None and not df.empty:
             for idx, row in df.iterrows():
@@ -667,8 +667,9 @@ def create_advanced_rfq_pdf(data):
                             except Exception:
                                 pass
                     else:
-                        pdf.set_xy(cx, ry + 8)
-                        pdf.multi_cell(cw[i], 4, val, align="C")
+                        # Vertically centre text in row
+                        pdf.set_xy(cx + 1, ry + (rh - 5) / 2)
+                        pdf.multi_cell(cw[i] - 2, 5, val, align="C")
                     cx += cw[i]
                 pdf.set_y(ry + rh)
         else:
@@ -842,7 +843,6 @@ def create_advanced_rfq_pdf(data):
 
     if rfq_category == "Warehouse Equipment":
         if wh_sub == "Storage Container":
-            pdf.add_page()
             sc_df = data.get('storage_containers_df', pd.DataFrame())
             sc_images = data.get('storage_containers_images', {})
             render_container_table(pdf, sc_df, sc_images)
