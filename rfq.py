@@ -912,7 +912,7 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
     pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.cell(0, 7, f"Quotation to be Submit To: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
@@ -1445,7 +1445,7 @@ with st.form(key="rfq_form"):
         spoc2_email       = s2.text_input("Email ID",    key="s2e")
 
     with st.expander("📦 Submission, Delivery & Annexures", expanded=True):
-        submit_to_name = st.text_input("Submit To (Company Name) *", "Agilomatrix Pvt. Ltd.")
+        submit_to_name = st.text_input("Quotation to be Submit To (Company Name) *", "Agilomatrix Pvt. Ltd.")
         submit_to_registered_office = st.text_input(
             "Submit To (Registered Office Address)",
             "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
@@ -1475,7 +1475,7 @@ if submitted:
     if not spoc1_name.strip():        errors.append("SPOC Primary Name")
     if not spoc1_phone.strip():       errors.append("SPOC Primary Phone")
     if not spoc1_email.strip():       errors.append("SPOC Primary Email")
-    if not submit_to_name.strip():    errors.append("Submit To Company Name")
+    if not submit_to_name.strip():    errors.append("Quotation to be Submit To Company Name")
     if not delivery_company.strip():  errors.append("Delivery Company Name")
     if not delivery_address.strip():  errors.append("Delivery Address")
 
