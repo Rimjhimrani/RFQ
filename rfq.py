@@ -399,7 +399,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 14, 'CONFIDENTIAL', 0, 1, 'L')
+        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
@@ -920,9 +920,21 @@ def create_advanced_rfq_pdf(data):
     pdf.set_font('Arial', 'B', 11)
     pdf.cell(0, 7, 'Delivery Location:', 0, 1)
     pdf.set_font('Arial', '', 11)
-    delivery_text = _normalize_paragraph(_safe_text(data.get('delivery_location', '')))
-    pdf.set_x(pdf.l_margin)
-    pdf.multi_cell(usable_w, 7, delivery_text, border=0, align='L')
+    del_company = _safe_text(data.get('delivery_company', ''))
+    del_gstin   = _safe_text(data.get('delivery_gstin', ''))
+    del_address = _normalize_paragraph(_safe_text(data.get('delivery_address', '')))
+    if del_company:
+        pdf.set_font('Arial', 'B', 11)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(usable_w, 7, del_company, border=0, align='L')
+    if del_gstin:
+        pdf.set_font('Arial', '', 11)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(usable_w, 7, f'GSTIN No: {del_gstin}', border=0, align='L')
+    if del_address:
+        pdf.set_font('Arial', '', 11)
+        pdf.set_x(pdf.l_margin)
+        pdf.multi_cell(usable_w, 7, f'Address: {del_address}', border=0, align='L')
 
     annexures = data.get('annexures', '').strip()
     if annexures:
@@ -939,14 +951,14 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('TIMELINES')
     milestones = [
-        ('Date of RFQ Release',           data.get('date_release')),
-        ('Query Resolution Deadline',      data.get('date_query')),
-        ('Face to Face Meet',              data.get('date_meet')),
-        ('First Level Quotation',          data.get('date_quote')),
-        ('Negotiation & Vendor Selection', data.get('date_selection')),
-        ('Joint Review of Quotation',      data.get('date_review')),
-        ('Delivery Deadline',              data.get('date_delivery')),
-        ('Installation Deadline',          data.get('date_install')),
+        ('RFQ to Vendor',                      data.get('date_release')),
+        ('1st Level Discussion',               data.get('date_query')),
+        ('Techno Commercial Offer',            data.get('date_meet')),
+        ('2nd Level Discussion on Proposal',   data.get('date_quote')),
+        ('Final Techno Commercial Offer',      data.get('date_selection')),
+        ('PO to Vendor',                       data.get('date_review')),
+        ('Delivery at Site',                   data.get('date_delivery')),
+        ('Installation at Site',               data.get('date_install')),
     ]
     pdf.set_fill_color(220, 230, 241)
     pdf.set_font('Arial', 'B', 11)
@@ -1409,14 +1421,14 @@ with st.form(key="rfq_form"):
     with st.expander("📅 Timelines", expanded=True):
         today = date.today()
         c1, c2, c3 = st.columns(3)
-        date_release  = c1.date_input("Date of RFQ Release *",          today)
-        date_query    = c1.date_input("Query Resolution Deadline *",     today + timedelta(days=7))
-        date_meet     = c1.date_input("Face to Face Meet (optional)",    None)
-        date_selection= c2.date_input("Negotiation & Vendor Selection *",today + timedelta(days=30))
-        date_delivery = c2.date_input("Delivery Deadline *",             today + timedelta(days=60))
-        date_quote    = c2.date_input("First Level Quotation (optional)",None)
-        date_install  = c3.date_input("Installation Deadline *",         today + timedelta(days=75))
-        date_review   = c3.date_input("Joint Review (optional)",         None)
+        date_release  = c1.date_input("RFQ to Vendor *",                          today)
+        date_query    = c1.date_input("1st Level Discussion *",                    today + timedelta(days=4))
+        date_meet     = c1.date_input("Techno Commercial Offer (optional)",        None)
+        date_quote    = c2.date_input("2nd Level Discussion on Proposal (opt.)",   None)
+        date_selection= c2.date_input("Final Techno Commercial Offer *",           today + timedelta(days=15))
+        date_review   = c2.date_input("PO to Vendor (optional)",                   None)
+        date_delivery = c3.date_input("Delivery at Site *",                        today + timedelta(days=40))
+        date_install  = c3.date_input("Installation at Site *",                    today + timedelta(days=47))
 
     with st.expander("👤 Single Point of Contact (SPOC)", expanded=True):
         st.markdown("##### Primary Contact *")
@@ -1437,7 +1449,13 @@ with st.form(key="rfq_form"):
         submit_to_registered_office = st.text_input(
             "Submit To (Registered Office Address)",
             "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
-        delivery_location = st.text_area("Delivery Location Address *", height=80)
+        st.markdown("**Delivery Location**")
+        delivery_company = st.text_input("Delivery Company Name *", key="del_company",
+                                         placeholder="e.g. EKA Mobility (Pinnacle Mobility Solutions Pvt. Ltd.)")
+        delivery_gstin   = st.text_input("GSTIN No. (optional)", key="del_gstin",
+                                         placeholder="e.g. 23AAFCI3261B1Z6")
+        delivery_address = st.text_area("Delivery Address *", height=80, key="del_addr",
+                                        placeholder="e.g. Plot no- A-3, Smart Industrial Township, Pithampur...")
         annexures = st.text_area("Annexures (one item per line)", height=80)
 
     submitted = st.form_submit_button("🚀 Generate RFQ Document", use_container_width=True, type="primary")
@@ -1458,7 +1476,8 @@ if submitted:
     if not spoc1_phone.strip():       errors.append("SPOC Primary Phone")
     if not spoc1_email.strip():       errors.append("SPOC Primary Email")
     if not submit_to_name.strip():    errors.append("Submit To Company Name")
-    if not delivery_location.strip(): errors.append("Delivery Location")
+    if not delivery_company.strip():  errors.append("Delivery Company Name")
+    if not delivery_address.strip():  errors.append("Delivery Address")
 
     if not is_wh:
         items_df_check = st.session_state.get('dynamic_items_df', pd.DataFrame())
@@ -1488,7 +1507,9 @@ if submitted:
         'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
         'submit_to_name': submit_to_name,
         'submit_to_registered_office': submit_to_registered_office,
-        'delivery_location': delivery_location,
+        'delivery_company': delivery_company,
+        'delivery_gstin': delivery_gstin,
+        'delivery_address': delivery_address,
         'annexures': annexures,
         'model_detail_header': st.session_state.get('model_detail_header', ''),
     }
