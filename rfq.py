@@ -10,17 +10,17 @@ import copy as _copy
 import base64
 import re
 
-# ── Logo 2 — Agilomatrix logo loaded from fixed path "Image.png" ──────────────
+# -- Logo 2 — Agilomatrix logo loaded from fixed path "Image.png"
 _LOGO2_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Image.png")
 
-def _load_logo2_bytes() -> bytes | None:
+def _load_logo2_bytes():
     try:
         with open(_LOGO2_PATH, "rb") as f:
             return f.read()
     except FileNotFoundError:
         return None
 
-LOGO2_BYTES: bytes | None = _load_logo2_bytes()
+LOGO2_BYTES = _load_logo2_bytes()
 
 # --- App Configuration ---
 st.set_page_config(
@@ -58,7 +58,7 @@ STORAGE_CONTAINERS_ITEMS = [
 
 UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons", "Liters", "Boxes", "Rolls", "Pairs", "Lots"]
 
-# ─── SPEC TABLE DATA ──────────────────────────────────────────────────────────
+# --- SPEC TABLE DATA ---
 MODEL_DETAILS_ROWS = [
     {"Sr.no": 1,  "Category": "Dimensions",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Width (mm)",                        "UNIT": "mm",     "Requirement": ""},
@@ -153,12 +153,7 @@ ITEM_TABLE_HEADERS = [
     "Base Type", "Colour", "Weight Kg", "Load Capacity", "LID", "Qty",
     "Conceptual Image"
 ]
-# Widths sum to 190mm — fits portrait A4 (210 - 10 margin each side)
-ITEM_TABLE_COL_WIDTHS = [
-    8, 34, 14, 14, 14,
-    15, 14, 15, 18, 12, 9,
-    23
-]
+ITEM_TABLE_COL_WIDTHS = [8, 34, 14, 14, 14, 15, 14, 15, 18, 12, 9, 23]
 
 def _empty_container_row(sr=1):
     return {
@@ -175,63 +170,93 @@ def _empty_container_row(sr=1):
 # ==============================================================
 
 def _safe_text(t):
-    """Encode to latin-1, replacing unmappable chars."""
     if not t:
         return ""
     return str(t).encode('latin-1', errors='replace').decode('latin-1')
 
 
 def _normalize_paragraph(text):
-    """
-    Safe, minimal text normalizer for PDF paragraphs.
-    Only fixes:
-      1. Collapses tabs/carriage-returns to spaces
-      2. Adds a space after punctuation (.!?,;:) when immediately followed by a letter
-      3. Collapses multiple spaces to one
-    Does NOT insert spaces inside words — that causes FPDF justification breakage.
-    """
     if not text:
         return ""
-
-    # 1. Replace tabs and carriage-returns with a space
     text = re.sub(r'[\t\r]+', ' ', text)
-
-    # 2. Add a single space after sentence/clause punctuation if directly followed by a letter
-    #    e.g. "hello.World" → "hello. World",  "MP.PMSPL" → "MP. PMSPL"
     text = re.sub(r'([.!?])([A-Za-z(])', r'\1 \2', text)
     text = re.sub(r'([,;:])([A-Za-z(])', r'\1 \2', text)
-
-    # 3. Collapse multiple spaces to one
     text = re.sub(r' {2,}', ' ', text)
-
     return text.strip()
 
 
 def _prepare_purpose_text(raw_text):
-    """
-    Split raw textarea input into proper paragraphs and normalize each.
-    - Splits on blank lines (true paragraph breaks)
-    - Within each paragraph, joins soft line-breaks (single newlines) into one line
-      so words at line boundaries are not concatenated without a space
-    Returns a list of clean paragraph strings ready for PDF rendering.
-    """
     if not raw_text:
         return []
-
-    # Split on one or more blank lines → paragraph boundaries
     raw_paragraphs = re.split(r'\n\s*\n', raw_text)
-
     result = []
     for para in raw_paragraphs:
-        # Join soft line-breaks: split on single \n, strip each line, rejoin with space
         lines = [line.strip() for line in para.split('\n') if line.strip()]
-        joined = ' '.join(lines)          # ensures words across line-breaks get a space
+        joined = ' '.join(lines)
         if joined:
             cleaned = _normalize_paragraph(_safe_text(joined))
             if cleaned:
                 result.append(cleaned)
-
     return result
+
+
+# ==============================================================
+# SPEC FILTERING: only output rows the user has filled in
+# ==============================================================
+
+def _is_blank(v):
+    return str(v).strip().lower() in ("", "nan", "none")
+
+
+def _filter_model_details(df):
+    """
+    Keep a group (Sr.no + Category block) only if at least one row in that
+    group has a non-empty Requirement value.
+    """
+    if df is None or df.empty:
+        return df
+
+    rows_list = []
+    for _, r in df.iterrows():
+        rows_list.append({
+            "sr":  str(r.get("Sr.no", "")).strip(),
+            "cat": str(r.get("Category", "")).strip(),
+            "req": str(r.get("Requirement", "")).strip(),
+            "idx": len(rows_list),
+        })
+
+    # Build groups exactly as the PDF renderer does
+    groups = []
+    if rows_list:
+        curr = [rows_list[0]]
+        for item in rows_list[1:]:
+            if item["sr"] != "" or item["cat"] != "":
+                groups.append(curr)
+                curr = [item]
+            else:
+                curr.append(item)
+        groups.append(curr)
+
+    kept = []
+    for grp in groups:
+        if any(not _is_blank(item["req"]) for item in grp):
+            kept.extend(item["idx"] for item in grp)
+
+    return df.iloc[kept].reset_index(drop=True)
+
+
+def _filter_navy_df(df, value_cols):
+    """
+    Keep only rows where at least one value column (Status / Vendor Scope /
+    Customer Scope) is non-empty.
+    """
+    if df is None or df.empty:
+        return df
+
+    def _has_value(row):
+        return any(not _is_blank(row.get(c, "")) for c in value_cols)
+
+    return df[df.apply(_has_value, axis=1)].reset_index(drop=True)
 
 
 # ==============================================================
@@ -243,8 +268,6 @@ def create_advanced_rfq_pdf(data):
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
             self._data = data
-            # Footer occupies ~25mm from bottom; use 32mm break margin so last
-            # table row never overlaps the footer band.
             self.set_auto_page_break(auto=True, margin=38)
 
         def header(self):
@@ -253,22 +276,19 @@ def create_advanced_rfq_pdf(data):
 
             logo1_data = self._data.get('logo1_data')
             logo2_data = LOGO2_BYTES
-
             logo1_w = self._data.get('logo1_w', 35)
             logo1_h = self._data.get('logo1_h', 18)
             logo2_w = 45
             logo2_h = 20
-
             header_h = max(logo1_h if logo1_data else 0, logo2_h if logo2_data else 0, 10)
-            logo_y   = 6
+            logo_y = 6
 
             if logo1_data:
                 try:
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         tmp.write(logo1_data)
                         tmp.flush()
-                        self.image(tmp.name,
-                                   x=self.l_margin,
+                        self.image(tmp.name, x=self.l_margin,
                                    y=logo_y + (header_h - logo1_h) / 2,
                                    w=logo1_w, h=logo1_h)
                     os.remove(tmp.name)
@@ -280,8 +300,7 @@ def create_advanced_rfq_pdf(data):
                     with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
                         tmp.write(logo2_data)
                         tmp.flush()
-                        self.image(tmp.name,
-                                   x=self.w - self.r_margin - logo2_w,
+                        self.image(tmp.name, x=self.w - self.r_margin - logo2_w,
                                    y=logo_y + (header_h - logo2_h) / 2,
                                    w=logo2_w, h=logo2_h)
                     os.remove(tmp.name)
@@ -290,7 +309,7 @@ def create_advanced_rfq_pdf(data):
 
             title_text = 'Request for Quotation (RFQ)'
             self.set_font('Arial', 'B', 11)
-            left_end  = self.l_margin + (logo1_w + 4 if logo1_data else 0)
+            left_end = self.l_margin + (logo1_w + 4 if logo1_data else 0)
             right_start = self.w - self.r_margin - (logo2_w + 4 if logo2_data else 0)
             mid_w = right_start - left_end
             if mid_w > 20:
@@ -306,35 +325,29 @@ def create_advanced_rfq_pdf(data):
             self.ln(3)
 
         def footer(self):
-            # ── Separator line ────────────────────────────────────────────
             self.set_y(-30)
             self.set_draw_color(180, 180, 180)
             self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
             self.set_draw_color(0, 0, 0)
             self.ln(1)
 
-            # ── "APL-Confidential" — right-aligned, dark grey ──────────────
             self.set_font('Arial', 'B', 9)
             self.set_text_color(80, 80, 80)
             self.cell(0, 5, 'APL-Confidential', 0, 1, 'R')
             self.ln(1)
 
-            # ── Company name — bold black, centred ────────────────────────
             fn = self._data.get('footer_company_name', 'Agilomatrix Private Ltd')
             self.set_font('Arial', 'B', 13)
             self.set_text_color(0, 0, 0)
             self.cell(0, 6, fn, 0, 1, 'C')
 
-            # ── Address — grey, centred ───────────────────────────────────
             fa = self._data.get('footer_company_address',
                                 'Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033')
             self.set_font('Arial', '', 8)
             self.set_text_color(120, 120, 120)
             self.cell(0, 5, fa, 0, 1, 'C')
 
-            # ── Page number — grey, centred ───────────────────────────────
             self.set_font('Arial', '', 8)
-            self.set_text_color(120, 120, 120)
             self.cell(0, 5, f'Page {self.page_no()}/{{nb}}', 0, 0, 'C')
             self.set_text_color(0, 0, 0)
 
@@ -379,11 +392,9 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
         logo2_w = 45
         logo2_h = 20
-
         _write_logo(pdf, data.get('logo1_data'), pdf.l_margin, 12,
                     data.get('logo1_w', 35), data.get('logo1_h', 18))
-        _write_logo(pdf, LOGO2_BYTES,
-                    pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
+        _write_logo(pdf, LOGO2_BYTES, pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
@@ -416,10 +427,16 @@ def create_advanced_rfq_pdf(data):
         pdf.set_font('Arial', '', 14)
         pdf.cell(0, 8, data.get('company_address', ''), 0, 1, 'C')
 
-    # ── MERGED MODEL DETAILS TABLE ────────────────────────────────────────────
+    # ── MODEL DETAILS TABLE ───────────────────────────────────────────────────
     def render_model_details(pdf, df, subtitle=""):
         if df is None or df.empty:
             return
+
+        # *** FILTER: only groups with a filled Requirement ***
+        df = _filter_model_details(df)
+        if df is None or df.empty:
+            return
+
         cw = [10, 42, 72, 22, 44]
         total_w = sum(cw)
         rh = 8
@@ -430,18 +447,16 @@ def create_advanced_rfq_pdf(data):
             pdf.set_fill_color(*header_fill)
             pdf.set_font('Arial', 'B', 9)
             col_y = pdf.get_y()
-            col_h = 14  # min height so Sr.no fits without overflow
+            col_h = 14
             labels = ["Sr.no", "Category", "Description", "UNIT", "Requirement"]
             for i, c in enumerate(labels):
                 cpl = max(1, int(cw[i] / 2.2))
-                lines = max(1, -(-len(c) // cpl))
-                col_h = max(col_h, lines * 5 + 6)
-            cx = pdf.l_margin  # initialise x cursor
+                col_h = max(col_h, max(1, -(-len(c) // cpl)) * 5 + 6)
+            cx = pdf.l_margin
             for i, c in enumerate(labels):
                 cpl = max(1, int(cw[i] / 2.2))
                 n_lines = max(1, -(-len(c) // cpl))
-                text_h = n_lines * 5
-                top_pad = max(1, (col_h - text_h) / 2)
+                top_pad = max(1, (col_h - n_lines * 5) / 2)
                 pdf.rect(cx, col_y, cw[i], col_h, 'FD')
                 pdf.set_xy(cx + 1, col_y + top_pad)
                 pdf.multi_cell(cw[i] - 2, 5, c, border=0, align='C')
@@ -535,8 +550,13 @@ def create_advanced_rfq_pdf(data):
         if df is None or df.empty:
             return
 
-        total_w = sum(widths)
+        # *** FILTER: only rows where user filled a value column ***
+        value_cols = [c for c in cols if c not in ("Sr.no", "Category", "Description", "Remarks")]
+        df = _filter_navy_df(df, value_cols)
+        if df is None or df.empty:
+            return
 
+        total_w = sum(widths)
         remarks_col = cols[-1]
         remark_text = ""
         for _, row in df.iterrows():
@@ -563,23 +583,18 @@ def create_advanced_rfq_pdf(data):
             pdf.set_fill_color(220, 230, 241)
             pdf.set_font('Arial', 'B', 9)
             hy = pdf.get_y()
-            # Minimum header height = 14 so two-line labels have breathing room
             hh = 14
             for i, c in enumerate(cols):
                 lbl = c.strip()
-                # Use a slightly more generous chars-per-line estimate (2.2mm/char at font 9)
                 cpl = max(1, int(widths[i] / 2.2))
-                n_lines = -(-len(lbl) // cpl)
-                hh = max(hh, n_lines * 5 + 6)
+                hh = max(hh, -(-len(lbl) // cpl) * 5 + 6)
             cx = pdf.l_margin
             for i, c in enumerate(cols):
                 lbl = c.strip()
                 pdf.rect(cx, hy, widths[i], hh, 'FD')
-                # Vertically centre short labels inside the header cell
                 cpl = max(1, int(widths[i] / 2.2))
                 n_lines = -(-len(lbl) // cpl)
-                text_h = n_lines * 5
-                top_pad = max(1, (hh - text_h) / 2)
+                top_pad = max(1, (hh - n_lines * 5) / 2)
                 pdf.set_xy(cx + 1, hy + top_pad)
                 pdf.multi_cell(widths[i] - 2, 5, lbl, border=0, align='C')
                 cx += widths[i]
@@ -588,7 +603,6 @@ def create_advanced_rfq_pdf(data):
             return hh
 
         draw_headers()
-
         pdf.set_font('Arial', '', 9)
 
         for row_num, (_, row) in enumerate(df.iterrows()):
@@ -602,7 +616,7 @@ def create_advanced_rfq_pdf(data):
             rh = 8
             for i, val in enumerate(vals):
                 cpl = max(1, int(widths[i] / 1.85))
-                rh  = max(rh, -(-len(val) // cpl) * 5 + 3)
+                rh = max(rh, -(-len(val) // cpl) * 5 + 3)
 
             if pdf.get_y() + rh > pdf.page_break_trigger:
                 pdf.add_page()
@@ -610,7 +624,7 @@ def create_advanced_rfq_pdf(data):
                 pdf.set_font('Arial', '', 9)
 
             row_y = pdf.get_y()
-            cx    = pdf.l_margin
+            cx = pdf.l_margin
             for i, val in enumerate(vals):
                 pdf.rect(cx, row_y, widths[i], rh)
                 pdf.set_xy(cx + 1, row_y + 1)
@@ -618,17 +632,16 @@ def create_advanced_rfq_pdf(data):
                                align='L' if i <= 1 else 'C')
                 cx += widths[i]
                 pdf.set_xy(cx, row_y)
-
             pdf.set_y(row_y + rh)
 
         pdf.ln(4)
 
-    # ── LANDSCAPE STORAGE CONTAINER TABLE ─────────────────────────────────────
+    # ── STORAGE CONTAINER TABLE ───────────────────────────────────────────────
     def render_container_table(pdf, df, images_dict=None):
         headers = ITEM_TABLE_HEADERS
         cw = ITEM_TABLE_COL_WIDTHS
         hh = 10
-        rh = 24          # row height reduced for portrait
+        rh = 24
         IMG_W, IMG_H = 18, 16
 
         def draw_header():
@@ -658,10 +671,10 @@ def create_advanced_rfq_pdf(data):
                 vals = [
                     str(idx + 1), _clean(row.get("Description")),
                     _clean(row.get("OL (mm)")), _clean(row.get("OW (mm)")),
-                    _clean(row.get("OH (mm)")),
-                    _clean(row.get("Base Type")), _clean(row.get("Colour")),
-                    _clean(row.get("Weight Kg")), _clean(row.get("Load capacity")),
-                    _clean(row.get("LID")), _clean(row.get("Qty")), ""
+                    _clean(row.get("OH (mm)")), _clean(row.get("Base Type")),
+                    _clean(row.get("Colour")), _clean(row.get("Weight Kg")),
+                    _clean(row.get("Load capacity")), _clean(row.get("LID")),
+                    _clean(row.get("Qty")), ""
                 ]
 
                 cx = pdf.l_margin
@@ -683,7 +696,6 @@ def create_advanced_rfq_pdf(data):
                             except Exception:
                                 pass
                     else:
-                        # Vertically centre text in row
                         pdf.set_xy(cx + 1, ry + (rh - 5) / 2)
                         pdf.multi_cell(cw[i] - 2, 5, val, align="C")
                     cx += cw[i]
@@ -698,7 +710,7 @@ def create_advanced_rfq_pdf(data):
                 pdf.set_y(ry + rh)
         pdf.ln(6)
 
-    # ── GENERIC ITEMS TABLE ────────────────────────────────────────────────────
+    # ── GENERIC ITEMS TABLE ───────────────────────────────────────────────────
     def render_generic_items(pdf, df):
         if df is None or df.empty:
             return
@@ -711,8 +723,7 @@ def create_advanced_rfq_pdf(data):
         ch_y = pdf.get_y()
         ch_h = 9
         for i, c in enumerate(cols):
-            lines = max(1, -(-len(c) // max(1, int(widths[i] / 2.5))))
-            ch_h = max(ch_h, lines * 6 + 3)
+            ch_h = max(ch_h, max(1, -(-len(c) // max(1, int(widths[i] / 2.5)))) * 6 + 3)
         cx = pdf.l_margin
         for i, c in enumerate(cols):
             pdf.rect(cx, ch_y, widths[i], ch_h, 'FD')
@@ -757,13 +768,11 @@ def create_advanced_rfq_pdf(data):
             pdf.set_y(row_y + rh)
         pdf.ln(5)
 
-    # ── LAYOUT IMAGES SECTION ─────────────────────────────────────────────────
+    # ── LAYOUT IMAGES ─────────────────────────────────────────────────────────
     def render_layout_images(pdf, layout_images):
         if not layout_images:
             return
-
         pdf.add_page()
-
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
@@ -799,7 +808,6 @@ def create_advanced_rfq_pdf(data):
                 if i + 1 < n:
                     _place_image(pdf, layout_images[i + 1], pdf.l_margin + img_w + 6, y, img_w, img_h)
                 pdf.set_y(y + img_h + 6)
-
         pdf.ln(4)
 
     def _place_image(pdf, img_bytes, x, y, w, h):
@@ -809,8 +817,7 @@ def create_advanced_rfq_pdf(data):
             img = Image.open(io.BytesIO(img_bytes))
             iw, ih = img.size
             ratio = min(w / iw, h / ih)
-            draw_w = iw * ratio
-            draw_h = ih * ratio
+            draw_w, draw_h = iw * ratio, ih * ratio
             cx = x + (w - draw_w) / 2
             cy = y + (h - draw_h) / 2
             with tempfile.NamedTemporaryFile(delete=False, suffix=".png") as tmp:
@@ -829,39 +836,34 @@ def create_advanced_rfq_pdf(data):
     create_cover_page(pdf)
     pdf.add_page()
 
-    # ── 1. REQUIREMENT BACKGROUND ─────────────────────────────────────────────
+    # 1. REQUIREMENT BACKGROUND
     pdf.section_title('REQUIREMENT BACKGROUND')
     pdf.set_font('Arial', '', 11)
     usable_w = pdf.w - pdf.l_margin - pdf.r_margin
 
     raw_purpose = data.get('purpose', '')
     paragraphs = _prepare_purpose_text(raw_purpose)
-
     if paragraphs:
         for para_text in paragraphs:
             if pdf.get_y() + 12 > pdf.page_break_trigger:
                 pdf.add_page()
             pdf.set_x(pdf.l_margin)
-            # Use align='L' — avoids FPDF over-expanding spaces (which breaks words visually)
             pdf.multi_cell(usable_w, 7, para_text, border=0, align='L')
             pdf.ln(3)
     else:
         pdf.set_x(pdf.l_margin)
         pdf.multi_cell(usable_w, 7, _safe_text(raw_purpose), border=0, align='L')
-
     pdf.ln(5)
 
-    # ── 2. TECHNICAL SPECIFICATION ────────────────────────────────────────────
+    # 2. TECHNICAL SPECIFICATION
     pdf.section_title('TECHNICAL SPECIFICATION')
-
     rfq_category = data.get('rfq_category', 'General')
     wh_sub = data.get('wh_sub', '')
 
     if rfq_category == "Warehouse Equipment":
         if wh_sub == "Storage Container":
-            sc_df = data.get('storage_containers_df', pd.DataFrame())
-            sc_images = data.get('storage_containers_images', {})
-            render_container_table(pdf, sc_df, sc_images)
+            render_container_table(pdf, data.get('storage_containers_df', pd.DataFrame()),
+                                   data.get('storage_containers_images', {}))
             render_layout_images(pdf, data.get('layout_images', []))
 
         elif wh_sub == "Automated Storage System":
@@ -905,7 +907,7 @@ def create_advanced_rfq_pdf(data):
     else:
         render_generic_items(pdf, data.get('items_df', pd.DataFrame()))
 
-    # -- 3. QUOTATION SUBMISSION & DELIVERY
+    # 3. QUOTATION SUBMISSION & DELIVERY
     if pdf.get_y() + 40 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
@@ -932,19 +934,19 @@ def create_advanced_rfq_pdf(data):
                 pdf.cell(0, 7, f'  - {_safe_text(line.strip())}', 0, 1)
     pdf.ln(5)
 
-    # -- 4. TIMELINES
+    # 4. TIMELINES
     if pdf.get_y() + 60 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('TIMELINES')
     milestones = [
-        ('Date of RFQ Release',             data.get('date_release')),
-        ('Query Resolution Deadline',        data.get('date_query')),
-        ('Face to Face Meet',               data.get('date_meet')),
-        ('First Level Quotation',            data.get('date_quote')),
-        ('Negotiation & Vendor Selection',   data.get('date_selection')),
-        ('Joint Review of Quotation',        data.get('date_review')),
-        ('Delivery Deadline',                data.get('date_delivery')),
-        ('Installation Deadline',            data.get('date_install')),
+        ('Date of RFQ Release',           data.get('date_release')),
+        ('Query Resolution Deadline',      data.get('date_query')),
+        ('Face to Face Meet',              data.get('date_meet')),
+        ('First Level Quotation',          data.get('date_quote')),
+        ('Negotiation & Vendor Selection', data.get('date_selection')),
+        ('Joint Review of Quotation',      data.get('date_review')),
+        ('Delivery Deadline',              data.get('date_delivery')),
+        ('Installation Deadline',          data.get('date_install')),
     ]
     pdf.set_fill_color(220, 230, 241)
     pdf.set_font('Arial', 'B', 11)
@@ -957,7 +959,7 @@ def create_advanced_rfq_pdf(data):
         pdf.cell(100, 8, date_str, 1, 1, 'L')
     pdf.ln(5)
 
-    # -- 5. SPOC two-column, no designation
+    # 5. SPOC
     if pdf.get_y() + 50 > pdf.page_break_trigger:
         pdf.add_page()
     pdf.section_title('SINGLE POINT OF CONTACT')
@@ -996,25 +998,20 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(9)
     pdf.ln(5)
 
-
-    # ── LAST PAGE: Vendor Response / Sign-off ─────────────────────────────────
+    # LAST PAGE: Sign-off
     pdf.add_page()
-
     page_w = pdf.w - pdf.l_margin - pdf.r_margin
 
-    # helper: labelled underline field
     def _field_line(label, line_w=110):
         pdf.set_font('Arial', '', 10)
-        lbl_w = pdf.get_string_width(label + '  ')
-        pdf.cell(lbl_w, 7, label, 0, 0, 'L')
+        lbl_w2 = pdf.get_string_width(label + '  ')
+        pdf.cell(lbl_w2, 7, label, 0, 0, 'L')
         x1 = pdf.get_x()
         y1 = pdf.get_y() + 6.2
         pdf.line(x1, y1, x1 + line_w, y1)
         pdf.ln(8)
 
     pdf.ln(4)
-
-    # Buyer Information
     pdf.set_font('Arial', 'B', 11)
     pdf.set_fill_color(240, 244, 248)
     pdf.set_draw_color(180, 180, 180)
@@ -1027,7 +1024,6 @@ def create_advanced_rfq_pdf(data):
     _field_line('RFQ Reference Number:')
     pdf.ln(6)
 
-    # Supplier Information
     pdf.set_font('Arial', 'B', 11)
     pdf.set_fill_color(240, 244, 248)
     pdf.set_draw_color(180, 180, 180)
@@ -1039,7 +1035,6 @@ def create_advanced_rfq_pdf(data):
     _field_line('Contact Details: ')
     pdf.ln(6)
 
-    # Terms and Conditions
     pdf.set_font('Arial', 'BI', 12)
     pdf.set_text_color(26, 58, 92)
     pdf.cell(0, 8, 'Terms and Conditions', 0, 1, 'L')
@@ -1052,22 +1047,17 @@ def create_advanced_rfq_pdf(data):
         'The company reserves the right to accept or reject any quotation.',
     ]
     pdf.set_font('Arial', '', 10)
-    num_col_w = 8   # width reserved for the number "1."
+    num_col_w = 8
     txt_col_w = page_w - num_col_w
     for idx, term in enumerate(terms, 1):
-        # Save Y before this row
         row_y = pdf.get_y()
-        # Draw number in left cell (no line break)
         pdf.set_xy(pdf.l_margin, row_y)
         pdf.cell(num_col_w, 6, f'{idx}.', 0, 0, 'L')
-        # Draw text in right cell — multi_cell handles wrapping
         pdf.set_xy(pdf.l_margin + num_col_w, row_y)
         pdf.multi_cell(txt_col_w, 6, _safe_text(term), 0, 'L')
-        # multi_cell moves Y down automatically; just add a small gap
         pdf.ln(1)
     pdf.ln(10)
 
-    # Authorized Signatory
     _field_line('Authorized Signatory: ')
     _field_line('Designation:          ')
     _field_line('Date:                 ')
@@ -1081,7 +1071,7 @@ def create_advanced_rfq_pdf(data):
 st.title("🏭 Request For Quotation Generator")
 st.markdown("---")
 
-# ── Step 1: Logo ───────────────────────────────────────────────────────────────
+# Step 1: Logo
 with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     st.markdown("**Logo 1 — Your company logo (top-left of every page)**")
     logo1_file = st.file_uploader("Upload Logo 1", type=['png', 'jpg', 'jpeg'], key="logo1")
@@ -1090,28 +1080,24 @@ with st.expander("Step 1: Upload Your Company Logo (Optional)", expanded=True):
     logo1_h = lc2.number_input("Height (mm)", 5, 50, 18, 1, key="l1h")
     if logo1_file:
         st.image(logo1_file, width=160)
-
     if LOGO2_BYTES:
         st.success("✅ Agilomatrix logo (Image.png) loaded — appears automatically on every page (top-right).")
     else:
-        st.warning(
-            "⚠️ Image.png not found next to app.py. "
-            "Place your Agilomatrix logo as **Image.png** in the same folder as app.py and restart."
-        )
+        st.warning("⚠️ Image.png not found next to app.py. Place your Agilomatrix logo as **Image.png** in the same folder as app.py and restart.")
 
-# ── Step 2: Cover page ────────────────────────────────────────────────────────
+# Step 2: Cover page
 with st.expander("Step 2: Add Cover Page Details", expanded=True):
     Type_of_items = st.text_input("Type of Items *", help="e.g., Plastic Blue Bins OR Line Side Racks")
     Storage = st.text_input("Storage Type *", help="e.g., Material Storage")
     company_name = st.text_input("Requester Company Name *", help="e.g., Pinnacle Mobility Solutions Pvt. Ltd")
     company_address = st.text_input("Requester Company Address *", help="e.g., Nanekarwadi, Chakan, Pune 410501")
 
-# ── Step 3: Footer ────────────────────────────────────────────────────────────
+# Step 3: Footer
 with st.expander("Step 3: Add Footer Details (Optional)", expanded=False):
     footer_company_name = st.text_input("Footer Company Name")
     footer_company_address = st.text_input("Footer Company Address")
 
-# ── Step 4: Technical Specifications ─────────────────────────────────────────
+# Step 4: Technical Specifications
 st.subheader("Step 4: Technical Specifications")
 st.markdown("---")
 
@@ -1139,18 +1125,10 @@ with st.expander("📦 Technical Specifications", expanded=True):
         st.session_state.pop('wh_sub', None)
 
     is_warehouse = (rfq_category == "Warehouse Equipment")
-
-    WH_SUB_CATEGORIES = [
-        "Storage System", "Material Handling", "Automated Storage System",
-        "Dock Leveller", "Storage Container",
-    ]
+    WH_SUB_CATEGORIES = ["Storage System", "Material Handling", "Automated Storage System", "Dock Leveller", "Storage Container"]
 
     if is_warehouse:
-        wh_sub = st.selectbox(
-            "Select Warehouse Sub-Category *",
-            options=WH_SUB_CATEGORIES,
-            key="wh_sub_select",
-        )
+        wh_sub = st.selectbox("Select Warehouse Sub-Category *", options=WH_SUB_CATEGORIES, key="wh_sub_select")
         if st.session_state.get('wh_sub') != wh_sub:
             for k in ['wh_items_df', 'storage_containers_df', 'storage_containers_images',
                       'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df',
@@ -1163,7 +1141,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
         wh_sub = ""
         st.session_state['wh_sub'] = ""
 
-    # ── Shared multi-section spec renderer ───────────────────────────────────
     def _render_multisection_spec(state_key_prefix):
         section_cfg = {
             "Model Details": {
@@ -1209,54 +1186,43 @@ with st.expander("📦 Technical Specifications", expanded=True):
         for section_name, rows in SPEC_TEMPLATE.items():
             sk = f"spec_{state_key_prefix}_{section_name}"
             cfg = section_cfg[section_name]
-
             st.markdown(
                 f"<div style='background:#1a3a5c;color:white;font-weight:bold;"
                 f"padding:6px 10px;margin-top:14px;margin-bottom:2px;"
                 f"font-size:14px;border-radius:3px;'>{section_name}</div>",
                 unsafe_allow_html=True
             )
-
             if sk not in st.session_state:
                 st.session_state[sk] = pd.DataFrame(_copy.deepcopy(rows))
-
             df = st.session_state[sk].copy()
             for col in cfg["cols"]:
                 if col not in df.columns:
                     df[col] = ""
                 df[col] = df[col].astype(str).replace("nan", "")
             df = df[cfg["cols"]]
-
-            edited = st.data_editor(
-                df, num_rows="dynamic", use_container_width=True,
-                column_config=cfg["column_config"],
-                key=f"editor_{sk}_{state_key_prefix}"
-            )
+            edited = st.data_editor(df, num_rows="dynamic", use_container_width=True,
+                                    column_config=cfg["column_config"],
+                                    key=f"editor_{sk}_{state_key_prefix}")
             st.session_state[sk] = edited
 
-    # ── Layout image uploader helper ──────────────────────────────────────────
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
         if sk not in st.session_state:
             st.session_state[sk] = []
-
         st.markdown("---")
         st.markdown(
             "<div style='background:#1a3a5c;color:white;font-weight:bold;"
             "padding:8px 12px;margin-bottom:8px;font-size:15px;border-radius:3px;'>"
-            "📐 Layout Images (1 to 5)</div>",
-            unsafe_allow_html=True
+            "📐 Layout Images (1 to 5)</div>", unsafe_allow_html=True
         )
         st.caption("Upload layout drawings, front/side views, or 3D renders. Min 1, Max 5.")
-
         uploaded = []
         cols = st.columns(5)
         for i in range(5):
             with cols[i]:
                 f = st.file_uploader(
                     f"Image {i+1}" + (" *" if i == 0 else " (optional)"),
-                    type=["png", "jpg", "jpeg"],
-                    key=f"layout_img_{prefix}_{i}"
+                    type=["png", "jpg", "jpeg"], key=f"layout_img_{prefix}_{i}"
                 )
                 if f is not None:
                     uploaded.append(f.getvalue())
@@ -1264,7 +1230,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 elif i < len(st.session_state[sk]):
                     uploaded.append(st.session_state[sk][i])
                     st.image(st.session_state[sk][i], use_container_width=True)
-
         st.session_state[sk] = [b for b in uploaded if b]
         n = len(st.session_state[sk])
         if n > 0:
@@ -1272,14 +1237,14 @@ with st.expander("📦 Technical Specifications", expanded=True):
         else:
             st.info("Upload at least 1 layout image to include the Layout section in the PDF.")
 
-    # ── Render per sub-category ───────────────────────────────────────────────
+    # Render per sub-category
     if is_warehouse:
         if wh_sub in ("Storage System", "Material Handling", "Dock Leveller"):
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}[wh_sub]
             st.markdown(f"#### 📋 {wh_sub} Specification")
             st.caption("Pre-filled from standard template. Edit the **Requirement / Status / Vendor Scope** columns.")
+            st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
 
-            # Model Details subtitle row (editable, shown under Model Details navy header in PDF)
             model_header_pfx = st.text_input(
                 "Model Header / Subtitle (shown under Model Details in PDF)",
                 value=st.session_state.get(f'model_detail_header_{pfx}', ''),
@@ -1287,12 +1252,12 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 key=f"model_detail_header_input_{pfx}"
             )
             st.session_state[f'model_detail_header_{pfx}'] = model_header_pfx
-
             _render_multisection_spec(pfx)
             _render_layout_uploader(pfx)
 
         elif wh_sub == "Automated Storage System":
             st.markdown("#### 📋 Automated Storage System")
+            st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
             item_opts = [""] + ["Vertical Carousel System", "Horizontal Carousel System"]
             if 'wh_items_df' not in st.session_state:
                 st.session_state['wh_items_df'] = pd.DataFrame([{
@@ -1324,7 +1289,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                                          value="3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
                                          key="model_detail_header_input")
             st.session_state['model_detail_header'] = model_header
-
             st.markdown("#### 📐 Full Specification Tables")
             _render_multisection_spec("carousel")
             _render_layout_uploader("carousel")
@@ -1339,8 +1303,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             sc_df = st.session_state['storage_containers_df'].copy()
             sc_df["Sr.No"] = range(1, len(sc_df) + 1)
-            for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)",
-                        "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
+            for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
                 if col not in sc_df.columns: sc_df[col] = ""
                 sc_df[col] = sc_df[col].astype(str).replace("nan", "")
             if "Qty" not in sc_df.columns: sc_df["Qty"] = 1
@@ -1353,17 +1316,17 @@ with st.expander("📦 Technical Specifications", expanded=True):
                             "Base Type", "Colour", "Weight Kg", "Load capacity", "LID", "Qty"]],
                     num_rows="dynamic", use_container_width=True,
                     column_config={
-                        "Sr.No":        st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
-                        "Description":  st.column_config.SelectboxColumn("Container Type ▼", width="medium", options=container_options),
-                        "OL (mm)":      st.column_config.TextColumn("OL (mm)", width="small"),
-                        "OW (mm)":      st.column_config.TextColumn("OW (mm)", width="small"),
-                        "OH (mm)":      st.column_config.TextColumn("OH (mm)", width="small"),
-                        "Base Type":    st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Plain", "Other"]),
-                        "Colour":       st.column_config.TextColumn("Colour", width="small"),
-                        "Weight Kg":    st.column_config.TextColumn("Weight Kg", width="small"),
-                        "Load capacity":st.column_config.TextColumn("Load Cap (Kg)", width="small"),
-                        "LID":          st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
-                        "Qty":          st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
+                        "Sr.No":         st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
+                        "Description":   st.column_config.SelectboxColumn("Container Type ▼", width="medium", options=container_options),
+                        "OL (mm)":       st.column_config.TextColumn("OL (mm)", width="small"),
+                        "OW (mm)":       st.column_config.TextColumn("OW (mm)", width="small"),
+                        "OH (mm)":       st.column_config.TextColumn("OH (mm)", width="small"),
+                        "Base Type":     st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Plain", "Other"]),
+                        "Colour":        st.column_config.TextColumn("Colour", width="small"),
+                        "Weight Kg":     st.column_config.TextColumn("Weight Kg", width="small"),
+                        "Load capacity": st.column_config.TextColumn("Load Cap (Kg)", width="small"),
+                        "LID":           st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
+                        "Qty":           st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
                     }, key="sc_df_editor")
             with img_col:
                 st.write("**Conceptual Images**")
@@ -1383,7 +1346,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
             _render_layout_uploader("sc")
 
     else:
-        # Non-warehouse generic category
         hints = CATEGORY_HINTS.get(rfq_category, [])
         if hints:
             st.markdown(f"**💡 Common items in *{rfq_category}*:**")
@@ -1427,7 +1389,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
         else:
             st.warning("⚠️ Add at least one item to generate the RFQ.")
 
-# ── Steps 5+ ──────────────────────────────────────────────────────────────────
+# Steps 5+
 with st.form(key="rfq_form"):
     st.subheader("Step 5: Requirement Background")
     purpose = st.text_area(
@@ -1440,9 +1402,7 @@ with st.form(key="rfq_form"):
             "Pinnacle Mobility Solutions Pvt. Ltd. (PMSPL) is expanding its production "
             "capability in the component business with a new facility at Pithampur, MP. "
             "PMSPL seeks qualified vendors to design, manufacture, supply, and install a "
-            "Carousel Racking System within the defined premises. The system must comply "
-            "with applicable safety, quality, and operational standards, ensuring timely "
-            "delivery and installation."
+            "Carousel Racking System within the defined premises."
         )
     )
 
@@ -1461,25 +1421,16 @@ with st.form(key="rfq_form"):
     with st.expander("👤 Single Point of Contact (SPOC)", expanded=True):
         st.markdown("##### Primary Contact *")
         p1, p2 = st.columns(2)
-        spoc1_name        = p1.text_input("Name *",           key="s1n")
-        spoc1_designation = p1.text_input("Designation",      key="s1d")
-        spoc1_phone       = p2.text_input("Phone No *",        key="s1p")
-        spoc1_email       = p2.text_input("Email ID *",        key="s1e")
+        spoc1_name        = p1.text_input("Name *",      key="s1n")
+        spoc1_designation = p1.text_input("Designation", key="s1d")
+        spoc1_phone       = p2.text_input("Phone No *",  key="s1p")
+        spoc1_email       = p2.text_input("Email ID *",  key="s1e")
         st.markdown("##### Secondary Contact (Optional)")
         s1, s2 = st.columns(2)
-        spoc2_name        = s1.text_input("Name",              key="s2n")
-        spoc2_designation = s1.text_input("Designation",       key="s2d")
-        spoc2_phone       = s2.text_input("Phone No",          key="s2p")
-        spoc2_email       = s2.text_input("Email ID",          key="s2e")
-
-    with st.expander("💰 Commercial Requirements", expanded=True):
-        edited_commercial_df = st.data_editor(
-            pd.DataFrame([
-                {"Cost Component": "Unit Cost",                  "Remarks": "Per item/unit specified in Section 2."},
-                {"Cost Component": "Freight",                    "Remarks": "Specify if included or extra."},
-                {"Cost Component": "Any other Handling Cost",    "Remarks": ""},
-                {"Cost Component": "Total Basic Cost (Per Unit)","Remarks": ""},
-            ]), num_rows="dynamic", use_container_width=True, key="commercial_editor")
+        spoc2_name        = s1.text_input("Name",        key="s2n")
+        spoc2_designation = s1.text_input("Designation", key="s2d")
+        spoc2_phone       = s2.text_input("Phone No",    key="s2p")
+        spoc2_email       = s2.text_input("Email ID",    key="s2e")
 
     with st.expander("📦 Submission, Delivery & Annexures", expanded=True):
         submit_to_name = st.text_input("Submit To (Company Name) *", "Agilomatrix Pvt. Ltd.")
@@ -1491,22 +1442,22 @@ with st.form(key="rfq_form"):
 
     submitted = st.form_submit_button("🚀 Generate RFQ Document", use_container_width=True, type="primary")
 
-# ── PDF Generation ────────────────────────────────────────────────────────────
+# PDF Generation
 if submitted:
     current_category = st.session_state.get('rfq_category', rfq_category)
     current_wh_sub   = st.session_state.get('wh_sub', '')
     is_wh = (current_category == "Warehouse Equipment")
 
     errors = []
-    if not Type_of_items.strip():   errors.append("Type of Items")
-    if not Storage.strip():         errors.append("Storage Type")
-    if not company_name.strip():    errors.append("Company Name")
-    if not company_address.strip(): errors.append("Company Address")
-    if not purpose.strip():         errors.append("Purpose of Requirement")
-    if not spoc1_name.strip():      errors.append("SPOC Primary Name")
-    if not spoc1_phone.strip():     errors.append("SPOC Primary Phone")
-    if not spoc1_email.strip():     errors.append("SPOC Primary Email")
-    if not submit_to_name.strip():  errors.append("Submit To Company Name")
+    if not Type_of_items.strip():     errors.append("Type of Items")
+    if not Storage.strip():           errors.append("Storage Type")
+    if not company_name.strip():      errors.append("Company Name")
+    if not company_address.strip():   errors.append("Company Address")
+    if not purpose.strip():           errors.append("Purpose of Requirement")
+    if not spoc1_name.strip():        errors.append("SPOC Primary Name")
+    if not spoc1_phone.strip():       errors.append("SPOC Primary Phone")
+    if not spoc1_email.strip():       errors.append("SPOC Primary Email")
+    if not submit_to_name.strip():    errors.append("Submit To Company Name")
     if not delivery_location.strip(): errors.append("Delivery Location")
 
     if not is_wh:
@@ -1535,21 +1486,20 @@ if submitted:
         'spoc1_phone': spoc1_phone, 'spoc1_email': spoc1_email,
         'spoc2_name': spoc2_name, 'spoc2_designation': spoc2_designation,
         'spoc2_phone': spoc2_phone, 'spoc2_email': spoc2_email,
-        'commercial_df': edited_commercial_df,
         'submit_to_name': submit_to_name,
         'submit_to_registered_office': submit_to_registered_office,
         'delivery_location': delivery_location,
         'annexures': annexures,
-        'model_detail_header': st.session_state.get('model_detail_header', ''),  # overridden per-subtype below
+        'model_detail_header': st.session_state.get('model_detail_header', ''),
     }
 
     if is_wh:
         pfx_map = {
-            "Storage Container":       "sc",
-            "Automated Storage System":"carousel",
-            "Storage System":          "ss",
-            "Material Handling":       "mh",
-            "Dock Leveller":           "dl",
+            "Storage Container":        "sc",
+            "Automated Storage System": "carousel",
+            "Storage System":           "ss",
+            "Material Handling":        "mh",
+            "Dock Leveller":            "dl",
         }
         layout_key = f"layout_images_{pfx_map.get(current_wh_sub, 'ss')}"
         pdf_data_dict['layout_images'] = st.session_state.get(layout_key, [])
@@ -1579,7 +1529,6 @@ if submitted:
 
         else:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
-            # Use the per-subtype model header entered in the UI
             pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
             for section_name in SPEC_TEMPLATE.keys():
                 sk = f"spec_{pfx}_{section_name}"
