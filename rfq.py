@@ -776,7 +776,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_fill_color(26, 58, 92)
         pdf.set_text_color(255, 255, 255)
         pdf.set_font('Arial', 'B', 12)
-        pdf.cell(0, 10, '  Layout:-', border=0, ln=1, align='L', fill=True)
+        pdf.cell(0, 10, '  LAYOUT', border=0, ln=1, align='L', fill=True)
         pdf.set_text_color(0, 0, 0)
         pdf.ln(6)
 
