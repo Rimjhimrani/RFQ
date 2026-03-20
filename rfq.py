@@ -60,7 +60,7 @@ UNIT_OPTIONS = ["Nos", "Pieces", "Sets", "Meters", "Sq.Ft", "Sq.M", "Kg", "Tons"
 
 # --- SPEC TABLE DATA ---
 MODEL_DETAILS_ROWS = [
-    {"Sr.no": 1,  "Category": "Dimensions",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
+    {"Sr.no": 1,  "Category": "Dimensions of VStore",        "Description": "Height (mm)",                       "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Width (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Depth (mm)",                        "UNIT": "mm",     "Requirement": ""},
     {"Sr.no": "",  "Category": "",                  "Description": "Floor area (m2)",                   "UNIT": "m2",     "Requirement": ""},
