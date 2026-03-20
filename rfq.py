@@ -1194,6 +1194,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
         for section_name, rows in SPEC_TEMPLATE.items():
             sk = f"spec_{state_key_prefix}_{section_name}"
+            editor_key = f"editor_{sk}"
             cfg = section_cfg[section_name]
             st.markdown(
                 f"<div style='background:#1a3a5c;color:white;font-weight:bold;"
@@ -1201,25 +1202,24 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 f"font-size:14px;border-radius:3px;'>{section_name}</div>",
                 unsafe_allow_html=True
             )
-            # Ensure session_state always holds a clean DataFrame
-            if sk not in st.session_state or not isinstance(st.session_state[sk], pd.DataFrame):
+            # Build the initial DataFrame only once and store under editor_key.
+            # After that, data_editor owns its own state via key= — we never
+            # pass data= again, so edits are never wiped on rerun.
+            if editor_key not in st.session_state:
                 init_df = pd.DataFrame(_copy.deepcopy(rows))
                 for col in cfg["cols"]:
                     if col not in init_df.columns:
                         init_df[col] = ""
                     init_df[col] = init_df[col].astype(str).replace("nan", "")
-                st.session_state[sk] = init_df[cfg["cols"]]
-            # Always pass a copy so data_editor never mutates our stored df
-            edited = st.data_editor(
-                st.session_state[sk].copy(),
+                st.session_state[editor_key] = init_df[cfg["cols"]]
+
+            st.data_editor(
+                st.session_state[editor_key],
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
-                key=f"editor_{sk}"
+                key=editor_key,
             )
-            # Only write back a proper DataFrame
-            if isinstance(edited, pd.DataFrame):
-                st.session_state[sk] = edited
 
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
@@ -1541,21 +1541,27 @@ if submitted:
             pdf_data_dict['wh_items_df'] = st.session_state.get('wh_items_df', pd.DataFrame())
             for section_name in SPEC_TEMPLATE.keys():
                 sk = f"spec_carousel_{section_name}"
+                editor_key = f"editor_{sk}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
+                val = st.session_state.get(editor_key, st.session_state.get(sk, fallback))
+                if not isinstance(val, pd.DataFrame): val = fallback
                 pdf_data_dict[{
                     "Model Details":               'carousel_model_df',
                     "Key Features":                'key_features_df',
                     "Inbuilt features":            'inbuilt_features_df',
                     "Installation Accountability": 'installation_df',
-                }[section_name]] = st.session_state.get(sk, fallback)
+                }[section_name]] = val
 
         else:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
             pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
             for section_name in SPEC_TEMPLATE.keys():
                 sk = f"spec_{pfx}_{section_name}"
+                editor_key = f"editor_{sk}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
-                pdf_data_dict[f"spec_{pfx}_{section_name}"] = st.session_state.get(sk, fallback)
+                val = st.session_state.get(editor_key, st.session_state.get(sk, fallback))
+                if not isinstance(val, pd.DataFrame): val = fallback
+                pdf_data_dict[f"spec_{pfx}_{section_name}"] = val
     else:
         pdf_data_dict['layout_images'] = []
         items_df = st.session_state.get('dynamic_items_df', pd.DataFrame())
