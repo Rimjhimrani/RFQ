@@ -912,7 +912,7 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
     pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 7, f"Quotation to be Submit To: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
@@ -1116,16 +1116,7 @@ st.markdown("---")
 with st.expander("📦 Technical Specifications", expanded=True):
     category_list = list(CATEGORY_HINTS.keys())
 
-    if 'rfq_category' not in st.session_state:
-        st.session_state['rfq_category'] = category_list[0]
-
-    rfq_category = st.selectbox(
-        "Select RFQ Category *",
-        options=category_list,
-        key="rfq_category_select",
-        index=category_list.index(st.session_state.get('rfq_category', category_list[0]))
-    )
-    if st.session_state.get('rfq_category') != rfq_category:
+    def _on_category_change():
         for k in ['dynamic_items_df', 'storage_containers_df', 'storage_containers_images',
                   'wh_items_df', 'carousel_model_df', 'key_features_df',
                   'inbuilt_features_df', 'installation_df',
@@ -1133,25 +1124,31 @@ with st.expander("📦 Technical Specifications", expanded=True):
                   'spec_mh_Model Details', 'spec_mh_Key Features', 'spec_mh_Inbuilt features', 'spec_mh_Installation Accountability',
                   'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability']:
             st.session_state.pop(k, None)
-        st.session_state['rfq_category'] = rfq_category
-        st.session_state.pop('wh_sub', None)
+        st.session_state.pop('wh_sub_select', None)
+
+    rfq_category = st.selectbox(
+        "Select RFQ Category *",
+        options=category_list,
+        key="rfq_category_select",
+        on_change=_on_category_change,
+    )
 
     is_warehouse = (rfq_category == "Warehouse Equipment")
     WH_SUB_CATEGORIES = ["Storage System", "Material Handling", "Automated Storage System", "Dock Leveller", "Storage Container"]
 
     if is_warehouse:
-        wh_sub = st.selectbox("Select Warehouse Sub-Category *", options=WH_SUB_CATEGORIES, key="wh_sub_select")
-        if st.session_state.get('wh_sub') != wh_sub:
+        def _on_wh_sub_change():
             for k in ['wh_items_df', 'storage_containers_df', 'storage_containers_images',
                       'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df',
                       'spec_ss_Model Details', 'spec_ss_Key Features', 'spec_ss_Inbuilt features', 'spec_ss_Installation Accountability',
                       'spec_mh_Model Details', 'spec_mh_Key Features', 'spec_mh_Inbuilt features', 'spec_mh_Installation Accountability',
                       'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability']:
                 st.session_state.pop(k, None)
-            st.session_state['wh_sub'] = wh_sub
+
+        wh_sub = st.selectbox("Select Warehouse Sub-Category *", options=WH_SUB_CATEGORIES,
+                              key="wh_sub_select", on_change=_on_wh_sub_change)
     else:
         wh_sub = ""
-        st.session_state['wh_sub'] = ""
 
     def _render_multisection_spec(state_key_prefix):
         section_cfg = {
@@ -1259,11 +1256,9 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             model_header_pfx = st.text_input(
                 "Model Header / Subtitle (shown under Model Details in PDF)",
-                value=st.session_state.get(f'model_detail_header_{pfx}', ''),
                 placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
-                key=f"model_detail_header_input_{pfx}"
+                key=f"model_detail_header_{pfx}"
             )
-            st.session_state[f'model_detail_header_{pfx}'] = model_header_pfx
             _render_multisection_spec(pfx)
             _render_layout_uploader(pfx)
 
@@ -1298,9 +1293,8 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             st.markdown("---")
             model_header = st.text_input("Model Header / Subtitle",
-                                         value="3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
-                                         key="model_detail_header_input")
-            st.session_state['model_detail_header'] = model_header
+                                         placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
+                                         key="model_detail_header_carousel")
             st.markdown("#### 📐 Full Specification Tables")
             _render_multisection_spec("carousel")
             _render_layout_uploader("carousel")
@@ -1445,7 +1439,7 @@ with st.form(key="rfq_form"):
         spoc2_email       = s2.text_input("Email ID",    key="s2e")
 
     with st.expander("📦 Submission, Delivery & Annexures", expanded=True):
-        submit_to_name = st.text_input("Quotation to be Submit To (Company Name) *", "Agilomatrix Pvt. Ltd.")
+        submit_to_name = st.text_input("Submit To (Company Name) *", "Agilomatrix Pvt. Ltd.")
         submit_to_registered_office = st.text_input(
             "Submit To (Registered Office Address)",
             "Registered Office: F1403, 7 Plumeria Drive, 7PD Street, Tathawade, Pune - 411033")
@@ -1462,8 +1456,8 @@ with st.form(key="rfq_form"):
 
 # PDF Generation
 if submitted:
-    current_category = st.session_state.get('rfq_category', rfq_category)
-    current_wh_sub   = st.session_state.get('wh_sub', '')
+    current_category = st.session_state.get('rfq_category_select', rfq_category)
+    current_wh_sub   = st.session_state.get('wh_sub_select', '') if st.session_state.get('rfq_category_select') == 'Warehouse Equipment' else ''
     is_wh = (current_category == "Warehouse Equipment")
 
     errors = []
@@ -1475,7 +1469,7 @@ if submitted:
     if not spoc1_name.strip():        errors.append("SPOC Primary Name")
     if not spoc1_phone.strip():       errors.append("SPOC Primary Phone")
     if not spoc1_email.strip():       errors.append("SPOC Primary Email")
-    if not submit_to_name.strip():    errors.append("Quotation to be Submit To Company Name")
+    if not submit_to_name.strip():    errors.append("Submit To Company Name")
     if not delivery_company.strip():  errors.append("Delivery Company Name")
     if not delivery_address.strip():  errors.append("Delivery Address")
 
@@ -1511,7 +1505,7 @@ if submitted:
         'delivery_gstin': delivery_gstin,
         'delivery_address': delivery_address,
         'annexures': annexures,
-        'model_detail_header': st.session_state.get('model_detail_header', ''),
+        'model_detail_header': st.session_state.get('model_detail_header_carousel', ''),
     }
 
     if is_wh:
