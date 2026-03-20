@@ -1194,6 +1194,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
         for section_name, rows in SPEC_TEMPLATE.items():
             sk = f"spec_{state_key_prefix}_{section_name}"
+            editor_key = f"editor_{sk}"
             cfg = section_cfg[section_name]
             st.markdown(
                 f"<div style='background:#1a3a5c;color:white;font-weight:bold;"
@@ -1201,18 +1202,22 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 f"font-size:14px;border-radius:3px;'>{section_name}</div>",
                 unsafe_allow_html=True
             )
+            # Initialise session_state only once — never overwrite after that
             if sk not in st.session_state:
-                st.session_state[sk] = pd.DataFrame(_copy.deepcopy(rows))
-            df = st.session_state[sk].copy()
-            for col in cfg["cols"]:
-                if col not in df.columns:
-                    df[col] = ""
-                df[col] = df[col].astype(str).replace("nan", "")
-            df = df[cfg["cols"]]
-            edited = st.data_editor(df, num_rows="dynamic", use_container_width=True,
-                                    column_config=cfg["column_config"],
-                                    key=f"editor_{sk}_{state_key_prefix}")
-            st.session_state[sk] = edited
+                init_df = pd.DataFrame(_copy.deepcopy(rows))
+                for col in cfg["cols"]:
+                    if col not in init_df.columns:
+                        init_df[col] = ""
+                    init_df[col] = init_df[col].astype(str).replace("nan", "")
+                st.session_state[sk] = init_df[cfg["cols"]]
+            # Pass the stored df only on first render; after that the key keeps state
+            st.data_editor(st.session_state[sk], num_rows="dynamic",
+                           use_container_width=True,
+                           column_config=cfg["column_config"],
+                           key=editor_key)
+            # Sync back so PDF generation can read it
+            if editor_key in st.session_state:
+                st.session_state[sk] = st.session_state[editor_key]
 
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
