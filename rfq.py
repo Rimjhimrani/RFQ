@@ -635,19 +635,19 @@ def create_advanced_rfq_pdf(data):
         IMG_W, IMG_H = 24, 22   # ── FIX 2: increased from 18,16 → 24,22
 
         def draw_header():
-            pdf.set_font("Arial", "B", 8)
+            pdf.set_font("Arial", "B", 10)
             pdf.set_fill_color(220, 230, 241)
             sy = pdf.get_y()
             cx = pdf.l_margin
             for i, h in enumerate(headers):
                 pdf.rect(cx, sy, cw[i], hh, 'FD')
-                pdf.set_xy(cx, sy + 1)
-                pdf.multi_cell(cw[i], 3, h, align="C")
+                pdf.set_xy(cx, sy + 2)
+                pdf.multi_cell(cw[i], 4, h, align="C")
                 cx += cw[i]
             pdf.set_y(sy + hh)
 
         draw_header()
-        pdf.set_font("Arial", "", 8)
+        pdf.set_font("Arial", "", 10)
 
         if df is not None and not df.empty:
             for idx, row in df.iterrows():
@@ -655,7 +655,7 @@ def create_advanced_rfq_pdf(data):
                 if ry + rh > pdf.page_break_trigger:
                     pdf.add_page()
                     draw_header()
-                    pdf.set_font("Arial", "", 7)
+                    pdf.set_font("Arial", "", 10)
                     ry = pdf.get_y()
 
                 vals = [
@@ -686,8 +686,8 @@ def create_advanced_rfq_pdf(data):
                             except Exception:
                                 pass
                     else:
-                        pdf.set_xy(cx + 1, ry + (rh - 5) / 2)
-                        pdf.multi_cell(cw[i] - 2, 5, val, align="C")
+                        pdf.set_xy(cx + 1, ry + (rh - 6) / 2)
+                        pdf.multi_cell(cw[i] - 2, 6, val, align="C")
                     cx += cw[i]
                 pdf.set_y(ry + rh)
         else:
@@ -1336,30 +1336,31 @@ with st.expander("📦 Technical Specifications", expanded=True):
             _render_layout_uploader("carousel")
 
         elif wh_sub == "Storage Container":
-            st.caption("Fill in dimensions and upload a conceptual image per row.")
-            container_options = [""] + STORAGE_CONTAINERS_ITEMS
-            if 'storage_containers_df' not in st.session_state:
-                st.session_state['storage_containers_df'] = pd.DataFrame([_empty_container_row(1)])
-            if 'storage_containers_images' not in st.session_state:
-                st.session_state['storage_containers_images'] = {}
-
-            sc_df = st.session_state['storage_containers_df'].copy()
-            sc_df["Sr.No"] = range(1, len(sc_df) + 1)
-            for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
-                if col not in sc_df.columns: sc_df[col] = ""
-                sc_df[col] = sc_df[col].astype(str).replace("nan", "")
-            if "Qty" not in sc_df.columns: sc_df["Qty"] = 1
-            sc_df["Qty"] = pd.to_numeric(sc_df["Qty"], errors='coerce').fillna(1).astype(int)
+            st.caption("Fill in container details. Type any container name freely in the Description column.")
+            # Frozen-df pattern: sc_frozen never changes → element ID stays stable → no first-edit loss.
+            # sc_data holds the latest edited df for PDF generation.
+            if "sc_frozen" not in st.session_state:
+                frozen_row = pd.DataFrame([_empty_container_row(1)])
+                for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
+                    if col not in frozen_row.columns: frozen_row[col] = ""
+                    frozen_row[col] = frozen_row[col].astype(str).replace("nan", "")
+                frozen_row["Sr.No"] = 1
+                frozen_row["Qty"] = 1
+                st.session_state["sc_frozen"] = frozen_row[["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
+                                                              "Base Type", "Colour", "Weight Kg", "Load capacity", "LID", "Qty"]].copy()
+            if "sc_data" not in st.session_state:
+                st.session_state["sc_data"] = st.session_state["sc_frozen"].copy()
+            if "storage_containers_images" not in st.session_state:
+                st.session_state["storage_containers_images"] = {}
 
             editor_col, img_col = st.columns([4, 1])
             with editor_col:
                 edited_sc = st.data_editor(
-                    sc_df[["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
-                            "Base Type", "Colour", "Weight Kg", "Load capacity", "LID", "Qty"]],
+                    st.session_state["sc_frozen"],   # FROZEN — element ID never changes
                     num_rows="dynamic", use_container_width=True,
                     column_config={
                         "Sr.No":         st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
-                        "Description":   st.column_config.SelectboxColumn("Container Type ▼", width="medium", options=container_options),
+                        "Description":   st.column_config.TextColumn("Container / Item Name", width="large"),
                         "OL (mm)":       st.column_config.TextColumn("OL (mm)", width="small"),
                         "OW (mm)":       st.column_config.TextColumn("OW (mm)", width="small"),
                         "OH (mm)":       st.column_config.TextColumn("OH (mm)", width="small"),
@@ -1369,20 +1370,28 @@ with st.expander("📦 Technical Specifications", expanded=True):
                         "Load capacity": st.column_config.TextColumn("Load Cap (Kg)", width="small"),
                         "LID":           st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
                         "Qty":           st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
-                    }, key="sc_df_editor")
+                    }, key="sc_widget")
+            # Save edits; also keep Sr.No correct
+            if edited_sc is not None:
+                edited_sc = edited_sc.copy()
+                edited_sc["Sr.No"] = range(1, len(edited_sc) + 1)
+                st.session_state["sc_data"] = edited_sc
+                # keep backwards compat key used by PDF builder
+                st.session_state["storage_containers_df"] = edited_sc
+
             with img_col:
                 st.write("**Conceptual Images**")
-                for i in range(len(edited_sc)):
-                    desc = str(edited_sc.iloc[i].get("Description", "")).strip()
+                current_sc = st.session_state.get("sc_data", st.session_state["sc_frozen"])
+                for i in range(len(current_sc)):
+                    desc = str(current_sc.iloc[i].get("Description", "")).strip()
                     lbl = f"Row {i+1}: {desc}" if desc else f"Row {i+1}"
                     f_up = st.file_uploader(lbl, type=["png", "jpg", "jpeg"], key=f"sc_img_{i}")
                     if f_up is not None:
-                        st.session_state['storage_containers_images'][i] = f_up.getvalue()
-                    if i in st.session_state['storage_containers_images']:
-                        st.image(st.session_state['storage_containers_images'][i], width=80)
+                        st.session_state["storage_containers_images"][i] = f_up.getvalue()
+                    if i in st.session_state["storage_containers_images"]:
+                        st.image(st.session_state["storage_containers_images"][i], width=80)
 
-            st.session_state['storage_containers_df'] = edited_sc
-            valid_count = len(edited_sc[edited_sc["Description"].astype(str).str.strip() != ""])
+            valid_count = len(st.session_state["sc_data"][st.session_state["sc_data"]["Description"].astype(str).str.strip() != ""])
             if valid_count:
                 st.success(f"✅ {valid_count} container type(s) defined")
             _render_layout_uploader("sc")
