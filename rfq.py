@@ -690,14 +690,6 @@ def create_advanced_rfq_pdf(data):
                         pdf.multi_cell(cw[i] - 2, 6, val, align="C")
                     cx += cw[i]
                 pdf.set_y(ry + rh)
-        else:
-            for _ in range(3):
-                ry = pdf.get_y()
-                cx = pdf.l_margin
-                for w in cw:
-                    pdf.rect(cx, ry, w, rh)
-                    cx += w
-                pdf.set_y(ry + rh)
         pdf.ln(6)
 
     # ── GENERIC ITEMS TABLE ───────────────────────────────────────────────────
@@ -1600,10 +1592,25 @@ if submitted:
         pdf_data_dict['layout_images'] = st.session_state.get(layout_key, [])
 
         if current_wh_sub == "Storage Container":
-            sc_df = st.session_state.get('storage_containers_df', pd.DataFrame())
             sc_images = st.session_state.get('storage_containers_images', {})
+            # Read from sc_wkey first (Streamlit keeps this fully up-to-date even
+            # if on_change hasn't fired yet), then fall back to sc_data / storage_containers_df.
+            sc_df = st.session_state.get('sc_wkey')
+            if sc_df is None or not isinstance(sc_df, pd.DataFrame):
+                sc_df = st.session_state.get('sc_data', pd.DataFrame())
+            if sc_df is None or not isinstance(sc_df, pd.DataFrame):
+                sc_df = st.session_state.get('storage_containers_df', pd.DataFrame())
             if sc_df is not None and not sc_df.empty:
-                valid_sc = sc_df[sc_df["Description"].astype(str).str.strip() != ""].reset_index(drop=True).copy()
+                # Include ALL rows that have ANY field filled — not just Description
+                def _row_has_data(row):
+                    check_cols = ["Description", "OL (mm)", "OW (mm)", "OH (mm)",
+                                  "Color", "Weight Kg", "Load capacity", "Qty"]
+                    return any(str(row.get(c, "")).strip() not in ("", "nan", "0", "1")
+                               for c in check_cols if c in row)
+                valid_sc = sc_df[sc_df.apply(_row_has_data, axis=1)].reset_index(drop=True).copy()
+                if valid_sc.empty:
+                    # If nothing filled at all, still pass the rows so PDF shows the table
+                    valid_sc = sc_df.reset_index(drop=True).copy()
                 valid_sc['image_data_bytes'] = [sc_images.get(i) for i in range(len(valid_sc))]
                 pdf_data_dict['storage_containers_df'] = valid_sc
             else:
