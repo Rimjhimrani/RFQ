@@ -391,7 +391,7 @@ def create_advanced_rfq_pdf(data):
         pdf.set_y(35)
         pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 14, 'CONFIDENTIAL', 0, 1, 'L')
+        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
@@ -894,7 +894,7 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
     pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 7, f"Quotation to be Submit To: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
@@ -1230,14 +1230,30 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 st.session_state[dkey] = init_df[cfg["cols"]].copy()
 
             # on_change callback: fires after each edit, BEFORE next render.
-            # At that moment st.session_state[wkey] holds the full edited df.
-            # We write it to dkey (safe — not a widget key).
-            _cols = cfg["cols"]
-            def _make_cb(_wkey, _dkey, _cols):
+            # st.session_state[wkey] holds an EditingState DICT (not a DataFrame):
+            #   {"edited_rows": {"0": {"Col": val}}, "added_rows": [...], "deleted_rows": [...]}
+            # We apply those deltas onto fkey to reconstruct the full edited df.
+            def _make_cb(_wkey, _fkey, _dkey):
                 def _cb():
-                    val = st.session_state.get(_wkey)
-                    if val is not None and isinstance(val, pd.DataFrame):
-                        st.session_state[_dkey] = val.copy()
+                    delta = st.session_state.get(_wkey)
+                    frozen = st.session_state.get(_fkey)
+                    if not isinstance(delta, dict) or frozen is None:
+                        return
+                    df = frozen.copy()
+                    for row_idx_str, changes in delta.get('edited_rows', {}).items():
+                        row_idx = int(row_idx_str)
+                        if row_idx < len(df):
+                            for col, val in changes.items():
+                                if col in df.columns:
+                                    df.at[row_idx, col] = val
+                    for new_row in delta.get('added_rows', []):
+                        row_data = {c: new_row.get(c, '') for c in df.columns}
+                        df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+                    del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
+                    for i in del_indices:
+                        if i < len(df):
+                            df = df.drop(df.index[i]).reset_index(drop=True)
+                    st.session_state[_dkey] = df
                 return _cb
 
             st.data_editor(
@@ -1246,7 +1262,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 use_container_width=True,
                 column_config=cfg["column_config"],
                 key=wkey,
-                on_change=_make_cb(wkey, dkey, _cols),
+                on_change=_make_cb(wkey, fkey, dkey),
             )
 
     def _render_layout_uploader(prefix):
@@ -1527,6 +1543,55 @@ with st.form(key="rfq_form"):
     submitted = st.form_submit_button("🚀 Generate RFQ Document", use_container_width=True, type="primary")
 
 # PDF Generation
+def _get_spec_df(prefix, section_name):
+    """Read the latest edited spec DataFrame for PDF generation.
+
+    Tries three sources in order:
+    1. dkey  — saved by on_change callback (most reliable if user tabbed out)
+    2. wkey delta applied to fkey — works even if Generate clicked without leaving cell
+    3. fallback to original template
+    """
+    import copy as _copy2
+    fkey = f"frozen_{prefix}_{section_name}"
+    dkey = f"data_{prefix}_{section_name}"
+    wkey = f"widget_{prefix}_{section_name}"
+    fallback = pd.DataFrame(_copy2.deepcopy(SPEC_TEMPLATE[section_name]))
+
+    # Try applying delta from wkey onto fkey
+    frozen = st.session_state.get(fkey)
+    delta  = st.session_state.get(wkey)
+    if frozen is not None and isinstance(delta, dict):
+        df = frozen.copy()
+        for row_idx_str, changes in delta.get('edited_rows', {}).items():
+            row_idx = int(row_idx_str)
+            if row_idx < len(df):
+                for col, val in changes.items():
+                    if col in df.columns:
+                        df.at[row_idx, col] = val
+        for new_row in delta.get('added_rows', []):
+            row_data = {c: new_row.get(c, '') for c in df.columns}
+            df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+        del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
+        for i in del_indices:
+            if i < len(df):
+                df = df.drop(df.index[i]).reset_index(drop=True)
+        # Use delta-applied version if it has more data than dkey
+        dkey_df = st.session_state.get(dkey)
+        def _count_filled(d):
+            if d is None or not isinstance(d, pd.DataFrame): return 0
+            return int(d.astype(str).apply(lambda c: c.str.strip()).ne('').sum().sum())
+        if _count_filled(df) >= _count_filled(dkey_df):
+            return df
+        return dkey_df if isinstance(dkey_df, pd.DataFrame) else fallback
+
+    # Fall back to dkey (saved by on_change)
+    saved = st.session_state.get(dkey)
+    if saved is not None and isinstance(saved, pd.DataFrame):
+        return saved
+
+    return fallback
+
+
 if submitted:
     current_category = st.session_state.get('rfq_category_select', rfq_category)
     current_wh_sub   = st.session_state.get('wh_sub_select', '') if st.session_state.get('rfq_category_select') == 'Warehouse Equipment' else ''
@@ -1641,11 +1706,7 @@ if submitted:
         elif current_wh_sub == "Automated Storage System":
             pdf_data_dict['wh_items_df'] = st.session_state.get('wh_items_df', pd.DataFrame())
             for section_name in SPEC_TEMPLATE.keys():
-                # Read from dkey (our data store), NOT the widget key
-                dkey     = f"data_carousel_{section_name}"
-                fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
-                val = st.session_state.get(dkey, fallback)
-                if not isinstance(val, pd.DataFrame): val = fallback
+                val = _get_spec_df("carousel", section_name)
                 pdf_data_dict[{
                     "Model Details":               'carousel_model_df',
                     "Key Features":                'key_features_df',
@@ -1657,12 +1718,7 @@ if submitted:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
             pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
             for section_name in SPEC_TEMPLATE.keys():
-                # Read from dkey (our data store), NOT the widget key
-                dkey     = f"data_{pfx}_{section_name}"
-                fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
-                val = st.session_state.get(dkey, fallback)
-                if not isinstance(val, pd.DataFrame): val = fallback
-                pdf_data_dict[f"spec_{pfx}_{section_name}"] = val
+                pdf_data_dict[f"spec_{pfx}_{section_name}"] = _get_spec_df(pfx, section_name)
     else:
         pdf_data_dict['layout_images'] = []
         items_df = st.session_state.get('dynamic_items_df', pd.DataFrame())
