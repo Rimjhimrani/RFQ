@@ -389,9 +389,9 @@ def create_advanced_rfq_pdf(data):
         _write_logo(pdf, LOGO2_BYTES, pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
         pdf.set_y(35)
-        pdf.set_font('Arial', 'B', 14)
+        pdf.set_font('Arial', 'B', 12)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'L')
+        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
@@ -891,7 +891,7 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
     pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 7, f"Quotation to be submit to: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
@@ -1378,28 +1378,51 @@ with st.expander("📦 Technical Specifications", expanded=True):
             if "storage_containers_images" not in st.session_state:
                 st.session_state["storage_containers_images"] = {}
 
+            # SC_COLS_NO_SR excludes Sr.No from the editor — it is auto-assigned, never user-filled
+            SC_COLS_NO_SR = [c for c in SC_COLS if c != "Sr.No"]
+
+            def _sc_current_row_count():
+                """Return live row count by applying sc_wkey deltas onto sc_frozen."""
+                frozen = st.session_state.get("sc_frozen", pd.DataFrame())
+                delta  = st.session_state.get("sc_wkey")
+                n = len(frozen)
+                if isinstance(delta, dict):
+                    n += len(delta.get("added_rows", []))
+                    n -= len(delta.get("deleted_rows", []))
+                return max(1, n)
+
             def _sc_on_change():
-                """Called by Streamlit right after user edits — before next render.
-                At this point st.session_state['sc_wkey'] holds the edited df."""
-                edited = st.session_state.get("sc_wkey")
-                if edited is not None and isinstance(edited, pd.DataFrame):
-                    edited = edited.copy()
-                    edited["Sr.No"] = range(1, len(edited) + 1)
-                    # ensure all cols exist
-                    for col in SC_COLS:
-                        if col not in edited.columns:
-                            edited[col] = ""
-                    st.session_state["sc_data"] = edited[SC_COLS]
-                    st.session_state["storage_containers_df"] = st.session_state["sc_data"]
+                """Apply sc_wkey EditingState delta onto sc_frozen → save to sc_data."""
+                delta  = st.session_state.get("sc_wkey")
+                frozen = st.session_state.get("sc_frozen")
+                if not isinstance(delta, dict) or frozen is None:
+                    return
+                df = frozen[SC_COLS_NO_SR].copy()
+                for row_idx_str, changes in delta.get("edited_rows", {}).items():
+                    row_idx = int(row_idx_str)
+                    if row_idx < len(df):
+                        for col, val in changes.items():
+                            if col in df.columns:
+                                df.at[row_idx, col] = val
+                for new_row in delta.get("added_rows", []):
+                    row_data = {c: new_row.get(c, "") for c in df.columns}
+                    df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+                del_indices = sorted(delta.get("deleted_rows", []), reverse=True)
+                for i in del_indices:
+                    if i < len(df):
+                        df = df.drop(df.index[i]).reset_index(drop=True)
+                df.insert(0, "Sr.No", range(1, len(df) + 1))
+                st.session_state["sc_data"] = df[SC_COLS]
+                st.session_state["storage_containers_df"] = st.session_state["sc_data"]
 
             editor_col, img_col = st.columns([4, 1])
             with editor_col:
+                # Pass frozen WITHOUT Sr.No so user never sees/edits it
                 st.data_editor(
-                    st.session_state["sc_frozen"],   # NEVER changes → element ID stable
+                    st.session_state["sc_frozen"][SC_COLS_NO_SR],
                     num_rows="dynamic",
                     use_container_width=True,
                     column_config={
-                        "Sr.No":         st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
                         "Description":   st.column_config.TextColumn("Container / Item Name", width="large"),
                         "OL (mm)":       st.column_config.TextColumn("OL (mm)", width="small"),
                         "OW (mm)":       st.column_config.TextColumn("OW (mm)", width="small"),
@@ -1417,9 +1440,13 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             with img_col:
                 st.write("**Conceptual Images**")
+                # Use live row count (from delta) so upload boxes appear immediately when rows added
+                n_rows = _sc_current_row_count()
                 current_sc = st.session_state["sc_data"]
-                for i in range(len(current_sc)):
-                    desc = str(current_sc.iloc[i].get("Description", "")).strip()
+                for i in range(n_rows):
+                    desc = ""
+                    if i < len(current_sc):
+                        desc = str(current_sc.iloc[i].get("Description", "")).strip()
                     lbl = f"Row {i+1}: {desc}" if desc else f"Row {i+1}"
                     f_up = st.file_uploader(lbl, type=["png", "jpg", "jpeg"], key=f"sc_img_{i}")
                     if f_up is not None:
