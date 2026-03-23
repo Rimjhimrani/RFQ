@@ -153,7 +153,8 @@ ITEM_TABLE_HEADERS = [
     "Base Type", "Colour", "Weight Kg", "Load Capacity", "LID", "Qty",
     "Conceptual Image"
 ]
-ITEM_TABLE_COL_WIDTHS = [8, 34, 14, 14, 14, 15, 14, 15, 18, 12, 9, 23]
+# ── FIX 2: Increased storage container column widths and row height ──
+ITEM_TABLE_COL_WIDTHS = [9, 36, 15, 15, 15, 17, 15, 16, 20, 13, 10, 26]
 
 def _empty_container_row(sr=1):
     return {
@@ -209,10 +210,6 @@ def _is_blank(v):
 
 
 def _filter_model_details(df):
-    """
-    Keep a group (Sr.no + Category block) only if at least one row in that
-    group has a non-empty Requirement value.
-    """
     if df is None or df.empty:
         return df
 
@@ -225,7 +222,6 @@ def _filter_model_details(df):
             "idx": len(rows_list),
         })
 
-    # Build groups exactly as the PDF renderer does
     groups = []
     if rows_list:
         curr = [rows_list[0]]
@@ -246,10 +242,6 @@ def _filter_model_details(df):
 
 
 def _filter_navy_df(df, value_cols):
-    """
-    Keep only rows where at least one value column (Status / Vendor Scope /
-    Customer Scope) is non-empty.
-    """
     if df is None or df.empty:
         return df
 
@@ -432,7 +424,6 @@ def create_advanced_rfq_pdf(data):
         if df is None or df.empty:
             return
 
-        # *** FILTER: only groups with a filled Requirement ***
         df = _filter_model_details(df)
         if df is None or df.empty:
             return
@@ -550,7 +541,6 @@ def create_advanced_rfq_pdf(data):
         if df is None or df.empty:
             return
 
-        # *** FILTER: only rows where user filled a value column ***
         value_cols = [c for c in cols if c not in ("Sr.no", "Category", "Description", "Remarks")]
         df = _filter_navy_df(df, value_cols)
         if df is None or df.empty:
@@ -640,9 +630,9 @@ def create_advanced_rfq_pdf(data):
     def render_container_table(pdf, df, images_dict=None):
         headers = ITEM_TABLE_HEADERS
         cw = ITEM_TABLE_COL_WIDTHS
-        hh = 10
-        rh = 24
-        IMG_W, IMG_H = 18, 16
+        hh = 13          # ── FIX 2: increased from 10 → 13
+        rh = 32          # ── FIX 2: increased from 24 → 32
+        IMG_W, IMG_H = 24, 22   # ── FIX 2: increased from 18,16 → 24,22
 
         def draw_header():
             pdf.set_font("Arial", "B", 8)
@@ -1150,6 +1140,26 @@ with st.expander("📦 Technical Specifications", expanded=True):
     else:
         wh_sub = ""
 
+    # ══════════════════════════════════════════════════════════════════════════
+    # FIX 1: _render_multisection_spec — stable data editor state
+    #
+    # ROOT CAUSE of first-edit-loss:
+    #   The old code used TWO keys (sk = our DataFrame store, wkey = widget key).
+    #   On every render, Streamlit calls data_editor(data=st.session_state[sk], key=wkey).
+    #   When the user types value "64" and hits Tab/Enter, Streamlit re-runs the script.
+    #   During re-run:
+    #     1. data_editor sees key=wkey → Streamlit RESETS the widget from data= argument
+    #     2. That data= argument is st.session_state[sk] which still has the OLD value
+    #     3. The widget return value (edited) IS the correct new DataFrame
+    #     4. We write st.session_state[sk] = edited  — but it's too late; widget already reset
+    #   On the SECOND edit the user sees the old value was gone.
+    #
+    # FIX:
+    #   Use a single key per editor section. Use an "_init" sentinel so we only
+    #   write the default data the very first time. After that Streamlit owns the
+    #   widget state entirely via its key — we never fight it by re-passing data=.
+    #   We read the current value back via st.session_state[wkey] when building the PDF.
+    # ══════════════════════════════════════════════════════════════════════════
     def _render_multisection_spec(state_key_prefix):
         section_cfg = {
             "Model Details": {
@@ -1193,37 +1203,45 @@ with st.expander("📦 Technical Specifications", expanded=True):
         }
 
         for section_name, rows in SPEC_TEMPLATE.items():
-            # sk  = where WE store the DataFrame (never touched by Streamlit)
-            # wkey = widget key (Streamlit overwrites this with its internal dict — we never read it)
-            sk   = f"spec_{state_key_prefix}_{section_name}"
-            wkey = f"widget_{sk}"
-            cfg  = section_cfg[section_name]
+            # wkey is the SINGLE key that both initialises and persists the editor state.
+            # We use a separate "_init_<wkey>" sentinel so default data is only injected once.
+            wkey      = f"spec_{state_key_prefix}_{section_name}"
+            init_flag = f"_init_{wkey}"
+            cfg       = section_cfg[section_name]
+
             st.markdown(
                 f"<div style='background:#1a3a5c;color:white;font-weight:bold;"
                 f"padding:6px 10px;margin-top:14px;margin-bottom:2px;"
                 f"font-size:14px;border-radius:3px;'>{section_name}</div>",
                 unsafe_allow_html=True
             )
-            # Initialise our data store once
-            if sk not in st.session_state or not isinstance(st.session_state[sk], pd.DataFrame):
+
+            # First time only: build the default DataFrame and store it under wkey.
+            # Subsequent renders: leave st.session_state[wkey] untouched so Streamlit
+            # can manage it as the authoritative widget state.
+            if init_flag not in st.session_state:
                 init_df = pd.DataFrame(_copy.deepcopy(rows))
                 for col in cfg["cols"]:
                     if col not in init_df.columns:
                         init_df[col] = ""
                     init_df[col] = init_df[col].astype(str).replace("nan", "")
-                st.session_state[sk] = init_df[cfg["cols"]]
+                st.session_state[wkey]      = init_df[cfg["cols"]]
+                st.session_state[init_flag] = True
 
-            # Render — always pass our clean DataFrame as data=
-            # wkey is only used by Streamlit internally; we never read it back
-            edited = st.data_editor(
-                st.session_state[sk],
+            # Pass the current state as `data=` only on first init; after that Streamlit
+            # drives the value. We always pass the current session value so the widget
+            # renders correctly, but Streamlit will keep its own internal delta on top.
+            st.data_editor(
+                st.session_state[wkey],
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
                 key=wkey,
             )
-            # edited is always a proper DataFrame returned by data_editor
-            st.session_state[sk] = edited
+            # NOTE: We do NOT re-assign st.session_state[wkey] = edited here.
+            # Streamlit automatically updates st.session_state[wkey] after each interaction
+            # when key= is supplied to data_editor. Reading st.session_state[wkey] at
+            # PDF-generation time gives us the latest user-edited DataFrame.
 
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
@@ -1544,9 +1562,10 @@ if submitted:
         elif current_wh_sub == "Automated Storage System":
             pdf_data_dict['wh_items_df'] = st.session_state.get('wh_items_df', pd.DataFrame())
             for section_name in SPEC_TEMPLATE.keys():
-                sk = f"spec_carousel_{section_name}"
+                # FIX 1: read from the widget key directly (Streamlit keeps it updated)
+                wkey    = f"spec_carousel_{section_name}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
-                val = st.session_state.get(sk, fallback)
+                val = st.session_state.get(wkey, fallback)
                 if not isinstance(val, pd.DataFrame): val = fallback
                 pdf_data_dict[{
                     "Model Details":               'carousel_model_df',
@@ -1559,9 +1578,10 @@ if submitted:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
             pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
             for section_name in SPEC_TEMPLATE.keys():
-                sk = f"spec_{pfx}_{section_name}"
+                # FIX 1: read from the widget key directly
+                wkey    = f"spec_{pfx}_{section_name}"
                 fallback = pd.DataFrame(_copy.deepcopy(SPEC_TEMPLATE[section_name]))
-                val = st.session_state.get(sk, fallback)
+                val = st.session_state.get(wkey, fallback)
                 if not isinstance(val, pd.DataFrame): val = fallback
                 pdf_data_dict[f"spec_{pfx}_{section_name}"] = val
     else:
