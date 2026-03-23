@@ -154,7 +154,7 @@ ITEM_TABLE_HEADERS = [
     "Conceptual Image"
 ]
 # ── FIX 2: Increased storage container column widths and row height ──
-ITEM_TABLE_COL_WIDTHS = [9, 36, 15, 15, 15, 17, 15, 16, 20, 13, 10, 26]
+ITEM_TABLE_COL_WIDTHS = [8, 30, 13, 13, 13, 16, 13, 14, 17, 11, 9, 23]  # total=180mm fits A4 (190mm usable)
 
 def _empty_container_row(sr=1):
     return {
@@ -630,9 +630,9 @@ def create_advanced_rfq_pdf(data):
     def render_container_table(pdf, df, images_dict=None):
         headers = ITEM_TABLE_HEADERS
         cw = ITEM_TABLE_COL_WIDTHS
-        hh = 13          # ── FIX 2: increased from 10 → 13
-        rh = 32          # ── FIX 2: increased from 24 → 32
-        IMG_W, IMG_H = 24, 22   # ── FIX 2: increased from 18,16 → 24,22
+        hh = 14          # header row height
+        rh = 30          # data row height
+        IMG_W, IMG_H = 20, 19   # sized to fit 23mm image column
 
         def draw_header():
             pdf.set_font("Arial", "B", 10)
