@@ -1593,26 +1593,47 @@ if submitted:
 
         if current_wh_sub == "Storage Container":
             sc_images = st.session_state.get('storage_containers_images', {})
-            # Read from sc_wkey first (Streamlit keeps this fully up-to-date even
-            # if on_change hasn't fired yet), then fall back to sc_data / storage_containers_df.
-            sc_df = st.session_state.get('sc_wkey')
-            if sc_df is None or not isinstance(sc_df, pd.DataFrame):
+
+            # Build the current df by applying Streamlit's internal delta dict
+            # (sc_wkey) onto sc_frozen. This works even if on_change never fired
+            # (e.g. user clicks Generate without leaving the cell).
+            sc_frozen = st.session_state.get('sc_frozen', pd.DataFrame())
+            delta    = st.session_state.get('sc_wkey')  # EditingState dict or None
+
+            if sc_frozen is not None and not sc_frozen.empty:
+                sc_df = sc_frozen.copy()
+                if isinstance(delta, dict):
+                    # Apply edited_rows
+                    for row_idx_str, changes in delta.get('edited_rows', {}).items():
+                        row_idx = int(row_idx_str)
+                        if row_idx < len(sc_df):
+                            for col, val in changes.items():
+                                if col in sc_df.columns:
+                                    sc_df.at[row_idx, col] = val
+                    # Apply added_rows
+                    for new_row in delta.get('added_rows', []):
+                        row_data = {c: new_row.get(c, '') for c in sc_df.columns}
+                        sc_df = pd.concat([sc_df, pd.DataFrame([row_data])], ignore_index=True)
+                    # Apply deleted_rows
+                    del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
+                    for i in del_indices:
+                        if i < len(sc_df):
+                            sc_df = sc_df.drop(sc_df.index[i]).reset_index(drop=True)
+                # Also merge anything already saved in sc_data (from previous on_change calls)
+                sc_saved = st.session_state.get('sc_data')
+                if sc_saved is not None and isinstance(sc_saved, pd.DataFrame) and not sc_saved.empty:
+                    # Use sc_saved if it has more data than frozen+delta
+                    def _filled_cells(df):
+                        return df.astype(str).apply(lambda col: col.str.strip()).ne('').sum().sum()
+                    if _filled_cells(sc_saved) >= _filled_cells(sc_df):
+                        sc_df = sc_saved.copy()
+            else:
                 sc_df = st.session_state.get('sc_data', pd.DataFrame())
-            if sc_df is None or not isinstance(sc_df, pd.DataFrame):
-                sc_df = st.session_state.get('storage_containers_df', pd.DataFrame())
+
             if sc_df is not None and not sc_df.empty:
-                # Include ALL rows that have ANY field filled — not just Description
-                def _row_has_data(row):
-                    check_cols = ["Description", "OL (mm)", "OW (mm)", "OH (mm)",
-                                  "Color", "Weight Kg", "Load capacity", "Qty"]
-                    return any(str(row.get(c, "")).strip() not in ("", "nan", "0", "1")
-                               for c in check_cols if c in row)
-                valid_sc = sc_df[sc_df.apply(_row_has_data, axis=1)].reset_index(drop=True).copy()
-                if valid_sc.empty:
-                    # If nothing filled at all, still pass the rows so PDF shows the table
-                    valid_sc = sc_df.reset_index(drop=True).copy()
-                valid_sc['image_data_bytes'] = [sc_images.get(i) for i in range(len(valid_sc))]
-                pdf_data_dict['storage_containers_df'] = valid_sc
+                sc_df = sc_df.reset_index(drop=True).copy()
+                sc_df['image_data_bytes'] = [sc_images.get(i) for i in range(len(sc_df))]
+                pdf_data_dict['storage_containers_df'] = sc_df
             else:
                 pdf_data_dict['storage_containers_df'] = pd.DataFrame()
             pdf_data_dict['storage_containers_images'] = sc_images
