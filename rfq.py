@@ -150,7 +150,7 @@ SPEC_TEMPLATE = {
 
 ITEM_TABLE_HEADERS = [
     "Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
-    "Base Type", "Colour", "Weight Kg", "Load Capacity", "LID", "Qty",
+    "Base Type", "Color", "Weight Kg", "Load Capacity", "LID", "Qty",
     "Conceptual Image"
 ]
 # ── FIX 2: Increased storage container column widths and row height ──
@@ -160,7 +160,7 @@ def _empty_container_row(sr=1):
     return {
         "Sr.No": sr, "Description": "",
         "OL (mm)": "", "OW (mm)": "", "OH (mm)": "",
-        "Base Type": "Flat", "Colour": "",
+        "Base Type": "Flat", "Color": "",
         "Weight Kg": "", "Load capacity": "", "LID": "No",
         "Qty": 1
     }
@@ -662,7 +662,7 @@ def create_advanced_rfq_pdf(data):
                     str(idx + 1), _clean(row.get("Description")),
                     _clean(row.get("OL (mm)")), _clean(row.get("OW (mm)")),
                     _clean(row.get("OH (mm)")), _clean(row.get("Base Type")),
-                    _clean(row.get("Colour")), _clean(row.get("Weight Kg")),
+                    _clean(row.get("Color")), _clean(row.get("Weight Kg")),
                     _clean(row.get("Load capacity")), _clean(row.get("LID")),
                     _clean(row.get("Qty")), ""
                 ]
@@ -1341,13 +1341,13 @@ with st.expander("📦 Technical Specifications", expanded=True):
             # sc_data holds the latest edited df for PDF generation.
             if "sc_frozen" not in st.session_state:
                 frozen_row = pd.DataFrame([_empty_container_row(1)])
-                for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Colour", "Weight Kg", "Load capacity", "LID"]:
+                for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Color", "Weight Kg", "Load capacity", "LID"]:
                     if col not in frozen_row.columns: frozen_row[col] = ""
                     frozen_row[col] = frozen_row[col].astype(str).replace("nan", "")
                 frozen_row["Sr.No"] = 1
                 frozen_row["Qty"] = 1
                 st.session_state["sc_frozen"] = frozen_row[["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
-                                                              "Base Type", "Colour", "Weight Kg", "Load capacity", "LID", "Qty"]].copy()
+                                                              "Base Type", "Color", "Weight Kg", "Load capacity", "LID", "Qty"]].copy()
             if "sc_data" not in st.session_state:
                 st.session_state["sc_data"] = st.session_state["sc_frozen"].copy()
             if "storage_containers_images" not in st.session_state:
@@ -1365,7 +1365,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
                         "OW (mm)":       st.column_config.TextColumn("OW (mm)", width="small"),
                         "OH (mm)":       st.column_config.TextColumn("OH (mm)", width="small"),
                         "Base Type":     st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Plain", "Other"]),
-                        "Colour":        st.column_config.TextColumn("Colour", width="small"),
+                        "Color":        st.column_config.TextColumn("Color", width="small"),
                         "Weight Kg":     st.column_config.TextColumn("Weight Kg", width="small"),
                         "Load capacity": st.column_config.TextColumn("Load Cap (Kg)", width="small"),
                         "LID":           st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
