@@ -1203,10 +1203,9 @@ with st.expander("📦 Technical Specifications", expanded=True):
         }
 
         for section_name, rows in SPEC_TEMPLATE.items():
-            # dkey  = our own data store (never used as a widget key — safe to write)
-            # wkey  = widget key passed to data_editor (Streamlit owns this; we NEVER write it)
+            # dkey = our sole data store. No key= on data_editor avoids
+            # ALL widget-key conflicts and first-edit-loss completely.
             dkey = f"data_{state_key_prefix}_{section_name}"
-            wkey = f"spec_{state_key_prefix}_{section_name}"
             cfg  = section_cfg[section_name]
 
             st.markdown(
@@ -1216,8 +1215,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 unsafe_allow_html=True
             )
 
-            # Initialise our data store (dkey) once with the template defaults.
-            # We write to dkey freely because it is NEVER used as a widget key.
             if dkey not in st.session_state:
                 init_df = pd.DataFrame(_copy.deepcopy(rows))
                 for col in cfg["cols"]:
@@ -1226,19 +1223,14 @@ with st.expander("📦 Technical Specifications", expanded=True):
                     init_df[col] = init_df[col].astype(str).replace("nan", "")
                 st.session_state[dkey] = init_df[cfg["cols"]]
 
-            # Render the editor.
-            # - data= comes from dkey (our store) — safe to read
-            # - key=wkey  lets Streamlit track edits internally
-            # - We capture the return value and write it back to dkey (NOT to wkey)
+            # No key= passed — Streamlit never resets this widget.
+            # Return value always has the latest edits; save immediately.
             edited = st.data_editor(
                 st.session_state[dkey],
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
-                key=wkey,
             )
-            # Persist edits into dkey so the next render shows the updated data.
-            # Writing to dkey is always allowed; wkey is never touched by our code.
             st.session_state[dkey] = edited
 
     def _render_layout_uploader(prefix):
