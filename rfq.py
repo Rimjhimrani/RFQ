@@ -1235,20 +1235,27 @@ with st.expander("📦 Technical Specifications", expanded=True):
                         init_df[col] = ""
                     init_df[col] = init_df[col].astype(str).replace("nan", "")
                 st.session_state[fkey] = init_df[cfg["cols"]].copy()
+                st.session_state[dkey] = init_df[cfg["cols"]].copy()
 
-            # Always pass frozen df as data= so element ID never changes.
-            # key=wkey keeps widget identity stable across reruns.
-            # Return value = frozen + user edits applied by Streamlit.
-            edited = st.data_editor(
-                st.session_state[fkey],   # FROZEN — never changes
+            # on_change callback: fires after each edit, BEFORE next render.
+            # At that moment st.session_state[wkey] holds the full edited df.
+            # We write it to dkey (safe — not a widget key).
+            _cols = cfg["cols"]
+            def _make_cb(_wkey, _dkey, _cols):
+                def _cb():
+                    val = st.session_state.get(_wkey)
+                    if val is not None and isinstance(val, pd.DataFrame):
+                        st.session_state[_dkey] = val.copy()
+                return _cb
+
+            st.data_editor(
+                st.session_state[fkey],   # FROZEN — element ID never changes
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
-                key=wkey,                 # stable widget identity
+                key=wkey,
+                on_change=_make_cb(wkey, dkey, _cols),
             )
-            # Save edited result to dkey for PDF generator to read.
-            # We write dkey freely; wkey is never touched by our code.
-            st.session_state[dkey] = edited
 
     def _render_layout_uploader(prefix):
         sk = f"layout_images_{prefix}"
@@ -1337,27 +1344,55 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
         elif wh_sub == "Storage Container":
             st.caption("Fill in container details. Type any container name freely in the Description column.")
-            # Frozen-df pattern: sc_frozen never changes → element ID stays stable → no first-edit loss.
-            # sc_data holds the latest edited df for PDF generation.
+
+            SC_COLS = ["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
+                       "Base Type", "Color", "Weight Kg", "Load capacity", "LID", "Qty"]
+
+            # ── WORKING PATTERN ──────────────────────────────────────────────
+            # Use key= + on_change callback. The callback fires BEFORE the next
+            # render, saving the widget's current value into sc_data via
+            # st.session_state[wkey] (which Streamlit populates before calling
+            # the callback). This is the only way to persist every single edit
+            # without triggering StreamlitValueAssignmentNotAllowedError.
+            #
+            # sc_frozen : blank template — passed as data= always, never mutated
+            # sc_data   : our store — written ONLY inside the callback (safe)
+            # sc_wkey   : widget key — Streamlit owns, we never write to it
+            # ─────────────────────────────────────────────────────────────────
             if "sc_frozen" not in st.session_state:
-                frozen_row = pd.DataFrame([_empty_container_row(1)])
-                for col in ["Description", "OL (mm)", "OW (mm)", "OH (mm)", "Base Type", "Color", "Weight Kg", "Load capacity", "LID"]:
-                    if col not in frozen_row.columns: frozen_row[col] = ""
-                    frozen_row[col] = frozen_row[col].astype(str).replace("nan", "")
-                frozen_row["Sr.No"] = 1
-                frozen_row["Qty"] = 1
-                st.session_state["sc_frozen"] = frozen_row[["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
-                                                              "Base Type", "Color", "Weight Kg", "Load capacity", "LID", "Qty"]].copy()
-            if "sc_data" not in st.session_state:
-                st.session_state["sc_data"] = st.session_state["sc_frozen"].copy()
+                init_df = pd.DataFrame([_empty_container_row(1)])
+                for col in SC_COLS:
+                    if col not in init_df.columns:
+                        init_df[col] = ""
+                    init_df[col] = init_df[col].astype(str).replace("nan", "")
+                init_df["Qty"] = pd.to_numeric(init_df["Qty"], errors="coerce").fillna(1).astype(int)
+                init_df["Sr.No"] = 1
+                st.session_state["sc_frozen"] = init_df[SC_COLS].copy()
+                st.session_state["sc_data"]   = init_df[SC_COLS].copy()
+
             if "storage_containers_images" not in st.session_state:
                 st.session_state["storage_containers_images"] = {}
 
+            def _sc_on_change():
+                """Called by Streamlit right after user edits — before next render.
+                At this point st.session_state['sc_wkey'] holds the edited df."""
+                edited = st.session_state.get("sc_wkey")
+                if edited is not None and isinstance(edited, pd.DataFrame):
+                    edited = edited.copy()
+                    edited["Sr.No"] = range(1, len(edited) + 1)
+                    # ensure all cols exist
+                    for col in SC_COLS:
+                        if col not in edited.columns:
+                            edited[col] = ""
+                    st.session_state["sc_data"] = edited[SC_COLS]
+                    st.session_state["storage_containers_df"] = st.session_state["sc_data"]
+
             editor_col, img_col = st.columns([4, 1])
             with editor_col:
-                edited_sc = st.data_editor(
-                    st.session_state["sc_frozen"],   # FROZEN — element ID never changes
-                    num_rows="dynamic", use_container_width=True,
+                st.data_editor(
+                    st.session_state["sc_frozen"],   # NEVER changes → element ID stable
+                    num_rows="dynamic",
+                    use_container_width=True,
                     column_config={
                         "Sr.No":         st.column_config.NumberColumn("Sr.No", width="small", disabled=True),
                         "Description":   st.column_config.TextColumn("Container / Item Name", width="large"),
@@ -1365,23 +1400,19 @@ with st.expander("📦 Technical Specifications", expanded=True):
                         "OW (mm)":       st.column_config.TextColumn("OW (mm)", width="small"),
                         "OH (mm)":       st.column_config.TextColumn("OH (mm)", width="small"),
                         "Base Type":     st.column_config.SelectboxColumn("Base Type ▼", width="small", options=["", "Flat", "Ribbed", "Louvred", "Grid", "Plain", "Other"]),
-                        "Color":        st.column_config.TextColumn("Color", width="small"),
+                        "Color":         st.column_config.TextColumn("Color", width="small"),
                         "Weight Kg":     st.column_config.TextColumn("Weight Kg", width="small"),
                         "Load capacity": st.column_config.TextColumn("Load Cap (Kg)", width="small"),
                         "LID":           st.column_config.SelectboxColumn("LID ▼", width="small", options=["", "Yes", "No", "N/A"]),
                         "Qty":           st.column_config.NumberColumn("Qty", width="small", min_value=0, step=1),
-                    }, key="sc_widget")
-            # Save edits; also keep Sr.No correct
-            if edited_sc is not None:
-                edited_sc = edited_sc.copy()
-                edited_sc["Sr.No"] = range(1, len(edited_sc) + 1)
-                st.session_state["sc_data"] = edited_sc
-                # keep backwards compat key used by PDF builder
-                st.session_state["storage_containers_df"] = edited_sc
+                    },
+                    key="sc_wkey",
+                    on_change=_sc_on_change,
+                )
 
             with img_col:
                 st.write("**Conceptual Images**")
-                current_sc = st.session_state.get("sc_data", st.session_state["sc_frozen"])
+                current_sc = st.session_state["sc_data"]
                 for i in range(len(current_sc)):
                     desc = str(current_sc.iloc[i].get("Description", "")).strip()
                     lbl = f"Row {i+1}: {desc}" if desc else f"Row {i+1}"
@@ -1391,7 +1422,11 @@ with st.expander("📦 Technical Specifications", expanded=True):
                     if i in st.session_state["storage_containers_images"]:
                         st.image(st.session_state["storage_containers_images"][i], width=80)
 
-            valid_count = len(st.session_state["sc_data"][st.session_state["sc_data"]["Description"].astype(str).str.strip() != ""])
+            # Sync storage_containers_df for PDF builder
+            st.session_state["storage_containers_df"] = st.session_state["sc_data"]
+
+            valid_count = len(st.session_state["sc_data"][
+                st.session_state["sc_data"]["Description"].astype(str).str.strip() != ""])
             if valid_count:
                 st.success(f"✅ {valid_count} container type(s) defined")
             _render_layout_uploader("sc")
