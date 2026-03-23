@@ -1203,9 +1203,21 @@ with st.expander("📦 Technical Specifications", expanded=True):
         }
 
         for section_name, rows in SPEC_TEMPLATE.items():
-            # dkey = our sole data store. No key= on data_editor avoids
-            # ALL widget-key conflicts and first-edit-loss completely.
-            dkey = f"data_{state_key_prefix}_{section_name}"
+            # HOW THIS WORKS (and why previous attempts failed):
+            #
+            # Streamlit data_editor computes its element ID from a hash of BOTH
+            # the key= AND the data= (arrow bytes). If data= changes between runs
+            # (because we passed the edited df back in), the element ID changes,
+            # Streamlit treats it as a brand-new widget, and the edit is lost.
+            #
+            # Fix: fkey holds the FROZEN original template — passed as data= always.
+            #      Because data= never changes, the element ID stays stable.
+            #      wkey is the widget key — Streamlit stores edit-deltas there.
+            #      dkey is OUR store — we write the return value here for PDF reading.
+            #      We NEVER write to wkey ourselves (causes StreamlitValueAssignmentNotAllowedError).
+            fkey = f"frozen_{state_key_prefix}_{section_name}"   # frozen original df
+            dkey = f"data_{state_key_prefix}_{section_name}"     # latest edited df (for PDF)
+            wkey = f"widget_{state_key_prefix}_{section_name}"   # widget key (Streamlit owns)
             cfg  = section_cfg[section_name]
 
             st.markdown(
@@ -1215,22 +1227,27 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 unsafe_allow_html=True
             )
 
-            if dkey not in st.session_state:
+            # Build and freeze the original template df — only once, never mutated.
+            if fkey not in st.session_state:
                 init_df = pd.DataFrame(_copy.deepcopy(rows))
                 for col in cfg["cols"]:
                     if col not in init_df.columns:
                         init_df[col] = ""
                     init_df[col] = init_df[col].astype(str).replace("nan", "")
-                st.session_state[dkey] = init_df[cfg["cols"]]
+                st.session_state[fkey] = init_df[cfg["cols"]].copy()
 
-            # No key= passed — Streamlit never resets this widget.
-            # Return value always has the latest edits; save immediately.
+            # Always pass frozen df as data= so element ID never changes.
+            # key=wkey keeps widget identity stable across reruns.
+            # Return value = frozen + user edits applied by Streamlit.
             edited = st.data_editor(
-                st.session_state[dkey],
+                st.session_state[fkey],   # FROZEN — never changes
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
+                key=wkey,                 # stable widget identity
             )
+            # Save edited result to dkey for PDF generator to read.
+            # We write dkey freely; wkey is never touched by our code.
             st.session_state[dkey] = edited
 
     def _render_layout_uploader(prefix):
