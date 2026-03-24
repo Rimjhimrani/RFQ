@@ -574,81 +574,126 @@ def create_advanced_rfq_pdf(data):
         pdf.ln(5)
 
     # ── CUSTOM SPEC TABLE ─────────────────────────────────────────────────────
-    def render_custom_spec_table(pdf, df, title="Technical Specification"):
-        """Renders a user-defined free-form specification table in the PDF."""
-        if df is None or df.empty:
-            return
-        # Drop rows where Parameter is blank
-        df = df[df["Parameter"].astype(str).str.strip() != ""].reset_index(drop=True)
-        if df.empty:
+    def render_custom_spec_table(pdf, custom_tables):
+        """
+        Renders one or more user-defined spec tables in the PDF.
+
+        custom_tables: list of dicts, each with:
+            {
+              'title':   str,           # dark navy header text
+              'columns': [str, ...],    # user-defined column names (2-5)
+              'df':      pd.DataFrame,  # rows; columns match 'columns' list
+            }
+        """
+        if not custom_tables:
             return
 
-        cols    = ["Sr.No", "Parameter", "Value", "Unit", "Remarks"]
-        widths  = [12, 60, 50, 22, 46]
-        total_w = sum(widths)
-        rh      = 8
+        USABLE_W   = 190   # A4 usable width in mm (10mm margins each side)
+        SR_W       = 10    # fixed Sr.No column width
         header_fill = (220, 230, 241)
+        rh_min      = 8
 
-        # Section title bar
-        pdf.set_fill_color(26, 58, 92)
-        pdf.set_text_color(255, 255, 255)
-        pdf.set_font('Arial', 'B', 11)
-        ty = pdf.get_y()
-        pdf.rect(pdf.l_margin, ty, total_w, 9, 'F')
-        pdf.set_xy(pdf.l_margin + 3, ty + 1.5)
-        pdf.cell(total_w - 6, 6, f'  {title}', border=0)
-        pdf.set_text_color(0, 0, 0)
-        pdf.set_y(ty + 9)
-        pdf.ln(1)
+        for tbl in custom_tables:
+            title    = _safe_text(tbl.get('title', 'Technical Specification'))
+            user_cols = tbl.get('columns', [])
+            df        = tbl.get('df', pd.DataFrame())
 
-        def draw_headers():
-            pdf.set_fill_color(*header_fill)
-            pdf.set_font('Arial', 'B', 9)
-            hy  = pdf.get_y()
-            hh  = 12
-            cx  = pdf.l_margin
-            for i, c in enumerate(cols):
-                pdf.rect(cx, hy, widths[i], hh, 'FD')
-                pdf.set_xy(cx + 1, hy + 2)
-                pdf.multi_cell(widths[i] - 2, 5, c, border=0, align='C')
-                cx += widths[i]
-                pdf.set_xy(cx, hy)
-            pdf.set_y(hy + hh)
+            if not user_cols or df is None or df.empty:
+                continue
 
-        draw_headers()
-        pdf.set_font('Arial', '', 9)
+            # Drop rows where ALL user columns are blank
+            def _row_has_data(row):
+                return any(not _is_blank(row.get(c, '')) for c in user_cols)
+            df = df[df.apply(_row_has_data, axis=1)].reset_index(drop=True)
+            if df.empty:
+                continue
 
-        for i, (_, row) in enumerate(df.iterrows()):
-            vals = [
-                str(i + 1),
-                _clean(row.get("Parameter", "")),
-                _clean(row.get("Value",     "")),
-                _clean(row.get("Unit",      "")),
-                _clean(row.get("Remarks",   "")),
-            ]
-            # Compute row height based on content
-            row_h = rh
-            for j, val in enumerate(vals):
-                cpl = max(1, int(widths[j] / 1.85))
-                row_h = max(row_h, -(-len(val) // cpl) * 5 + 3)
+            # Build column list: Sr.No always first, then user columns
+            all_cols = ['Sr.No'] + user_cols
+            n_user   = len(user_cols)
 
-            if pdf.get_y() + row_h > pdf.page_break_trigger:
+            # Distribute remaining width evenly across user columns
+            remaining = USABLE_W - SR_W
+            # First user col gets slightly more (it's usually the label column)
+            if n_user == 1:
+                col_widths = [remaining]
+            elif n_user == 2:
+                col_widths = [round(remaining * 0.45), round(remaining * 0.55)]
+            elif n_user == 3:
+                col_widths = [round(remaining * 0.38), round(remaining * 0.32), round(remaining * 0.30)]
+            elif n_user == 4:
+                col_widths = [round(remaining * 0.32), round(remaining * 0.25), round(remaining * 0.23), round(remaining * 0.20)]
+            else:  # 5
+                col_widths = [round(remaining * 0.28), round(remaining * 0.20), round(remaining * 0.20), round(remaining * 0.17), round(remaining * 0.15)]
+            # Fix rounding so total = remaining
+            col_widths[-1] += remaining - sum(col_widths)
+            all_widths = [SR_W] + col_widths
+            total_w    = sum(all_widths)
+
+            # ── Title bar ────────────────────────────────────────────────────
+            if pdf.get_y() + 30 > pdf.page_break_trigger:
                 pdf.add_page()
-                draw_headers()
-                pdf.set_font('Arial', '', 9)
 
-            row_y = pdf.get_y()
-            cx    = pdf.l_margin
-            for j, val in enumerate(vals):
-                pdf.rect(cx, row_y, widths[j], row_h)
-                pdf.set_xy(cx + 1, row_y + 1)
-                pdf.multi_cell(widths[j] - 2, 5, val, border=0,
-                               align='C' if j == 0 else 'L')
-                cx += widths[j]
-                pdf.set_xy(cx, row_y)
-            pdf.set_y(row_y + row_h)
+            pdf.set_fill_color(26, 58, 92)
+            pdf.set_text_color(255, 255, 255)
+            pdf.set_font('Arial', 'B', 11)
+            ty = pdf.get_y()
+            pdf.rect(pdf.l_margin, ty, total_w, 9, 'F')
+            pdf.set_xy(pdf.l_margin + 3, ty + 1.5)
+            pdf.cell(total_w - 6, 6, f'  {title}', border=0)
+            pdf.set_text_color(0, 0, 0)
+            pdf.set_y(ty + 9)
+            pdf.ln(1)
 
-        pdf.ln(5)
+            # ── Column header row ─────────────────────────────────────────────
+            def draw_col_headers():
+                pdf.set_fill_color(*header_fill)
+                pdf.set_font('Arial', 'B', 9)
+                hy  = pdf.get_y()
+                hh  = 12
+                # Compute needed height across all headers
+                for i, c in enumerate(all_cols):
+                    cpl = max(1, int(all_widths[i] / 2.0))
+                    hh  = max(hh, -(-len(c) // cpl) * 5 + 4)
+                cx = pdf.l_margin
+                for i, c in enumerate(all_cols):
+                    pdf.rect(cx, hy, all_widths[i], hh, 'FD')
+                    pdf.set_xy(cx + 1, hy + 2)
+                    pdf.multi_cell(all_widths[i] - 2, 5, _safe_text(c), border=0, align='C')
+                    cx += all_widths[i]
+                    pdf.set_xy(cx, hy)
+                pdf.set_y(hy + hh)
+
+            draw_col_headers()
+            pdf.set_font('Arial', '', 9)
+
+            # ── Data rows ─────────────────────────────────────────────────────
+            for row_i, (_, row) in enumerate(df.iterrows()):
+                vals = [str(row_i + 1)] + [_clean(row.get(c, '')) for c in user_cols]
+
+                # Compute row height
+                row_h = rh_min
+                for j, val in enumerate(vals):
+                    cpl   = max(1, int(all_widths[j] / 1.85))
+                    row_h = max(row_h, -(-len(val) // cpl) * 5 + 3)
+
+                if pdf.get_y() + row_h > pdf.page_break_trigger:
+                    pdf.add_page()
+                    draw_col_headers()
+                    pdf.set_font('Arial', '', 9)
+
+                row_y = pdf.get_y()
+                cx    = pdf.l_margin
+                for j, val in enumerate(vals):
+                    pdf.rect(cx, row_y, all_widths[j], row_h)
+                    pdf.set_xy(cx + 1, row_y + 1)
+                    pdf.multi_cell(all_widths[j] - 2, 5, val, border=0,
+                                   align='C' if j == 0 else 'L')
+                    cx += all_widths[j]
+                    pdf.set_xy(cx, row_y)
+                pdf.set_y(row_y + row_h)
+
+            pdf.ln(5)
 
     # ── NAVY SECTION TABLE ────────────────────────────────────────────────────
     def render_navy_section(pdf, title, df, cols, widths):
@@ -959,8 +1004,7 @@ def create_advanced_rfq_pdf(data):
 
     # ── Custom table path (overrides standard spec tables) ───────────────────
     if use_custom_spec:
-        render_custom_spec_table(pdf, data.get('custom_spec_df', pd.DataFrame()),
-                                 title="Technical Specification")
+        render_custom_spec_table(pdf, data.get('custom_tables', []))
         render_layout_images(pdf, data.get('layout_images', []))
 
     elif rfq_category == "Warehouse Equipment":
@@ -1386,69 +1430,155 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
     # ══════════════════════════════════════════════════════════════════════════
     # CUSTOM SPEC TABLE UI
+    # User defines: table title, number of columns (2-5), column names, rows.
+    # Multiple tables supported — each with its own title/columns/rows.
     # ══════════════════════════════════════════════════════════════════════════
     def _render_custom_spec_editor(prefix):
-        """Free-form specification table that the user builds from scratch."""
+        """
+        Lets the user build one or more fully custom spec tables.
+        Each table has:
+          - An editable title (shown as the dark navy bar in the PDF)
+          - 2 to 5 user-named columns
+          - Dynamic rows filled in a data_editor
+        """
         st.markdown(
             "<div style='background:#2e7d32;color:white;font-weight:bold;"
             "padding:8px 12px;margin-bottom:8px;font-size:15px;border-radius:3px;'>"
-            "✏️ Create Your Own Specification Table</div>",
+            "✏️ Create Your Own Specification Table(s)</div>",
             unsafe_allow_html=True
         )
-        st.caption("Add any parameters you need. Only rows with a filled **Parameter** will appear in the PDF.")
 
-        ckey_frozen = f"custom_frozen_{prefix}"
-        ckey_data   = f"custom_data_{prefix}"
-        ckey_widget = f"custom_widget_{prefix}"
+        # ── How many tables? ──────────────────────────────────────────────────
+        n_tables_key = f"custom_n_tables_{prefix}"
+        if n_tables_key not in st.session_state:
+            st.session_state[n_tables_key] = 1
 
-        CUSTOM_COLS = ["Parameter", "Value", "Unit", "Remarks"]
+        col_add, col_remove, _ = st.columns([1, 1, 6])
+        with col_add:
+            if st.button("➕ Add Table", key=f"add_tbl_{prefix}"):
+                st.session_state[n_tables_key] = min(10, st.session_state[n_tables_key] + 1)
+                st.rerun()
+        with col_remove:
+            if st.session_state[n_tables_key] > 1:
+                if st.button("➖ Remove Last", key=f"rem_tbl_{prefix}"):
+                    st.session_state[n_tables_key] -= 1
+                    st.rerun()
 
-        if ckey_frozen not in st.session_state:
-            init_df = pd.DataFrame([{"Parameter": "", "Value": "", "Unit": "", "Remarks": ""}])
-            st.session_state[ckey_frozen] = init_df.copy()
-            st.session_state[ckey_data]   = init_df.copy()
+        n_tables = st.session_state[n_tables_key]
 
-        def _custom_cb():
-            delta  = st.session_state.get(ckey_widget)
-            frozen = st.session_state.get(ckey_frozen)
-            if not isinstance(delta, dict) or frozen is None:
-                return
-            df = frozen.copy()
-            for row_idx_str, changes in delta.get('edited_rows', {}).items():
-                row_idx = int(row_idx_str)
-                if row_idx < len(df):
-                    for col, val in changes.items():
-                        if col in df.columns:
-                            df.at[row_idx, col] = val
-            for new_row in delta.get('added_rows', []):
-                row_data = {c: new_row.get(c, '') for c in df.columns}
-                df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
-            del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
-            for i in del_indices:
-                if i < len(df):
-                    df = df.drop(df.index[i]).reset_index(drop=True)
-            st.session_state[ckey_data] = df
+        for tbl_idx in range(n_tables):
+            tbl_pfx = f"{prefix}_t{tbl_idx}"
 
-        st.data_editor(
-            st.session_state[ckey_frozen],
-            num_rows="dynamic",
-            use_container_width=True,
-            column_config={
-                "Parameter": st.column_config.TextColumn("Parameter / Specification", width="large"),
-                "Value":     st.column_config.TextColumn("Value ✏️", width="medium"),
-                "Unit":      st.column_config.TextColumn("Unit", width="small"),
-                "Remarks":   st.column_config.TextColumn("Remarks", width="medium"),
-            },
-            key=ckey_widget,
-            on_change=_custom_cb,
-        )
+            st.markdown(
+                f"<div style='background:#37474f;color:white;font-weight:bold;"
+                f"padding:5px 10px;margin-top:16px;margin-bottom:6px;"
+                f"font-size:13px;border-radius:3px;'>Table {tbl_idx + 1}</div>",
+                unsafe_allow_html=True
+            )
 
-        current = st.session_state.get(ckey_data, pd.DataFrame())
-        filled = len(current[current["Parameter"].astype(str).str.strip() != ""])
-        if filled:
-            st.success(f"✅ {filled} parameter(s) defined")
-        else:
-            st.info("Add at least one Parameter row to include this table in the PDF.")
+            # ── Table Title ───────────────────────────────────────────────────
+            title_key = f"custom_title_{tbl_pfx}"
+            if title_key not in st.session_state:
+                st.session_state[title_key] = "Technical Specification"
+            st.session_state[title_key] = st.text_input(
+                "Table Title (shown as header in PDF)",
+                value=st.session_state[title_key],
+                key=f"title_input_{tbl_pfx}",
+                placeholder="e.g. Model Details / Key Features / Dimensions",
+            )
+
+            # ── Number of columns ─────────────────────────────────────────────
+            ncols_key = f"custom_ncols_{tbl_pfx}"
+            if ncols_key not in st.session_state:
+                st.session_state[ncols_key] = 3
+
+            n_cols = st.slider(
+                "Number of columns",
+                min_value=2, max_value=10,
+                value=st.session_state[ncols_key],
+                key=f"ncols_slider_{tbl_pfx}",
+            )
+            # Detect column-count change and wipe frozen/data so editor rebuilds
+            if n_cols != st.session_state[ncols_key]:
+                st.session_state[ncols_key] = n_cols
+                for k in [f"custom_frozen_{tbl_pfx}", f"custom_data_{tbl_pfx}"]:
+                    st.session_state.pop(k, None)
+                st.rerun()
+
+            # ── Column name inputs ────────────────────────────────────────────
+            col_name_keys = [f"custom_colname_{tbl_pfx}_{i}" for i in range(n_cols)]
+            default_names = ["Parameter", "Value", "Unit", "Remarks", "Notes", "Col 6", "Col 7", "Col 8", "Col 9", "Col 10"]
+            label_cols = st.columns(n_cols)
+            user_col_names = []
+            for i, lc in enumerate(label_cols):
+                ck = col_name_keys[i]
+                if ck not in st.session_state:
+                    st.session_state[ck] = default_names[i] if i < len(default_names) else f"Col {i+1}"
+                prev_name = st.session_state[ck]
+                new_name = lc.text_input(
+                    f"Column {i+1} name",
+                    value=prev_name,
+                    key=f"colname_input_{tbl_pfx}_{i}",
+                )
+                # If column name changed, wipe frozen so editor rebuilds with new headers
+                if new_name != prev_name:
+                    st.session_state[ck] = new_name
+                    for k in [f"custom_frozen_{tbl_pfx}", f"custom_data_{tbl_pfx}"]:
+                        st.session_state.pop(k, None)
+                    st.rerun()
+                user_col_names.append(st.session_state[ck])
+
+            # ── Data Editor ───────────────────────────────────────────────────
+            fkey = f"custom_frozen_{tbl_pfx}"
+            dkey = f"custom_data_{tbl_pfx}"
+            wkey = f"custom_widget_{tbl_pfx}"
+
+            if fkey not in st.session_state:
+                init_df = pd.DataFrame([{c: "" for c in user_col_names}])
+                st.session_state[fkey] = init_df.copy()
+                st.session_state[dkey] = init_df.copy()
+
+            def _make_custom_cb(_wkey, _fkey, _dkey, _cols):
+                def _cb():
+                    delta  = st.session_state.get(_wkey)
+                    frozen = st.session_state.get(_fkey)
+                    if not isinstance(delta, dict) or frozen is None:
+                        return
+                    df = frozen.copy()
+                    for row_idx_str, changes in delta.get("edited_rows", {}).items():
+                        row_idx = int(row_idx_str)
+                        if row_idx < len(df):
+                            for col, val in changes.items():
+                                if col in df.columns:
+                                    df.at[row_idx, col] = val
+                    for new_row in delta.get("added_rows", []):
+                        row_data = {c: new_row.get(c, "") for c in df.columns}
+                        df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+                    del_indices = sorted(delta.get("deleted_rows", []), reverse=True)
+                    for i in del_indices:
+                        if i < len(df):
+                            df = df.drop(df.index[i]).reset_index(drop=True)
+                    st.session_state[_dkey] = df
+                return _cb
+
+            st.data_editor(
+                st.session_state[fkey],
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={c: st.column_config.TextColumn(c, width="medium")
+                               for c in user_col_names},
+                key=wkey,
+                on_change=_make_custom_cb(wkey, fkey, dkey, user_col_names),
+            )
+
+            current_df = st.session_state.get(dkey, pd.DataFrame())
+            if not current_df.empty:
+                def _has_any(row):
+                    return any(str(row.get(c, "")).strip() for c in user_col_names if c in row)
+                filled = sum(1 for _, r in current_df.iterrows() if _has_any(r))
+                if filled:
+                    st.success(f"✅ {filled} row(s) defined in Table {tbl_idx + 1}")
+            st.markdown("---")
 
     # ──────────────────────────────────────────────────────────────────────────
     # Render per sub-category / category
@@ -1784,17 +1914,25 @@ def _get_spec_df(prefix, section_name):
     return fallback
 
 
-def _get_custom_spec_df(prefix):
-    """Read the latest custom spec DataFrame, applying any pending widget deltas."""
-    ckey_frozen = f"custom_frozen_{prefix}"
-    ckey_data   = f"custom_data_{prefix}"
-    ckey_widget = f"custom_widget_{prefix}"
+def _get_custom_tables(prefix):
+    """
+    Reconstruct the list of custom tables for PDF generation.
+    For each table index 0..n_tables-1, reads:
+      - title  : from session_state custom_title_{prefix}_t{i}
+      - columns: from session_state custom_colname_{prefix}_t{i}_{j}  (j = 0..n_cols-1)
+      - df     : by applying widget delta onto frozen df
+    Returns a list of dicts: [{'title': str, 'columns': [...], 'df': DataFrame}, ...]
+    """
+    n_tables = st.session_state.get(f"custom_n_tables_{prefix}", 1)
+    result   = []
 
-    frozen = st.session_state.get(ckey_frozen)
-    delta  = st.session_state.get(ckey_widget)
-
-    if frozen is not None and isinstance(delta, dict):
+    def _apply_delta(frozen, delta, cols):
+        """Apply Streamlit EditingState delta onto a frozen DataFrame."""
+        if frozen is None:
+            return pd.DataFrame()
         df = frozen.copy()
+        if not isinstance(delta, dict):
+            return df
         for row_idx_str, changes in delta.get('edited_rows', {}).items():
             row_idx = int(row_idx_str)
             if row_idx < len(df):
@@ -1808,16 +1946,50 @@ def _get_custom_spec_df(prefix):
         for i in del_indices:
             if i < len(df):
                 df = df.drop(df.index[i]).reset_index(drop=True)
-        saved = st.session_state.get(ckey_data)
-        def _count_filled(d):
-            if d is None or not isinstance(d, pd.DataFrame): return 0
-            return int(d.astype(str).apply(lambda c: c.str.strip()).ne('').sum().sum())
-        if _count_filled(df) >= _count_filled(saved):
-            return df
-        return saved if isinstance(saved, pd.DataFrame) else pd.DataFrame()
+        return df
 
-    saved = st.session_state.get(ckey_data)
-    return saved if isinstance(saved, pd.DataFrame) else pd.DataFrame()
+    def _count_filled(d):
+        if d is None or not isinstance(d, pd.DataFrame): return 0
+        return int(d.astype(str).apply(lambda c: c.str.strip()).ne('').sum().sum())
+
+    for tbl_idx in range(n_tables):
+        tbl_pfx = f"{prefix}_t{tbl_idx}"
+
+        # Title
+        title = st.session_state.get(f"custom_title_{tbl_pfx}", "Technical Specification")
+
+        # Column names
+        n_cols = st.session_state.get(f"custom_ncols_{tbl_pfx}", 3)
+        default_names = ["Parameter", "Value", "Unit", "Remarks", "Notes",
+                         "Col 6", "Col 7", "Col 8", "Col 9", "Col 10"]
+        cols = []
+        for j in range(n_cols):
+            ck = f"custom_colname_{tbl_pfx}_{j}"
+            cols.append(st.session_state.get(ck, default_names[j] if j < len(default_names) else f"Col {j+1}"))
+
+        # DataFrame — apply delta over frozen, fall back to saved dkey
+        fkey = f"custom_frozen_{tbl_pfx}"
+        dkey = f"custom_data_{tbl_pfx}"
+        wkey = f"custom_widget_{tbl_pfx}"
+
+        frozen  = st.session_state.get(fkey)
+        delta   = st.session_state.get(wkey)
+        df_live = _apply_delta(frozen, delta, cols)
+        df_saved = st.session_state.get(dkey)
+
+        # Use whichever has more data (handles both on_change and direct-generate paths)
+        if _count_filled(df_live) >= _count_filled(df_saved):
+            df_final = df_live
+        else:
+            df_final = df_saved if isinstance(df_saved, pd.DataFrame) else pd.DataFrame()
+
+        result.append({
+            'title':   title,
+            'columns': cols,
+            'df':      df_final,
+        })
+
+    return result
 
 
 if submitted:
@@ -1901,9 +2073,9 @@ if submitted:
         layout_key = f"layout_images_{pfx_map.get(current_wh_sub, 'ss')}"
         pdf_data_dict['layout_images'] = st.session_state.get(layout_key, [])
 
-        # Custom spec table (overrides standard tables)
+        # Custom spec tables (overrides standard tables)
         if use_custom_spec:
-            pdf_data_dict['custom_spec_df'] = _get_custom_spec_df(_mode_pfx)
+            pdf_data_dict['custom_tables'] = _get_custom_tables(_mode_pfx)
 
         if current_wh_sub == "Storage Container":
             sc_images = st.session_state.get('storage_containers_images', {})
