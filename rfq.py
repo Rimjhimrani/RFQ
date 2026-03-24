@@ -153,8 +153,7 @@ ITEM_TABLE_HEADERS = [
     "Base Type", "Color", "Weight Kg", "Load Capacity", "LID", "Qty",
     "Conceptual Image"
 ]
-# ── FIX 2: Increased storage container column widths and row height ──
-ITEM_TABLE_COL_WIDTHS = [8, 34, 13, 13, 13, 17, 13, 15, 18, 11, 9, 26]  # total=190mm = exact A4 usable width
+ITEM_TABLE_COL_WIDTHS = [8, 34, 13, 13, 13, 17, 13, 15, 18, 11, 9, 26]
 
 def _empty_container_row(sr=1):
     return {
@@ -202,7 +201,7 @@ def _prepare_purpose_text(raw_text):
 
 
 # ==============================================================
-# SPEC FILTERING: only output rows the user has filled in
+# SPEC FILTERING
 # ==============================================================
 
 def _is_blank(v):
@@ -210,35 +209,70 @@ def _is_blank(v):
 
 
 def _filter_model_details(df):
+    """
+    FIX: Only keep rows that have a non-empty Requirement value.
+    For groups (rows sharing a Sr.no / Category header), we carry the Sr.no
+    and Category forward ONLY onto the first kept row in each group, so the
+    PDF still shows the group label — but empty-requirement rows are dropped.
+    """
     if df is None or df.empty:
         return df
 
+    # ── Step 1: build a flat list with group membership ──────────────────────
     rows_list = []
+    current_sr  = ""
+    current_cat = ""
     for _, r in df.iterrows():
+        sr  = str(r.get("Sr.no",    "")).strip()
+        cat = str(r.get("Category", "")).strip()
+        req = str(r.get("Requirement", "")).strip()
+        desc = str(r.get("Description", "")).strip()
+        unit = str(r.get("UNIT", r.get("Unit", ""))).strip()
+
+        # A new group starts when Sr.no or Category is non-empty
+        if sr != "" or cat != "":
+            current_sr  = sr
+            current_cat = cat
+
         rows_list.append({
-            "sr":  str(r.get("Sr.no", "")).strip(),
-            "cat": str(r.get("Category", "")).strip(),
-            "req": str(r.get("Requirement", "")).strip(),
-            "idx": len(rows_list),
+            "sr":   current_sr,
+            "cat":  current_cat,
+            "desc": desc,
+            "unit": unit,
+            "req":  req,
         })
 
-    groups = []
-    if rows_list:
-        curr = [rows_list[0]]
-        for item in rows_list[1:]:
-            if item["sr"] != "" or item["cat"] != "":
-                groups.append(curr)
-                curr = [item]
-            else:
-                curr.append(item)
-        groups.append(curr)
+    # ── Step 2: keep only rows where Requirement is filled ───────────────────
+    kept = [r for r in rows_list if not _is_blank(r["req"])]
 
-    kept = []
-    for grp in groups:
-        if any(not _is_blank(item["req"]) for item in grp):
-            kept.extend(item["idx"] for item in grp)
+    if not kept:
+        return pd.DataFrame()   # nothing to show
 
-    return df.iloc[kept].reset_index(drop=True)
+    # ── Step 3: for each group that has kept rows, show Sr.no & Category only
+    #            on the FIRST kept row of that group ──────────────────────────
+    seen_groups = set()
+    result_rows = []
+    for r in kept:
+        group_key = (r["sr"], r["cat"])
+        if group_key not in seen_groups:
+            seen_groups.add(group_key)
+            result_rows.append({
+                "Sr.no":       r["sr"],
+                "Category":    r["cat"],
+                "Description": r["desc"],
+                "UNIT":        r["unit"],
+                "Requirement": r["req"],
+            })
+        else:
+            result_rows.append({
+                "Sr.no":       "",
+                "Category":    "",
+                "Description": r["desc"],
+                "UNIT":        r["unit"],
+                "Requirement": r["req"],
+            })
+
+    return pd.DataFrame(result_rows)
 
 
 def _filter_navy_df(df, value_cols):
@@ -471,16 +505,22 @@ def create_advanced_rfq_pdf(data):
 
         draw_col_headers()
 
+        # ── Render rows ──────────────────────────────────────────────────────
+        # After _filter_model_details, the DataFrame is already flat:
+        # Sr.no & Category are set only on the first row of each group.
+        # We re-group here so we can still span the left cells vertically.
+
         rows_list = []
         for _, r in df.iterrows():
             rows_list.append({
-                "sr":   _clean(r.get("Sr.no", "")),
-                "cat":  _clean(r.get("Category", "")),
+                "sr":   _clean(r.get("Sr.no",       "")),
+                "cat":  _clean(r.get("Category",    "")),
                 "desc": _clean(r.get("Description", "")),
                 "unit": _clean(r.get("UNIT", r.get("Unit", ""))),
                 "req":  _clean(r.get("Requirement", ""))
             })
 
+        # Re-group consecutive rows that share a (sr, cat) header
         groups = []
         if rows_list:
             curr = [rows_list[0]]
@@ -531,6 +571,83 @@ def create_advanced_rfq_pdf(data):
                 pdf.set_fill_color(255, 255, 255)
 
             pdf.set_y(sy + group_h)
+        pdf.ln(5)
+
+    # ── CUSTOM SPEC TABLE ─────────────────────────────────────────────────────
+    def render_custom_spec_table(pdf, df, title="Technical Specification"):
+        """Renders a user-defined free-form specification table in the PDF."""
+        if df is None or df.empty:
+            return
+        # Drop rows where Parameter is blank
+        df = df[df["Parameter"].astype(str).str.strip() != ""].reset_index(drop=True)
+        if df.empty:
+            return
+
+        cols    = ["Sr.No", "Parameter", "Value", "Unit", "Remarks"]
+        widths  = [12, 60, 50, 22, 46]
+        total_w = sum(widths)
+        rh      = 8
+        header_fill = (220, 230, 241)
+
+        # Section title bar
+        pdf.set_fill_color(26, 58, 92)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font('Arial', 'B', 11)
+        ty = pdf.get_y()
+        pdf.rect(pdf.l_margin, ty, total_w, 9, 'F')
+        pdf.set_xy(pdf.l_margin + 3, ty + 1.5)
+        pdf.cell(total_w - 6, 6, f'  {title}', border=0)
+        pdf.set_text_color(0, 0, 0)
+        pdf.set_y(ty + 9)
+        pdf.ln(1)
+
+        def draw_headers():
+            pdf.set_fill_color(*header_fill)
+            pdf.set_font('Arial', 'B', 9)
+            hy  = pdf.get_y()
+            hh  = 12
+            cx  = pdf.l_margin
+            for i, c in enumerate(cols):
+                pdf.rect(cx, hy, widths[i], hh, 'FD')
+                pdf.set_xy(cx + 1, hy + 2)
+                pdf.multi_cell(widths[i] - 2, 5, c, border=0, align='C')
+                cx += widths[i]
+                pdf.set_xy(cx, hy)
+            pdf.set_y(hy + hh)
+
+        draw_headers()
+        pdf.set_font('Arial', '', 9)
+
+        for i, (_, row) in enumerate(df.iterrows()):
+            vals = [
+                str(i + 1),
+                _clean(row.get("Parameter", "")),
+                _clean(row.get("Value",     "")),
+                _clean(row.get("Unit",      "")),
+                _clean(row.get("Remarks",   "")),
+            ]
+            # Compute row height based on content
+            row_h = rh
+            for j, val in enumerate(vals):
+                cpl = max(1, int(widths[j] / 1.85))
+                row_h = max(row_h, -(-len(val) // cpl) * 5 + 3)
+
+            if pdf.get_y() + row_h > pdf.page_break_trigger:
+                pdf.add_page()
+                draw_headers()
+                pdf.set_font('Arial', '', 9)
+
+            row_y = pdf.get_y()
+            cx    = pdf.l_margin
+            for j, val in enumerate(vals):
+                pdf.rect(cx, row_y, widths[j], row_h)
+                pdf.set_xy(cx + 1, row_y + 1)
+                pdf.multi_cell(widths[j] - 2, 5, val, border=0,
+                               align='C' if j == 0 else 'L')
+                cx += widths[j]
+                pdf.set_xy(cx, row_y)
+            pdf.set_y(row_y + row_h)
+
         pdf.ln(5)
 
     # ── NAVY SECTION TABLE ────────────────────────────────────────────────────
@@ -627,9 +744,9 @@ def create_advanced_rfq_pdf(data):
     def render_container_table(pdf, df, images_dict=None):
         headers = ITEM_TABLE_HEADERS
         cw = ITEM_TABLE_COL_WIDTHS
-        hh = 14          # header row height
-        rh = 30          # data row height
-        IMG_W, IMG_H = 22, 21   # sized to fit 26mm image column
+        hh = 14
+        rh = 30
+        IMG_W, IMG_H = 22, 21
 
         def draw_header():
             pdf.set_font("Arial", "B", 10)
@@ -836,10 +953,17 @@ def create_advanced_rfq_pdf(data):
 
     # 2. TECHNICAL SPECIFICATION
     pdf.section_title('TECHNICAL SPECIFICATION')
-    rfq_category = data.get('rfq_category', 'General')
-    wh_sub = data.get('wh_sub', '')
+    rfq_category   = data.get('rfq_category', 'General')
+    wh_sub         = data.get('wh_sub', '')
+    use_custom_spec = data.get('use_custom_spec', False)
 
-    if rfq_category == "Warehouse Equipment":
+    # ── Custom table path (overrides standard spec tables) ───────────────────
+    if use_custom_spec:
+        render_custom_spec_table(pdf, data.get('custom_spec_df', pd.DataFrame()),
+                                 title="Technical Specification")
+        render_layout_images(pdf, data.get('layout_images', []))
+
+    elif rfq_category == "Warehouse Equipment":
         if wh_sub == "Storage Container":
             render_container_table(pdf, data.get('storage_containers_df', pd.DataFrame()),
                                    data.get('storage_containers_images', {}))
@@ -1101,7 +1225,8 @@ with st.expander("📦 Technical Specifications", expanded=True):
                   'inbuilt_features_df', 'installation_df',
                   'spec_ss_Model Details', 'spec_ss_Key Features', 'spec_ss_Inbuilt features', 'spec_ss_Installation Accountability',
                   'spec_mh_Model Details', 'spec_mh_Key Features', 'spec_mh_Inbuilt features', 'spec_mh_Installation Accountability',
-                  'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability']:
+                  'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability',
+                  'custom_spec_df']:
             st.session_state.pop(k, None)
         st.session_state.pop('wh_sub_select', None)
 
@@ -1121,7 +1246,8 @@ with st.expander("📦 Technical Specifications", expanded=True):
                       'carousel_model_df', 'key_features_df', 'inbuilt_features_df', 'installation_df',
                       'spec_ss_Model Details', 'spec_ss_Key Features', 'spec_ss_Inbuilt features', 'spec_ss_Installation Accountability',
                       'spec_mh_Model Details', 'spec_mh_Key Features', 'spec_mh_Inbuilt features', 'spec_mh_Installation Accountability',
-                      'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability']:
+                      'spec_dl_Model Details', 'spec_dl_Key Features', 'spec_dl_Inbuilt features', 'spec_dl_Installation Accountability',
+                      'custom_spec_df']:
                 st.session_state.pop(k, None)
 
         wh_sub = st.selectbox("Select Warehouse Sub-Category *", options=WH_SUB_CATEGORIES,
@@ -1129,26 +1255,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
     else:
         wh_sub = ""
 
-    # ══════════════════════════════════════════════════════════════════════════
-    # FIX 1: _render_multisection_spec — stable data editor state
-    #
-    # ROOT CAUSE of first-edit-loss:
-    #   The old code used TWO keys (sk = our DataFrame store, wkey = widget key).
-    #   On every render, Streamlit calls data_editor(data=st.session_state[sk], key=wkey).
-    #   When the user types value "64" and hits Tab/Enter, Streamlit re-runs the script.
-    #   During re-run:
-    #     1. data_editor sees key=wkey → Streamlit RESETS the widget from data= argument
-    #     2. That data= argument is st.session_state[sk] which still has the OLD value
-    #     3. The widget return value (edited) IS the correct new DataFrame
-    #     4. We write st.session_state[sk] = edited  — but it's too late; widget already reset
-    #   On the SECOND edit the user sees the old value was gone.
-    #
-    # FIX:
-    #   Use a single key per editor section. Use an "_init" sentinel so we only
-    #   write the default data the very first time. After that Streamlit owns the
-    #   widget state entirely via its key — we never fight it by re-passing data=.
-    #   We read the current value back via st.session_state[wkey] when building the PDF.
-    # ══════════════════════════════════════════════════════════════════════════
+    # ── _render_multisection_spec ─────────────────────────────────────────────
     def _render_multisection_spec(state_key_prefix):
         section_cfg = {
             "Model Details": {
@@ -1192,21 +1299,9 @@ with st.expander("📦 Technical Specifications", expanded=True):
         }
 
         for section_name, rows in SPEC_TEMPLATE.items():
-            # HOW THIS WORKS (and why previous attempts failed):
-            #
-            # Streamlit data_editor computes its element ID from a hash of BOTH
-            # the key= AND the data= (arrow bytes). If data= changes between runs
-            # (because we passed the edited df back in), the element ID changes,
-            # Streamlit treats it as a brand-new widget, and the edit is lost.
-            #
-            # Fix: fkey holds the FROZEN original template — passed as data= always.
-            #      Because data= never changes, the element ID stays stable.
-            #      wkey is the widget key — Streamlit stores edit-deltas there.
-            #      dkey is OUR store — we write the return value here for PDF reading.
-            #      We NEVER write to wkey ourselves (causes StreamlitValueAssignmentNotAllowedError).
-            fkey = f"frozen_{state_key_prefix}_{section_name}"   # frozen original df
-            dkey = f"data_{state_key_prefix}_{section_name}"     # latest edited df (for PDF)
-            wkey = f"widget_{state_key_prefix}_{section_name}"   # widget key (Streamlit owns)
+            fkey = f"frozen_{state_key_prefix}_{section_name}"
+            dkey = f"data_{state_key_prefix}_{section_name}"
+            wkey = f"widget_{state_key_prefix}_{section_name}"
             cfg  = section_cfg[section_name]
 
             st.markdown(
@@ -1216,7 +1311,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 unsafe_allow_html=True
             )
 
-            # Build and freeze the original template df — only once, never mutated.
             if fkey not in st.session_state:
                 init_df = pd.DataFrame(_copy.deepcopy(rows))
                 for col in cfg["cols"]:
@@ -1226,10 +1320,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 st.session_state[fkey] = init_df[cfg["cols"]].copy()
                 st.session_state[dkey] = init_df[cfg["cols"]].copy()
 
-            # on_change callback: fires after each edit, BEFORE next render.
-            # st.session_state[wkey] holds an EditingState DICT (not a DataFrame):
-            #   {"edited_rows": {"0": {"Col": val}}, "added_rows": [...], "deleted_rows": [...]}
-            # We apply those deltas onto fkey to reconstruct the full edited df.
             def _make_cb(_wkey, _fkey, _dkey):
                 def _cb():
                     delta = st.session_state.get(_wkey)
@@ -1254,7 +1344,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 return _cb
 
             st.data_editor(
-                st.session_state[fkey],   # FROZEN — element ID never changes
+                st.session_state[fkey],
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config=cfg["column_config"],
@@ -1294,25 +1384,121 @@ with st.expander("📦 Technical Specifications", expanded=True):
         else:
             st.info("Upload at least 1 layout image to include the Layout section in the PDF.")
 
-    # Render per sub-category
+    # ══════════════════════════════════════════════════════════════════════════
+    # CUSTOM SPEC TABLE UI
+    # ══════════════════════════════════════════════════════════════════════════
+    def _render_custom_spec_editor(prefix):
+        """Free-form specification table that the user builds from scratch."""
+        st.markdown(
+            "<div style='background:#2e7d32;color:white;font-weight:bold;"
+            "padding:8px 12px;margin-bottom:8px;font-size:15px;border-radius:3px;'>"
+            "✏️ Create Your Own Specification Table</div>",
+            unsafe_allow_html=True
+        )
+        st.caption("Add any parameters you need. Only rows with a filled **Parameter** will appear in the PDF.")
+
+        ckey_frozen = f"custom_frozen_{prefix}"
+        ckey_data   = f"custom_data_{prefix}"
+        ckey_widget = f"custom_widget_{prefix}"
+
+        CUSTOM_COLS = ["Parameter", "Value", "Unit", "Remarks"]
+
+        if ckey_frozen not in st.session_state:
+            init_df = pd.DataFrame([{"Parameter": "", "Value": "", "Unit": "", "Remarks": ""}])
+            st.session_state[ckey_frozen] = init_df.copy()
+            st.session_state[ckey_data]   = init_df.copy()
+
+        def _custom_cb():
+            delta  = st.session_state.get(ckey_widget)
+            frozen = st.session_state.get(ckey_frozen)
+            if not isinstance(delta, dict) or frozen is None:
+                return
+            df = frozen.copy()
+            for row_idx_str, changes in delta.get('edited_rows', {}).items():
+                row_idx = int(row_idx_str)
+                if row_idx < len(df):
+                    for col, val in changes.items():
+                        if col in df.columns:
+                            df.at[row_idx, col] = val
+            for new_row in delta.get('added_rows', []):
+                row_data = {c: new_row.get(c, '') for c in df.columns}
+                df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+            del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
+            for i in del_indices:
+                if i < len(df):
+                    df = df.drop(df.index[i]).reset_index(drop=True)
+            st.session_state[ckey_data] = df
+
+        st.data_editor(
+            st.session_state[ckey_frozen],
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Parameter": st.column_config.TextColumn("Parameter / Specification", width="large"),
+                "Value":     st.column_config.TextColumn("Value ✏️", width="medium"),
+                "Unit":      st.column_config.TextColumn("Unit", width="small"),
+                "Remarks":   st.column_config.TextColumn("Remarks", width="medium"),
+            },
+            key=ckey_widget,
+            on_change=_custom_cb,
+        )
+
+        current = st.session_state.get(ckey_data, pd.DataFrame())
+        filled = len(current[current["Parameter"].astype(str).str.strip() != ""])
+        if filled:
+            st.success(f"✅ {filled} parameter(s) defined")
+        else:
+            st.info("Add at least one Parameter row to include this table in the PDF.")
+
+    # ──────────────────────────────────────────────────────────────────────────
+    # Render per sub-category / category
+    # ──────────────────────────────────────────────────────────────────────────
     if is_warehouse:
         if wh_sub in ("Storage System", "Material Handling", "Dock Leveller"):
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}[wh_sub]
             st.markdown(f"#### 📋 {wh_sub} Specification")
-            st.caption("Pre-filled from standard template. Edit the **Requirement / Status / Vendor Scope** columns.")
-            st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
 
-            model_header_pfx = st.text_input(
-                "Model Header / Subtitle (shown under Model Details in PDF)",
-                placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
-                key=f"model_detail_header_{pfx}"
+            # ── TABLE MODE TOGGLE ─────────────────────────────────────────────
+            st.markdown("**Specification Table Mode:**")
+            table_mode = st.radio(
+                "Choose how to define the Technical Specification:",
+                options=["📋 Use Standard Spec Tables", "✏️ Create My Own Table"],
+                index=0,
+                key=f"table_mode_{pfx}",
+                horizontal=True,
+                label_visibility="collapsed",
             )
-            _render_multisection_spec(pfx)
+            use_custom = (table_mode == "✏️ Create My Own Table")
+
+            if use_custom:
+                _render_custom_spec_editor(pfx)
+            else:
+                st.caption("Pre-filled from standard template. Edit the **Requirement / Status / Vendor Scope** columns.")
+                st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
+                model_header_pfx = st.text_input(
+                    "Model Header / Subtitle (shown under Model Details in PDF)",
+                    placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
+                    key=f"model_detail_header_{pfx}"
+                )
+                _render_multisection_spec(pfx)
+
             _render_layout_uploader(pfx)
 
         elif wh_sub == "Automated Storage System":
             st.markdown("#### 📋 Automated Storage System")
-            st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
+
+            # ── TABLE MODE TOGGLE ─────────────────────────────────────────────
+            st.markdown("**Specification Table Mode:**")
+            table_mode = st.radio(
+                "Choose how to define the Technical Specification:",
+                options=["📋 Use Standard Spec Tables", "✏️ Create My Own Table"],
+                index=0,
+                key="table_mode_carousel",
+                horizontal=True,
+                label_visibility="collapsed",
+            )
+            use_custom = (table_mode == "✏️ Create My Own Table")
+
             item_opts = [""] + ["Vertical Carousel System", "Horizontal Carousel System"]
             if 'wh_items_df' not in st.session_state:
                 st.session_state['wh_items_df'] = pd.DataFrame([{
@@ -1340,11 +1526,16 @@ with st.expander("📦 Technical Specifications", expanded=True):
             st.session_state['wh_items_df'] = edited_items
 
             st.markdown("---")
-            model_header = st.text_input("Model Header / Subtitle",
-                                         placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
-                                         key="model_detail_header_carousel")
-            st.markdown("#### 📐 Full Specification Tables")
-            _render_multisection_spec("carousel")
+            if use_custom:
+                _render_custom_spec_editor("carousel")
+            else:
+                st.info("💡 Only rows where you fill in a value (Requirement / Status / Vendor Scope / Customer Scope) will appear in the PDF.")
+                model_header = st.text_input("Model Header / Subtitle",
+                                             placeholder="e.g.  3400 (L) x 3200 (W)  -  465 kgs/tray  -  28 m Height",
+                                             key="model_detail_header_carousel")
+                st.markdown("#### 📐 Full Specification Tables")
+                _render_multisection_spec("carousel")
+
             _render_layout_uploader("carousel")
 
         elif wh_sub == "Storage Container":
@@ -1353,17 +1544,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
             SC_COLS = ["Sr.No", "Description", "OL (mm)", "OW (mm)", "OH (mm)",
                        "Base Type", "Color", "Weight Kg", "Load capacity", "LID", "Qty"]
 
-            # ── WORKING PATTERN ──────────────────────────────────────────────
-            # Use key= + on_change callback. The callback fires BEFORE the next
-            # render, saving the widget's current value into sc_data via
-            # st.session_state[wkey] (which Streamlit populates before calling
-            # the callback). This is the only way to persist every single edit
-            # without triggering StreamlitValueAssignmentNotAllowedError.
-            #
-            # sc_frozen : blank template — passed as data= always, never mutated
-            # sc_data   : our store — written ONLY inside the callback (safe)
-            # sc_wkey   : widget key — Streamlit owns, we never write to it
-            # ─────────────────────────────────────────────────────────────────
             if "sc_frozen" not in st.session_state:
                 init_df = pd.DataFrame([_empty_container_row(1)])
                 for col in SC_COLS:
@@ -1378,11 +1558,9 @@ with st.expander("📦 Technical Specifications", expanded=True):
             if "storage_containers_images" not in st.session_state:
                 st.session_state["storage_containers_images"] = {}
 
-            # SC_COLS_NO_SR excludes Sr.No from the editor — it is auto-assigned, never user-filled
             SC_COLS_NO_SR = [c for c in SC_COLS if c != "Sr.No"]
 
             def _sc_current_row_count():
-                """Return live row count by applying sc_wkey deltas onto sc_frozen."""
                 frozen = st.session_state.get("sc_frozen", pd.DataFrame())
                 delta  = st.session_state.get("sc_wkey")
                 n = len(frozen)
@@ -1392,7 +1570,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                 return max(1, n)
 
             def _sc_on_change():
-                """Apply sc_wkey EditingState delta onto sc_frozen → save to sc_data."""
                 delta  = st.session_state.get("sc_wkey")
                 frozen = st.session_state.get("sc_frozen")
                 if not isinstance(delta, dict) or frozen is None:
@@ -1417,7 +1594,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             editor_col, img_col = st.columns([4, 1])
             with editor_col:
-                # Pass frozen WITHOUT Sr.No so user never sees/edits it
                 st.data_editor(
                     st.session_state["sc_frozen"][SC_COLS_NO_SR],
                     num_rows="dynamic",
@@ -1440,7 +1616,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
 
             with img_col:
                 st.write("**Conceptual Images**")
-                # Use live row count (from delta) so upload boxes appear immediately when rows added
                 n_rows = _sc_current_row_count()
                 current_sc = st.session_state["sc_data"]
                 for i in range(n_rows):
@@ -1454,7 +1629,6 @@ with st.expander("📦 Technical Specifications", expanded=True):
                     if i in st.session_state["storage_containers_images"]:
                         st.image(st.session_state["storage_containers_images"][i], width=80)
 
-            # Sync storage_containers_df for PDF builder
             st.session_state["storage_containers_df"] = st.session_state["sc_data"]
 
             valid_count = len(st.session_state["sc_data"][
@@ -1464,6 +1638,7 @@ with st.expander("📦 Technical Specifications", expanded=True):
             _render_layout_uploader("sc")
 
     else:
+        # ── Non-warehouse categories ──────────────────────────────────────────
         hints = CATEGORY_HINTS.get(rfq_category, [])
         if hints:
             st.markdown(f"**💡 Common items in *{rfq_category}*:**")
@@ -1566,22 +1741,17 @@ with st.form(key="rfq_form"):
 
     submitted = st.form_submit_button("🚀 Generate RFQ Document", use_container_width=True, type="primary")
 
-# PDF Generation
-def _get_spec_df(prefix, section_name):
-    """Read the latest edited spec DataFrame for PDF generation.
 
-    Tries three sources in order:
-    1. dkey  — saved by on_change callback (most reliable if user tabbed out)
-    2. wkey delta applied to fkey — works even if Generate clicked without leaving cell
-    3. fallback to original template
-    """
+# ==============================================================
+# PDF GENERATION TRIGGER
+# ==============================================================
+def _get_spec_df(prefix, section_name):
     import copy as _copy2
     fkey = f"frozen_{prefix}_{section_name}"
     dkey = f"data_{prefix}_{section_name}"
     wkey = f"widget_{prefix}_{section_name}"
     fallback = pd.DataFrame(_copy2.deepcopy(SPEC_TEMPLATE[section_name]))
 
-    # Try applying delta from wkey onto fkey
     frozen = st.session_state.get(fkey)
     delta  = st.session_state.get(wkey)
     if frozen is not None and isinstance(delta, dict):
@@ -1599,7 +1769,6 @@ def _get_spec_df(prefix, section_name):
         for i in del_indices:
             if i < len(df):
                 df = df.drop(df.index[i]).reset_index(drop=True)
-        # Use delta-applied version if it has more data than dkey
         dkey_df = st.session_state.get(dkey)
         def _count_filled(d):
             if d is None or not isinstance(d, pd.DataFrame): return 0
@@ -1608,7 +1777,6 @@ def _get_spec_df(prefix, section_name):
             return df
         return dkey_df if isinstance(dkey_df, pd.DataFrame) else fallback
 
-    # Fall back to dkey (saved by on_change)
     saved = st.session_state.get(dkey)
     if saved is not None and isinstance(saved, pd.DataFrame):
         return saved
@@ -1616,10 +1784,59 @@ def _get_spec_df(prefix, section_name):
     return fallback
 
 
+def _get_custom_spec_df(prefix):
+    """Read the latest custom spec DataFrame, applying any pending widget deltas."""
+    ckey_frozen = f"custom_frozen_{prefix}"
+    ckey_data   = f"custom_data_{prefix}"
+    ckey_widget = f"custom_widget_{prefix}"
+
+    frozen = st.session_state.get(ckey_frozen)
+    delta  = st.session_state.get(ckey_widget)
+
+    if frozen is not None and isinstance(delta, dict):
+        df = frozen.copy()
+        for row_idx_str, changes in delta.get('edited_rows', {}).items():
+            row_idx = int(row_idx_str)
+            if row_idx < len(df):
+                for col, val in changes.items():
+                    if col in df.columns:
+                        df.at[row_idx, col] = val
+        for new_row in delta.get('added_rows', []):
+            row_data = {c: new_row.get(c, '') for c in df.columns}
+            df = pd.concat([df, pd.DataFrame([row_data])], ignore_index=True)
+        del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
+        for i in del_indices:
+            if i < len(df):
+                df = df.drop(df.index[i]).reset_index(drop=True)
+        saved = st.session_state.get(ckey_data)
+        def _count_filled(d):
+            if d is None or not isinstance(d, pd.DataFrame): return 0
+            return int(d.astype(str).apply(lambda c: c.str.strip()).ne('').sum().sum())
+        if _count_filled(df) >= _count_filled(saved):
+            return df
+        return saved if isinstance(saved, pd.DataFrame) else pd.DataFrame()
+
+    saved = st.session_state.get(ckey_data)
+    return saved if isinstance(saved, pd.DataFrame) else pd.DataFrame()
+
+
 if submitted:
     current_category = st.session_state.get('rfq_category_select', rfq_category)
     current_wh_sub   = st.session_state.get('wh_sub_select', '') if st.session_state.get('rfq_category_select') == 'Warehouse Equipment' else ''
     is_wh = (current_category == "Warehouse Equipment")
+
+    # Determine if custom table mode is active
+    pfx_map_mode = {
+        "Storage System":           "ss",
+        "Material Handling":        "mh",
+        "Dock Leveller":            "dl",
+        "Automated Storage System": "carousel",
+    }
+    _mode_pfx       = pfx_map_mode.get(current_wh_sub, "ss")
+    _table_mode_key = f"table_mode_{_mode_pfx}" if current_wh_sub in pfx_map_mode else None
+    use_custom_spec = False
+    if _table_mode_key:
+        use_custom_spec = (st.session_state.get(_table_mode_key, "") == "✏️ Create My Own Table")
 
     errors = []
     if not Type_of_items.strip():     errors.append("Type of Items")
@@ -1644,11 +1861,15 @@ if submitted:
         st.stop()
 
     pdf_data_dict = {
-        'rfq_category': current_category,
-        'wh_sub': current_wh_sub,
-        'Type_of_items': Type_of_items, 'Storage': Storage,
-        'company_name': company_name, 'company_address': company_address,
-        'footer_company_name': footer_company_name, 'footer_company_address': footer_company_address,
+        'rfq_category':   current_category,
+        'wh_sub':         current_wh_sub,
+        'use_custom_spec': use_custom_spec,
+        'Type_of_items':  Type_of_items,
+        'Storage':        Storage,
+        'company_name':   company_name,
+        'company_address': company_address,
+        'footer_company_name':    footer_company_name,
+        'footer_company_address': footer_company_address,
         'logo1_data': logo1_file.getvalue() if logo1_file else None,
         'logo1_w': logo1_w, 'logo1_h': logo1_h,
         'purpose': purpose,
@@ -1663,7 +1884,7 @@ if submitted:
         'submit_to_name': submit_to_name,
         'submit_to_registered_office': submit_to_registered_office,
         'delivery_company': delivery_company,
-        'delivery_gstin': delivery_gstin,
+        'delivery_gstin':   delivery_gstin,
         'delivery_address': delivery_address,
         'annexures': annexures,
         'model_detail_header': st.session_state.get('model_detail_header_carousel', ''),
@@ -1680,38 +1901,33 @@ if submitted:
         layout_key = f"layout_images_{pfx_map.get(current_wh_sub, 'ss')}"
         pdf_data_dict['layout_images'] = st.session_state.get(layout_key, [])
 
+        # Custom spec table (overrides standard tables)
+        if use_custom_spec:
+            pdf_data_dict['custom_spec_df'] = _get_custom_spec_df(_mode_pfx)
+
         if current_wh_sub == "Storage Container":
             sc_images = st.session_state.get('storage_containers_images', {})
-
-            # Build the current df by applying Streamlit's internal delta dict
-            # (sc_wkey) onto sc_frozen. This works even if on_change never fired
-            # (e.g. user clicks Generate without leaving the cell).
             sc_frozen = st.session_state.get('sc_frozen', pd.DataFrame())
-            delta    = st.session_state.get('sc_wkey')  # EditingState dict or None
+            delta     = st.session_state.get('sc_wkey')
 
             if sc_frozen is not None and not sc_frozen.empty:
                 sc_df = sc_frozen.copy()
                 if isinstance(delta, dict):
-                    # Apply edited_rows
                     for row_idx_str, changes in delta.get('edited_rows', {}).items():
                         row_idx = int(row_idx_str)
                         if row_idx < len(sc_df):
                             for col, val in changes.items():
                                 if col in sc_df.columns:
                                     sc_df.at[row_idx, col] = val
-                    # Apply added_rows
                     for new_row in delta.get('added_rows', []):
                         row_data = {c: new_row.get(c, '') for c in sc_df.columns}
                         sc_df = pd.concat([sc_df, pd.DataFrame([row_data])], ignore_index=True)
-                    # Apply deleted_rows
                     del_indices = sorted(delta.get('deleted_rows', []), reverse=True)
                     for i in del_indices:
                         if i < len(sc_df):
                             sc_df = sc_df.drop(sc_df.index[i]).reset_index(drop=True)
-                # Also merge anything already saved in sc_data (from previous on_change calls)
                 sc_saved = st.session_state.get('sc_data')
                 if sc_saved is not None and isinstance(sc_saved, pd.DataFrame) and not sc_saved.empty:
-                    # Use sc_saved if it has more data than frozen+delta
                     def _filled_cells(df):
                         return df.astype(str).apply(lambda col: col.str.strip()).ne('').sum().sum()
                     if _filled_cells(sc_saved) >= _filled_cells(sc_df):
@@ -1729,20 +1945,22 @@ if submitted:
 
         elif current_wh_sub == "Automated Storage System":
             pdf_data_dict['wh_items_df'] = st.session_state.get('wh_items_df', pd.DataFrame())
-            for section_name in SPEC_TEMPLATE.keys():
-                val = _get_spec_df("carousel", section_name)
-                pdf_data_dict[{
-                    "Model Details":               'carousel_model_df',
-                    "Key Features":                'key_features_df',
-                    "Inbuilt features":            'inbuilt_features_df',
-                    "Installation Accountability": 'installation_df',
-                }[section_name]] = val
+            if not use_custom_spec:
+                for section_name in SPEC_TEMPLATE.keys():
+                    val = _get_spec_df("carousel", section_name)
+                    pdf_data_dict[{
+                        "Model Details":               'carousel_model_df',
+                        "Key Features":                'key_features_df',
+                        "Inbuilt features":            'inbuilt_features_df',
+                        "Installation Accountability": 'installation_df',
+                    }[section_name]] = val
 
         else:
             pfx = {'Storage System': 'ss', 'Material Handling': 'mh', 'Dock Leveller': 'dl'}.get(current_wh_sub, 'ss')
             pdf_data_dict['model_detail_header'] = st.session_state.get(f'model_detail_header_{pfx}', '')
-            for section_name in SPEC_TEMPLATE.keys():
-                pdf_data_dict[f"spec_{pfx}_{section_name}"] = _get_spec_df(pfx, section_name)
+            if not use_custom_spec:
+                for section_name in SPEC_TEMPLATE.keys():
+                    pdf_data_dict[f"spec_{pfx}_{section_name}"] = _get_spec_df(pfx, section_name)
     else:
         pdf_data_dict['layout_images'] = []
         items_df = st.session_state.get('dynamic_items_df', pd.DataFrame())
