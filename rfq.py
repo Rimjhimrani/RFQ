@@ -423,9 +423,9 @@ def create_advanced_rfq_pdf(data):
         _write_logo(pdf, LOGO2_BYTES, pdf.w - pdf.r_margin - logo2_w, 12, logo2_w, logo2_h)
 
         pdf.set_y(35)
-        pdf.set_font('Arial', 'B', 12)
+        pdf.set_font('Arial', 'B', 14)
         pdf.set_text_color(200, 0, 0)
-        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'C')
+        pdf.cell(0, 8, 'CONFIDENTIAL', 0, 1, 'L')
         pdf.set_text_color(0, 0, 0)
         pdf.ln(8)
 
@@ -1059,7 +1059,7 @@ def create_advanced_rfq_pdf(data):
         pdf.add_page()
     pdf.section_title('QUOTATION SUBMISSION & DELIVERY')
     pdf.set_font('Arial', 'B', 11)
-    pdf.cell(0, 7, f"Submit To: {data.get('submit_to_name', '')}", 0, 1)
+    pdf.cell(0, 7, f"Quotation to be submit to: {data.get('submit_to_name', '')}", 0, 1)
     if data.get('submit_to_registered_office'):
         pdf.set_font('Arial', '', 10)
         pdf.cell(0, 6, data.get('submit_to_registered_office', ''), 0, 1)
